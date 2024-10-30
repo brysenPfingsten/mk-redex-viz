@@ -25,15 +25,10 @@
 
   ; Goals
   [g ⊤           ; Trivial success
-     succeed
      ⊥           ; Trivial failure
-     fail
      (t =? t)    ; Syntactic equality
      (g ∨ g)     ; Disjunction
-     (disj g g)
      (g ∧ g)     ; Conjuction
-     (conj g g)
-     (run* (q) g)
      (r t)       ; Relation call
      (∃ x g)]    ; Variable introduction
 
@@ -82,20 +77,3 @@
   (prog ((r x g #:refers-to x) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
 
 (default-language L)
-
-(define ->
-  (reduction-relation
-   L
-   #:domain g
-   #:codomain g
-   (--> (⊤ ∧ g_1) g_1)
-   (--> (⊥ ∧ g_1) ⊥)
-   (--> (⊤ ∨ g_1) ⊤)
-   (--> (⊥ ∨ g_1) g_1)
-   (--> (conj g_1 (disj g_2 g_3)) (disj (conj g_1 g_2) (conj g_1 g_3)))
-   #;(--> (conj succeed g_1) g_1)
-   #;(--> (conj fail g_1) fail)
-   (--> (disj succeed g_1) succeed)
-   (--> (disj fail g_1) g_1)
-   (--> (run* (q) g_1) g_1)))
-(define ->* (compatible-closure -> L g))
