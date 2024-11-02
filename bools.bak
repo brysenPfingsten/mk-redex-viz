@@ -49,7 +49,7 @@
 
 (define-judgment-form
   bools
-  #:contract (=== B (B ...))
+  #:contract (=== B B)
   #:mode (=== I I)
 
   [(where (B B) ((normalize B_1) (normalize B_2)))
@@ -92,7 +92,7 @@
 ;; DO NOT QUOTE JUDGMENT EXPRS
 (judgment-holds
  (=== (λ (x:a) ((λ (x:b) x:b) x:a))
-      ((λ (x:c) x:c))))
+      (λ (x:c) x:c)))
 
 (judgment-holds
  (cbv= (λ (x:a) ((λ (x:b) x:b) x:a))
