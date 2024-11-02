@@ -220,8 +220,49 @@
 (define-metafunction L
   fresh-sub : c any ... -> any
   [(fresh-sub c) ()]
-  [(fresh-sub c x_1 x_2 ...) ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
+  [(fresh-sub c x_1 x_2 ...)
+   ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
+   
 
+(define-judgment-form
+  L
+  #:contract (closed-goal? g (r ...))
+  #:mode (closed-goal? I I)
+  
+  [(closed-goal? g rs)
+  ------------------- "fresh-closed"
+  (closed-goal? (∃ x ... g) rs)]
+  
+  [(closed-goal? g_1 (r ...))
+  (closed-goal? g_2 (r ...))
+  ---------- "conj-closed"
+  (closed-goal? (g_1 ∧ g_2) (r ...))]
+  
+  [(closed-goal? g_1 (r ...))
+  (closed-goal? g_2 (r ...))
+  ---------- "disj-closed"
+  (closed-goal? (g_1 ∨ g_2) (r ...))]
+
+  [
+  ---------- "==-closed"
+  (closed-goal? (t_1 =? t_2) (r ...))]
+  ;; member of rs
+  [(side-condition (memq (term r_1) (term (r_2 ...))))
+  ---------- "relcall-closed"
+  (closed-goal? (r_1 t ...) (r_2 ...))]
+  )
+
+(define-judgment-form
+  L
+  #:contract (closed-program? p)
+  #:mode (closed-program? I)
+  [(closed-goal? g (r ...)) ...
+  #;(closed-tree? tr (r ...))
+  ----------------------- "program-closed"
+  (closed-program? (prog ((r x ... g) ...) s))]
+  )
+ 
+ 
 (define-relation L
   occurs? ⊆ natural × t × sub
   [(occurs? natural (t : _) sub) (occurs? natural t sub)]
@@ -613,19 +654,19 @@
       ()))))
 
   #;(test-->>
-   red
-   (term (prog ((r:appendo x:l x:s x:out
-                           (((x:l =? empty) ∧ (x:s =? x:out))
-                            ∨
-                            (∃ x:a x:d x:res
-                               (((x:a : x:d) =? x:l)
-                                ∧
-                                (((x:a : x:res) =? x:out)
-                                 ∧
-                                 (r:appendo x:d x:s x:res)))))))
-               ((∃ x:q (r:appendo (( : 2) : empty) ((3 : 4) : empty) x:q))
-                (state () 0))
-  )))
+     red
+     (term (prog ((r:appendo x:l x:s x:out
+                             (((x:l =? empty) ∧ (x:s =? x:out))
+                              ∨
+                              (∃ x:a x:d x:res
+                                 (((x:a : x:d) =? x:l)
+                                  ∧
+                                  (((x:a : x:res) =? x:out)
+                                   ∧
+                                   (r:appendo x:d x:s x:res)))))))
+                 ((∃ x:q (r:appendo (( : 2) : empty) ((3 : 4) : empty) x:q))
+                  (state () 0))
+                 )))
   )
 
 (module+ traces
@@ -729,9 +770,9 @@
                               ((⊤ ∨ ⊥) (state () 0)))))
 
 #;(traces red (term (prog ()
-                        ((((⊤ ∨ ⊥) ∧ ((⊥ ∨ ⊤) ∧ (⊥ ∨ ⊤))) ∨
-                                                          ((⊥ ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ⊥))))
-                         (state () 0)))))
+                          ((((⊤ ∨ ⊥) ∧ ((⊥ ∨ ⊤) ∧ (⊥ ∨ ⊤))) ∨
+                                                            ((⊥ ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ⊥))))
+                           (state () 0)))))
 
 
 
