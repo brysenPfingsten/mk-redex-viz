@@ -229,9 +229,9 @@
   #:contract (closed-goal? g (r ...))
   #:mode (closed-goal? I I)
   
-  [(closed-goal? g (r ...))
+  [(closed-goal? g rs)
   ------------------- "fresh-closed"
-  (closed-goal? (∃ x ... g) (r ...))]
+  (closed-goal? (∃ x ... g) rs)]
   
   [(closed-goal? g_1 (r ...))
   (closed-goal? g_2 (r ...))
@@ -247,43 +247,11 @@
   ---------- "==-closed"
   (closed-goal? (t_1 =? t_2) (r ...))]
   ;; member of rs
-  [(side-condition ,(memq (term r_1) (term (r_2 ...))))
+  [(side-condition (memq (term r_1) (term (r_2 ...))))
   ---------- "relcall-closed"
   (closed-goal? (r_1 t ...) (r_2 ...))]
   )
 
-(define-judgment-form
-  L
-  #:contract (closed-tree? s (r ...))
-  #:mode (closed-tree? I I)
-
-  [
-  -------------------"empty tree"
-  (closed-tree? () (r ...))]
-
-  [
-  -------------------"trivial failure"
-  (closed-tree? (⊥ #f) (r ...))]
-
-  [(closed-goal? g (r ...))
-  -------------------"goal w/ sub"
-  (closed-tree? (g σ) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-  -------------------"disj"
-  (closed-tree? (s_1 + s_2) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-  -------------------"conj"
-  (closed-tree? (s_1 × s_2) (r ...))]
-
-  [(closed-tree? s (r ...))
-  -------------------"delay"
-  (closed-tree? (delay s) (r ...))])
-
- 
 (define-judgment-form
   L
   #:contract (closed-program? p)
@@ -293,7 +261,6 @@
   ----------------------- "program-closed"
   (closed-program? (prog ((r x ... g) ...) s))]
   )
-
  
  
 (define-relation L
@@ -856,29 +823,4 @@ run* (q) (disj
       (∃ x:a x:d x:res (((x:a : x:d) =? x:l«10386») ∧ (((x:a : x:res) =? x:out«10388») ∧ (r:appendo«10385» x:d x:s«10387» x:res)))))))
    ((⊤ (state ((6 ("bear" : ("lion" : empty))) (3 (4 : 6)) (5 empty) (4 "dog") (0 (1 : 3)) (2 ("dog" : empty)) (1 "cat")) 7)) + ())))
 
-(judgment-holds
-   (closed-goal?
-    ("abc" =? "abc") (r:hello)))
-
- (judgment-holds
-   (closed-program?
-    (prog ((r:hello x:1 ("abc" =? "abc"))) ((r:hello x:a) (state () 0)))))
-
-Failed w/ undefined relations
- (redex-check L
-               p
-               (> 1 (length (apply-reduction-relation red (term p))))
-               #:attempts 1000
-               #:keep-going? #t
-               #:attempt-size (λ (x) 100))
-
-(judgment-holds
-   (closed-tree?
-    ((∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
-                (state () 0)) (r:appendo)))
-
-(judgment-holds
-   (closed-goal?
-    (∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
-                 (r:appendo)))
 |#
