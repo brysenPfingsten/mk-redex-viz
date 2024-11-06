@@ -222,6 +222,19 @@
   [(fresh-sub c) ()]
   [(fresh-sub c x_1 x_2 ...)
    ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
+
+(define-metafunction L
+  closed-variables? : p -> boolean
+  [(closed-variables? (prog ((r x ... g) ...) s))
+
+(define-judgment-form
+  L
+  #:contract (member? r (r ...))
+  #:mode (member? I I)
+
+  [
+   ------------------ "empty relations"
+   (member? r_1 (r_2 ... r_1 r_3 ...))])
    
 
 (define-judgment-form
@@ -247,9 +260,9 @@
   ---------- "==-closed"
   (closed-goal? (t_1 =? t_2) (r ...))]
   ;; member of rs
-  [(side-condition ,(memq (term r_1) (term (r_2 ...))))
+  [
   ---------- "relcall-closed"
-  (closed-goal? (r_1 t ...) (r_2 ...))]
+  (closed-goal? (r_1 t ...) (r_2 ... r_1 r_3 ...))]
   )
 
 (define-judgment-form
@@ -258,38 +271,48 @@
   #:mode (closed-tree? I I)
 
   [
-  -------------------"empty tree"
+  -------------------"empty tree is closed"
   (closed-tree? () (r ...))]
 
   [
-  -------------------"trivial failure"
+  -------------------"trivial failure is closed"
   (closed-tree? (⊥ #f) (r ...))]
 
   [(closed-goal? g (r ...))
-  -------------------"goal w/ sub"
+  -------------------"goal w/ sub closed"
   (closed-tree? (g σ) (r ...))]
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-  -------------------"disj"
+  -------------------"disj closed"
   (closed-tree? (s_1 + s_2) (r ...))]
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-  -------------------"conj"
+  -------------------"conj closed"
   (closed-tree? (s_1 × s_2) (r ...))]
 
   [(closed-tree? s (r ...))
-  -------------------"delay"
+  -------------------"delay closed"
   (closed-tree? (delay s) (r ...))])
 
- 
+(define-judgment-form
+  L
+  #:contract (closed-variables? (g ...) s (x ...))
+  #:mode (closed-variables? I I I)
+
+  [
+   --------------
+   (closed-variables (]
+  )
+
+
 (define-judgment-form
   L
   #:contract (closed-program? p)
   #:mode (closed-program? I)
   [(closed-goal? g (r ...)) ...
-  #;(closed-tree? tr (r ...))
+  (closed-tree? s (r ...))
   ----------------------- "program-closed"
   (closed-program? (prog ((r x ... g) ...) s))]
   )
@@ -855,6 +878,8 @@ run* (q) (disj
       ∨
       (∃ x:a x:d x:res (((x:a : x:d) =? x:l«10386») ∧ (((x:a : x:res) =? x:out«10388») ∧ (r:appendo«10385» x:d x:s«10387» x:res)))))))
    ((⊤ (state ((6 ("bear" : ("lion" : empty))) (3 (4 : 6)) (5 empty) (4 "dog") (0 (1 : 3)) (2 ("dog" : empty)) (1 "cat")) 7)) + ())))
+
+
 
 (judgment-holds
    (closed-goal?
