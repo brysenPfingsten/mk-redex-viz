@@ -223,9 +223,6 @@
   [(fresh-sub c x_1 x_2 ...)
    ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
 
-(define-metafunction L
-  closed-variables? : p -> boolean
-  [(closed-variables? (prog ((r x ... g) ...) s))
 
 (define-judgment-form
   L
@@ -259,10 +256,11 @@
   [
   ---------- "==-closed"
   (closed-goal? (t_1 =? t_2) (r ...))]
+  
   ;; member of rs
   [
   ---------- "relcall-closed"
-  (closed-goal? (r_1 t ...) (r_2 ... r_1 r_3 ...))]
+  (closed-goal? (r_1 t ... x ...) (r_2 ... r_1 r_3 ...))]
   )
 
 (define-judgment-form
@@ -296,15 +294,7 @@
   -------------------"delay closed"
   (closed-tree? (delay s) (r ...))])
 
-(define-judgment-form
-  L
-  #:contract (closed-variables? (g ...) s (x ...))
-  #:mode (closed-variables? I I I)
 
-  [
-   --------------
-   (closed-variables (]
-  )
 
 
 (define-judgment-form
