@@ -3,6 +3,7 @@
 (require redex/reduction-semantics)
 (require rackunit)
 (check-redundancy #t)
+(require redex-etc)
 #;(current-traced-metafunctions 'all)
 
 ;; Jason Hemann
@@ -22,7 +23,7 @@
 
 (define-language L
   [p ::= (prog Γ e)]   ; Programs, Relation Environments, and Relations
-  [Γ ((r_!_ x g) ...)] ; Ensure that 'ri's are distinct
+  [Γ ((r_!_ x_!_ ... g) ...)] ; Ensure that 'ri's are distinct
   ;------------------------------------
   ; Expressions
   [e ::=
@@ -44,13 +45,15 @@
      (t =? t)    ; Syntactic equality
      (g ∨ g)     ; Disjunction
      (g ∧ g)     ; Conjuction
-     (r t)       ; Relation call
-     (∃ x g)]    ; Variable introduction
+     (r t ...)       ; Relation call
+     (∃ x_!_ ... g)]    ; Variable introduction
 
   ;Terms
   [t c
      o ;; for "other", change to make c constant and n natural
      x
+     empty
+     (cons t t)
      (t : t)]
 
   ;Other
@@ -58,8 +61,8 @@
   [x (variable-prefix x:)] ; to account for arbitrary parameter names
   [c natural]
   [o ;; symbol ; Why isn't this working
-     boolean
-     string]
+   boolean
+   string]
   [σ (state sub c)]
   [sub ((natural t) ...)]
   [maybe-sub sub #f]
@@ -88,8 +91,8 @@
       (Eg ∧ g)
       (Eg ∨ g)]
   #:binding-forms
-  (∃ x g #:refers-to x)
-  (prog ((r x g #:refers-to x) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
+  (∃ x ... g #:refers-to (shadow x ...))
+  (prog ((r x ... g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to(shadow r ...)))
 
 (default-language L)
 
@@ -99,6 +102,10 @@
   ;; "bald symbols are terms"
   ;; (redex-match? L t (term cat))
 
+  (test-true
+   "lists are terms"
+   (redex-match? L t (term (cons "cat" (cons #t empty)))))
+  
   (test-true
    "bald numbers are terms"
    (redex-match? L t (term 5)))
@@ -207,9 +214,101 @@
 (define-metafunction L
   ext : natural t sub -> maybe-sub
   [(ext natural t sub) ([natural t] ,@(term sub))
-   (side-condition (not (term (occurs? natural t sub))))]
+                       (side-condition (not (term (occurs? natural t sub))))]
   [(ext _ _ _) #f])
 
+(define-metafunction L
+  fresh-sub : c any ... -> any
+  [(fresh-sub c) ()]
+  [(fresh-sub c x_1 x_2 ...)
+   ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
+
+
+(define-judgment-form
+  L
+  #:contract (member? r (r ...))
+  #:mode (member? I I)
+
+  [
+   ------------------ "empty relations"
+   (member? r_1 (r_2 ... r_1 r_3 ...))])
+   
+
+(define-judgment-form
+  L
+  #:contract (closed-goal? g (r ...))
+  #:mode (closed-goal? I I)
+  
+  [(closed-goal? g (r ...))
+  ------------------- "fresh-closed"
+  (closed-goal? (∃ x ... g) (r ...))]
+  
+  [(closed-goal? g_1 (r ...))
+  (closed-goal? g_2 (r ...))
+  ---------- "conj-closed"
+  (closed-goal? (g_1 ∧ g_2) (r ...))]
+  
+  [(closed-goal? g_1 (r ...))
+  (closed-goal? g_2 (r ...))
+  ---------- "disj-closed"
+  (closed-goal? (g_1 ∨ g_2) (r ...))]
+
+  [
+  ---------- "==-closed"
+  (closed-goal? (t_1 =? t_2) (r ...))]
+  
+  ;; member of rs
+  [
+  ---------- "relcall-closed"
+  (closed-goal? (r_1 t ... x ...) (r_2 ... r_1 r_3 ...))]
+  )
+
+(define-judgment-form
+  L
+  #:contract (closed-tree? s (r ...))
+  #:mode (closed-tree? I I)
+
+  [
+  -------------------"empty tree is closed"
+  (closed-tree? () (r ...))]
+
+  [
+  -------------------"trivial failure is closed"
+  (closed-tree? (⊥ #f) (r ...))]
+
+  [(closed-goal? g (r ...))
+  -------------------"goal w/ sub closed"
+  (closed-tree? (g σ) (r ...))]
+
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
+  -------------------"disj closed"
+  (closed-tree? (s_1 + s_2) (r ...))]
+
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
+  -------------------"conj closed"
+  (closed-tree? (s_1 × s_2) (r ...))]
+
+  [(closed-tree? s (r ...))
+  -------------------"delay closed"
+  (closed-tree? (delay s) (r ...))])
+
+
+
+
+(define-judgment-form
+  L
+  #:contract (closed-program? p)
+  #:mode (closed-program? I)
+  [(closed-goal? g (r ...)) ...
+  (closed-tree? s (r ...))
+  ----------------------- "program-closed"
+  (closed-program? (prog ((r x ... g) ...) s))]
+  )
+
+ 
+ 
 (define-relation L
   occurs? ⊆ natural × t × sub
   [(occurs? natural (t : _) sub) (occurs? natural t sub)]
@@ -254,80 +353,80 @@
 
 (define red
   (reduction-relation L
-    #:domain p
+                      #:domain p
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ)))))
-         "distribute subst in disj"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ)))))
+                           "distribute subst in disj"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∧ g_2) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) × g_2))))
-         "distribute subst over conj"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∧ g_2) σ))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) × g_2))))
+                           "distribute subst over conj"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + (g_2 σ_2)) × g))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g)))))
-         "distribute disj ans over conj"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + (g_2 σ_2)) × g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g)))))
+                           "distribute disj ans over conj"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ) + s) + s_2))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) + (s + s_2)))))
-         "reassociate disj"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ) + s) + s_2))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) + (s + s_2)))))
+                           "reassociate disj"]
 
-    [--> (in-hole EΓ (in-hole Ev (delay s)))
-         (in-hole EΓ (in-hole Ev s))
-         "invoke delay"]
+                      [--> (in-hole EΓ (in-hole Ev (delay s)))
+                           (in-hole EΓ (in-hole Ev s))
+                           "invoke delay"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) × g))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (g σ))))
-         "bring subst to 2nd conjunct"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) × g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (g σ))))
+                           "bring subst to 2nd conjunct"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) × g))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-         "prune failure conjuncts"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) × g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
+                           "prune failure conjuncts"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) + s))))
-         (in-hole EΓ (in-hole Ev (in-hole Es s)))
-         "prune failure disjuncts"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) + s))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es s)))
+                           "prune failure disjuncts"]
+                      
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x ... g) (state sub c)))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)))))))
+                           "fresh-n subst"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x g) (state sub c)))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((substitute g x c) (state sub ,(add1 (term c)))))))
-         "fresh subst"]
+                      [--> (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ..._1 g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
+                           (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ... g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
+                           "relcall and add delay"]
 
-    [--> (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
-         (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute g_1 x_1 t) σ)))))
-         "relcall and add delay"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c)))))
+                           (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           "unify succeed"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c)))))
-         (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
-         "unify succeed"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
+                           "fail fails"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-         "fail fails"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
+                           (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           "unify fails"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-         (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
-         "unify fails"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s ∧ g)))))
+                           "propagate delay through conj"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (delay (s ∧ g)))))
-         "propagate delay through conj"]
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s_1) + s_2))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s_2 + s_1)))))
+                           "propagate delay through disj, and flip"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s_1) + s_2))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (delay (s_2 + s_1)))))
-         "propagate delay through disj, and flip"]
+                      ;; I think this is right because it's the equivalent in prolog of
+                      ;; a choice point with failure at the end, for no more results.
+                      ;; We could prune it or leave it here, either way
+                      ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
+                      ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
+                      ;;      "prune failure from end"]
 
-    ;; I think this is right because it's the equivalent in prolog of
-    ;; a choice point with failure at the end, for no more results.
-    ;; We could prune it or leave it here, either way
-    ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
-    ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
-    ;;      "prune failure from end"]
-
-    [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
-         (in-hole EΓ (in-hole Ev ()))
-         "prune bald failure"]))
+                      [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
+                           (in-hole EΓ (in-hole Ev ()))
+                           "prune bald failure"]))
 
 (module+ test
   (test-->>
@@ -344,6 +443,11 @@
    red
    (term (prog ((r:foo x:x ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))
    (term (prog ((r:foo x:x ("abc" =? "abc"))) (⊤ (state () 0)))))
+
+  (test-->>
+   red
+   (term (prog ((r:foo x:x x:y (x:y =? x:x))) ((r:foo "abc" "abc") (state () 0))))
+   (term (prog ((r:foo x:x x:y (x:y =? x:x))) (⊤ (state () 0)))))
 
   (test-->>
    red
@@ -575,25 +679,41 @@
                                  (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                   ∧ (r:add (x:a2 : x:d2)))))))))))
      ((⊤
-      (state
-       ((14 ("s" : "z"))
-        (12 14)
-        (13 "z")
-        (10 ("s" : 12))
-        (11 "z")
-        (8 10)
-        (9 ("s" : "z"))
-        (6 ("s" : 8))
-        (7 ("s" : "z"))
-        (4 6)
-        (5 ("s" : ("s" : "z")))
-        (2 ("s" : 4))
-        (3 ("s" : ("s" : "z")))
-        (0 2)
-        (1 ("s" : ("s" : ("s" : "z")))))
-       15))
-     +
-     ())))))
+       (state
+        ((14 ("s" : "z"))
+         (12 14)
+         (13 "z")
+         (10 ("s" : 12))
+         (11 "z")
+         (8 10)
+         (9 ("s" : "z"))
+         (6 ("s" : 8))
+         (7 ("s" : "z"))
+         (4 6)
+         (5 ("s" : ("s" : "z")))
+         (2 ("s" : 4))
+         (3 ("s" : ("s" : "z")))
+         (0 2)
+         (1 ("s" : ("s" : ("s" : "z")))))
+        15))
+      +
+      ()))))
+
+  #;(test-->>
+     red
+     (term (prog ((r:appendo x:l x:s x:out
+                             (((x:l =? empty) ∧ (x:s =? x:out))
+                              ∨
+                              (∃ x:a x:d x:res
+                                 (((x:a : x:d) =? x:l)
+                                  ∧
+                                  (((x:a : x:res) =? x:out)
+                                   ∧
+                                   (r:appendo x:d x:s x:res)))))))
+                 ((∃ x:q (r:appendo (( : 2) : empty) ((3 : 4) : empty) x:q))
+                  (state () 0))
+                 )))
+  )
 
 (module+ traces
 
@@ -634,17 +754,17 @@
                                   ∧ (r:add (x:a2 : x:d2)))))))))))
      ((∃ x:y (r:add ("z" : x:y))) (state () 0))))
    (term
-     (prog
-      ()
+    (prog
+     ()
+     ((⊤ (state ((3 "x")) 0))
+      +
       ((⊤ (state ((3 "x")) 0))
        +
        ((⊤ (state ((3 "x")) 0))
         +
         ((⊤ (state ((3 "x")) 0))
          +
-         ((⊤ (state ((3 "x")) 0))
-          +
-          (⊤ (state ((3 "x")) 0)))))))))
+         (⊤ (state ((3 "x")) 0)))))))))
 
   (traces
    red
@@ -685,20 +805,20 @@
       (("ghi" =? "ghi")
        (state ((3 "x")) 0))))))
 
-(test-results))
+  (test-results))
 
 (test-true
  "A program w/a no relations "
  (redex-match? L p (term (prog ()
                                (("abc" =? "abc") (state () 0))))))
 
- (redex-match? L p (term (prog ()
-                               ((⊤ ∨ ⊥) (state () 0)))))
+(redex-match? L p (term (prog ()
+                              ((⊤ ∨ ⊥) (state () 0)))))
 
- (traces red (term (prog ()
-                               ((((⊤ ∨ ⊥) ∧ ((⊥ ∨ ⊤) ∧ (⊥ ∨ ⊤))) ∨
-                                                                 ((⊥ ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ⊥))))
-                                (state () 0)))))
+#;(traces red (term (prog ()
+                          ((((⊤ ∨ ⊥) ∧ ((⊥ ∨ ⊤) ∧ (⊥ ∨ ⊤))) ∨
+                                                            ((⊥ ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ⊥))))
+                           (state () 0)))))
 
 
 
@@ -722,3 +842,58 @@ run* (q) (disj
                     (disj (conj succeed succeed)
                           (disj succeed fail)))))
  |#
+
+#|
+(traces red (term (prog ((r:appendo x:l x:s x:out
+                           (((x:l =? empty) ∧ (x:s =? x:out))
+                            ∨
+                            (∃ x:a x:d x:res
+                               (((x:a : x:d) =? x:l)
+                                ∧
+                                (((x:a : x:res) =? x:out)
+                                 ∧
+                                 (r:appendo x:d x:s x:res)))))))
+               ((∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
+                (state () 0))
+  )))
+
+--->
+
+'((prog
+   ((r:appendo«10385»
+     x:l«10386»
+     x:s«10387»
+     x:out«10388»
+     (((x:l«10386» =? empty) ∧ (x:s«10387» =? x:out«10388»))
+      ∨
+      (∃ x:a x:d x:res (((x:a : x:d) =? x:l«10386») ∧ (((x:a : x:res) =? x:out«10388») ∧ (r:appendo«10385» x:d x:s«10387» x:res)))))))
+   ((⊤ (state ((6 ("bear" : ("lion" : empty))) (3 (4 : 6)) (5 empty) (4 "dog") (0 (1 : 3)) (2 ("dog" : empty)) (1 "cat")) 7)) + ())))
+
+
+
+(judgment-holds
+   (closed-goal?
+    ("abc" =? "abc") (r:hello)))
+
+ (judgment-holds
+   (closed-program?
+    (prog ((r:hello x:1 ("abc" =? "abc"))) ((r:hello x:a) (state () 0)))))
+
+Failed w/ undefined relations
+ (redex-check L
+               p
+               (> 1 (length (apply-reduction-relation red (term p))))
+               #:attempts 1000
+               #:keep-going? #t
+               #:attempt-size (λ (x) 100))
+
+(judgment-holds
+   (closed-tree?
+    ((∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
+                (state () 0)) (r:appendo)))
+
+(judgment-holds
+   (closed-goal?
+    (∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
+                 (r:appendo)))
+|#

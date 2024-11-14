@@ -50,11 +50,18 @@
 
   ;Terms
   [t c
-     o ;; for "other", change to make c constant and n natural
+     o 
      x
      empty
      (cons t t)
      (t : t)]
+
+  ;; Ground terms
+  [gt c
+      o ;; for "other", change to make c constant and n natural
+      empty
+      (cons gt gt)
+      (gt : gt)]
 
   ;Other
   [r (variable-prefix r:)] ; to account for arbitrary relation names
@@ -226,41 +233,31 @@
 
 (define-judgment-form
   L
-  #:contract (member? r (r ...))
-  #:mode (member? I I)
-
-  [
-   ------------------ "empty relations"
-   (member? r_1 (r_2 ... r_1 r_3 ...))])
-   
-
-(define-judgment-form
-  L
   #:contract (closed-goal? g (r ...))
   #:mode (closed-goal? I I)
   
   [(closed-goal? g (r ...))
-  ------------------- "fresh-closed"
-  (closed-goal? (∃ x ... g) (r ...))]
+   ------------------- "fresh-closed"
+   (closed-goal? (∃ x ... g) (r ...))]
   
   [(closed-goal? g_1 (r ...))
-  (closed-goal? g_2 (r ...))
-  ---------- "conj-closed"
-  (closed-goal? (g_1 ∧ g_2) (r ...))]
+   (closed-goal? g_2 (r ...))
+   ---------- "conj-closed"
+   (closed-goal? (g_1 ∧ g_2) (r ...))]
   
   [(closed-goal? g_1 (r ...))
-  (closed-goal? g_2 (r ...))
-  ---------- "disj-closed"
-  (closed-goal? (g_1 ∨ g_2) (r ...))]
+   (closed-goal? g_2 (r ...))
+   ---------- "disj-closed"
+   (closed-goal? (g_1 ∨ g_2) (r ...))]
 
   [
-  ---------- "==-closed"
-  (closed-goal? (t_1 =? t_2) (r ...))]
+   ---------- "==-closed"
+   (closed-goal? (t_1 =? t_2) (r ...))]
   
   ;; member of rs
   [
-  ---------- "relcall-closed"
-  (closed-goal? (r_1 t ... x ...) (r_2 ... r_1 r_3 ...))]
+   ---------- "relcall-closed"
+   (closed-goal? (r_1 t ... x ...) (r_2 ... r_1 r_3 ...))]
   )
 
 (define-judgment-form
@@ -269,32 +266,185 @@
   #:mode (closed-tree? I I)
 
   [
-  -------------------"empty tree is closed"
-  (closed-tree? () (r ...))]
+   -------------------"empty tree is closed"
+   (closed-tree? () (r ...))]
 
   [
-  -------------------"trivial failure is closed"
-  (closed-tree? (⊥ #f) (r ...))]
+   -------------------"trivial failure is closed"
+   (closed-tree? (⊥ #f) (r ...))]
 
   [(closed-goal? g (r ...))
-  -------------------"goal w/ sub closed"
-  (closed-tree? (g σ) (r ...))]
+   -------------------"goal w/ sub closed"
+   (closed-tree? (g σ) (r ...))]
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-  -------------------"disj closed"
-  (closed-tree? (s_1 + s_2) (r ...))]
+   -------------------"disj closed"
+   (closed-tree? (s_1 + s_2) (r ...))]
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-  -------------------"conj closed"
-  (closed-tree? (s_1 × s_2) (r ...))]
+   -------------------"conj closed"
+   (closed-tree? (s_1 × s_2) (r ...))]
 
   [(closed-tree? s (r ...))
-  -------------------"delay closed"
-  (closed-tree? (delay s) (r ...))])
+   -------------------"delay closed"
+   (closed-tree? (delay s) (r ...))])
+
+(define-judgment-form
+  L
+  #:contract (member? any (any ...))
+  #:mode (member? I I)
+
+  [(member? any_1 (any_3 ...))
+   (member? any_2 (any_3 ...))
+   --------------
+   (member? (any_1 : any_2) (any_3 ...))]
+
+  [
+   ------------------
+   (member? x_2 (x_1 ... x_2 x_3 ...))]
+
+  [
+   ----------------
+   (member? gt (any ...))])
+  
+
+(define-judgment-form
+  L
+  #:contract (closed-variables? g (x ...))
+  #:mode (closed-variables? I I)
+
+  [(closed-variables? g (x_1 ... x_2 ...))
+   -------------------"fresh adds to env"
+   (closed-variables? (∃ x_1 ... g) (x_2 ...))]
+  
+  [(closed-variables? g_1 (x ...))
+   (closed-variables? g_2 (x ...))
+   ---------- "closed vars conj"
+   (closed-variables? (g_1 ∧ g_2) (x ...))]
+  
+  [(closed-variables? g_1 (x ...))
+   (closed-variables? g_2 (x ...))
+   ---------- "closed vars disj"
+   (closed-variables? (g_1 ∨ g_2) (x ...))]
+
+  [(member? t_1 (x_3 ...))
+   (member? t_2 (x_3 ...))
+   ---------- "unify two vars"
+   (closed-variables? (t_1 =? t_2) (x_3 ...))]
+
+  [(member? t (x_3 ...))
+   ---------- "unify left var"
+   (closed-variables? (t =? gt) (x_3 ...))]
+
+  [(member? t (x_3 ...))
+   ---------- "unify right var"
+   (closed-variables? (gt =? t) (x_3 ...))]
+
+  [
+   ---------- "unify no vars"
+   (closed-variables? (gt =? gt) (x_3 ...))]
+
+  [(member? t (x_2 ...)) ...
+   ----------"relation call vars closed"
+   (closed-variables? (r t ...) (x_2 ...))]
+ 
+  )
+
+(module+ test-closed-variables?
+  (check-true (judgment-holds
+               (closed-variables?
+                (x:a =? x:b)
+                (x:a x:b))))
+
+  (check-false (judgment-holds
+                (closed-variables?
+                 (x:a =? x:b)
+                 (x:a))))
+
+  (check-false (judgment-holds
+                (closed-variables?
+                 (x:a =? x:b)
+                 (x:b))))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (x:a =? "abc")
+                (x:a))))
+  (check-true (judgment-holds
+               (closed-variables?
+                ("abc" =? x:a)
+                (x:a))))
+  (check-true (judgment-holds
+               (closed-variables?
+                ("abc" =? "abc")
+                ())))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (r:test x:a x:b "abc")
+                (x:a x:b))))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (r:test "abc"  x:a "def" x:b "ghi" x:c)
+                (x:c x:b x:a))))
+
+  (check-false (judgment-holds
+                (closed-variables?
+                 (r:test x:a x:b x:c "abc")
+                 (x:c))))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (("abc" =? x:a)
+                 ∧
+                 (x:b =? "def"))
+                (x:a x:b))))
 
 
+  (check-true (judgment-holds
+               (closed-variables?
+                (("abc" =? x:a)
+                 ∨
+                 (x:b =? "def"))
+                (x:a x:b))))
+
+
+  (check-false (judgment-holds
+                (closed-variables?
+                 (("abc" =? x:c)
+                  ∧
+                  (x:d =? "def"))
+                 (x:a x:b))))
+
+
+  (check-false (judgment-holds
+                (closed-variables?
+                 (("abc" =? x:c)
+                  ∨
+                  (x:d =? "def"))
+                 (x:a x:b))))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (∃ x:a x:b (("abc" =? x:a)
+                            ∨
+                            (x:b =? "def")))
+                ())))
+
+  (check-true (judgment-holds
+               (closed-variables?
+                (((x:l =? empty) ∧ (x:s =? x:out))
+                 ∨
+                 (∃ x:a x:d x:res
+                    (((x:a : x:d) =? x:l)
+                     ∧
+                     (((x:a : x:res) =? x:out)
+                      ∧
+                      (r:appendo x:d x:s x:res)))))
+                (x:l x:s x:out)))))
 
 
 (define-judgment-form
@@ -302,9 +452,10 @@
   #:contract (closed-program? p)
   #:mode (closed-program? I)
   [(closed-goal? g (r ...)) ...
-  (closed-tree? s (r ...))
-  ----------------------- "program-closed"
-  (closed-program? (prog ((r x ... g) ...) s))]
+   (closed-tree? s (r ...))
+   (closed-variables? g (x ...)) ...
+   ----------------------- "program-closed"
+   (closed-program? (prog ((r x ... g) ...) s))]
   )
 
  
@@ -426,7 +577,15 @@
 
                       [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
                            (in-hole EΓ (in-hole Ev ()))
-                           "prune bald failure"]))
+                           "prune bald failure"]
+
+                      [-->  (prog Γ ... ((v + ())))
+                            v
+                            "final reduction"]
+
+                      [--> (prog Γ ... (⊤ s))
+                           s
+                           "aldfj;a"]))
 
 (module+ test
   (test-->>
@@ -896,4 +1055,8 @@ Failed w/ undefined relations
    (closed-goal?
     (∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
                  (r:appendo)))
+(traces red (term (prog ((r:poso x:n (∃ x:a x:d (x:n =? (x:a : x:d)))))
+                          ((∃ x:q (r:poso x:q)) (state () 0)))))
+
 |#
+
