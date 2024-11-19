@@ -22,12 +22,11 @@
 ;; "main".
 
 (define-language L
-  [p ::= (prog Γ e)]   ; Programs, Relation Environments, and Relations
+  [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
   [Γ ((r_!_ x_!_ ... g) ...)] ; Ensure that 'ri's are distinct
   ;------------------------------------
   ; Expressions
-  [e ::=
-     ()
+  [e ()
      s
      ((⊤ σ) ∨ e)]
 
@@ -50,11 +49,12 @@
 
   ;Terms
   [t c
-     o ;; for "other", change to make c constant and n natural
+     o  ;; for "other", change to make c constant and n natural
      x
      empty
      (cons t t)
      (t : t)]
+
 
   ;Other
   [r (variable-prefix r:)] ; to account for arbitrary relation names
@@ -72,6 +72,8 @@
   [v ()           ; Empty Node
      (⊤ σ)        ; Singleton Node
      ((⊤ σ) + v)] ; Answer Disjunct (yuck the letter v and logical or look the same
+
+  [prog-val (prog Γ v)]
 
   ;-------------------------------------
   ; Evaluation Contexts
@@ -226,41 +228,32 @@
 
 (define-judgment-form
   L
-  #:contract (member? r (r ...))
-  #:mode (member? I I)
-
-  [
-   ------------------ "empty relations"
-   (member? r_1 (r_2 ... r_1 r_3 ...))])
-   
-
-(define-judgment-form
-  L
-  #:contract (closed-goal? g (r ...))
-  #:mode (closed-goal? I I)
+  #:contract (closed-goal? g (r ...) (x ...) c)
+  #:mode (closed-goal? I I I I)
   
-  [(closed-goal? g (r ...))
-  ------------------- "fresh-closed"
-  (closed-goal? (∃ x ... g) (r ...))]
+  [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
+   ------------------- "fresh-closed"
+   (closed-goal? (∃ x_1 ... g) (r ...) (x_2 ...) c)]
   
-  [(closed-goal? g_1 (r ...))
-  (closed-goal? g_2 (r ...))
-  ---------- "conj-closed"
-  (closed-goal? (g_1 ∧ g_2) (r ...))]
+  [(closed-goal? g_1 (r ...) (x ...) c)
+   (closed-goal? g_2 (r ...) (x ...) c)
+   ---------- "conj-closed"
+   (closed-goal? (g_1 ∧ g_2) (r ...) (x ...) c)]
   
-  [(closed-goal? g_1 (r ...))
-  (closed-goal? g_2 (r ...))
-  ---------- "disj-closed"
-  (closed-goal? (g_1 ∨ g_2) (r ...))]
+  [(closed-goal? g_1 (r ...) (x ...) c)
+   (closed-goal? g_2 (r ...) (x ...) c)
+   ---------- "disj-closed"
+   (closed-goal? (g_1 ∨ g_2) (r ...) (x ...) c)]
 
-  [
-  ---------- "==-closed"
-  (closed-goal? (t_1 =? t_2) (r ...))]
+  [(closed-term? t_1 (x ...) c)
+   (closed-term? t_2 (x ...) c)
+   ---------- "==-closed"
+   (closed-goal? (t_1 =? t_2) (r ...) (x ...) c)]
   
   ;; member of rs
-  [
-  ---------- "relcall-closed"
-  (closed-goal? (r_1 t ... x ...) (r_2 ... r_1 r_3 ...))]
+  [(closed-term? t (x ...) c) ...
+   ---------- "relcall-closed"
+   (closed-goal? (r_1 t ...) (r_2 ... r_1 r_3 ...) (x ...) c)]
   )
 
 (define-judgment-form
@@ -269,42 +262,70 @@
   #:mode (closed-tree? I I)
 
   [
-  -------------------"empty tree is closed"
-  (closed-tree? () (r ...))]
+   -------------------"empty tree is closed"
+   (closed-tree? () (r ...))]
 
   [
-  -------------------"trivial failure is closed"
-  (closed-tree? (⊥ #f) (r ...))]
+   -------------------"trivial failure is closed"
+   (closed-tree? (⊥ #f) (r ...))]
 
-  [(closed-goal? g (r ...))
-  -------------------"goal w/ sub closed"
-  (closed-tree? (g σ) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-  -------------------"disj closed"
-  (closed-tree? (s_1 + s_2) (r ...))]
+  [(closed-goal? g (r ...) () c)
+   -------------------"goal w/ sub closed"
+   (closed-tree? (g (state sub c)) (r ...))]
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-  -------------------"conj closed"
-  (closed-tree? (s_1 × s_2) (r ...))]
+   -------------------"disj closed"
+   (closed-tree? (s_1 + s_2) (r ...))]
+
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
+   -------------------"conj closed"
+   (closed-tree? (s_1 × s_2) (r ...))]
 
   [(closed-tree? s (r ...))
-  -------------------"delay closed"
-  (closed-tree? (delay s) (r ...))])
+   -------------------"delay closed"
+   (closed-tree? (delay s) (r ...))])
+  
+(define-judgment-form
+  L
+  #:contract (closed-term? t (x ...) c)
+  #:mode (closed-term? I I I)
 
+  [
+   ----------------- "empty is closed"
+   (closed-term? empty (x ...) c)]
 
+  [(side-condition ,(< (term c_1) (term c_2)))
+   --------------
+   (closed-term? c_1 (x ...) c_2)]
 
+  [
+   --------------
+   (closed-term? o (x ...) c)]
+
+  [(closed-term? t_2 (x ...) c)
+   (closed-term? t_1 (x ...) c)
+   --------------
+   (closed-term? (cons t_1 t_2) (x ...) c)]
+
+  [(closed-term? t_2 (x ...) c)
+   (closed-term? t_1 (x ...) c)
+   --------------
+   (closed-term? (t_1 : t_2) (x ...) c)]
+
+  [
+   --------------
+   (closed-term? x_1 (x_2 ... x_1 x_3 ...) c)])
 
 (define-judgment-form
   L
   #:contract (closed-program? p)
   #:mode (closed-program? I)
-  [(closed-goal? g (r ...)) ...
-  (closed-tree? s (r ...))
-  ----------------------- "program-closed"
-  (closed-program? (prog ((r x ... g) ...) s))]
+  [(closed-goal? g (r ...) (x ...) 0) ...
+   (closed-tree? s (r ...))
+   ----------------------- "program-closed"
+   (closed-program? (prog ((r x ... g) ...) s))]
   )
 
  
@@ -426,7 +447,15 @@
 
                       [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
                            (in-hole EΓ (in-hole Ev ()))
-                           "prune bald failure"]))
+                           "prune bald failure"]
+
+                      [-->  (prog Γ ... ((v + ())))
+                            v
+                            "final reduction"]
+
+                      [--> (prog Γ ... (⊤ s))
+                           s
+                           "aldfj;a"]))
 
 (module+ test
   (test-->>
@@ -896,4 +925,19 @@ Failed w/ undefined relations
    (closed-goal?
     (∃ x:q (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q))
                  (r:appendo)))
+(traces red (term (prog ((r:poso x:n (∃ x:a x:d (x:n =? (x:a : x:d)))))
+                          ((∃ x:q (r:poso x:q)) (state () 0)))))
+
 |#
+
+(redex-check L
+               p
+                 (implies (and (not (redex-match L prog-val (term p)))
+                             (judgment-holds (closed-program?  p)))
+                        (= (length (apply-reduction-relation red (term p))) 1))
+               #:attempts 1000
+               #:print? (λ (p) #t)
+               #:keep-going? #true)
+
+
+
