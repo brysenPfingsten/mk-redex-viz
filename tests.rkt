@@ -4,99 +4,8 @@
 (require rackunit)
 (check-redundancy #t)
 (require redex-etc)
-#;(current-traced-metafunctions 'all)
 
-;; Jason Hemann
-;; Initial redex lang setup from Ryan Jung
-;; Unify &c metafunctions from Phil Nguyen
-
-;; Consider, if we separate answer streams from search tree
-;; disjuncts, then we would need some rule to "move into the
-;; answer stream."
-
-;; Right now we pun between a succeed node in the language and a
-;; successful result, with that substitution. Not a sin.
-
-;; I could also think about this as though the query is instead the
-;; one and only call to an initial, implicitly define defrel called
-;; "main".
-
-(define-language L
-  [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
-  [Γ ((r_!_ x_!_ ... g) ...)] ; Ensure that 'ri's are distinct
-  ;------------------------------------
-  ; Expressions
-  [e ()
-     s
-     ((⊤ σ) ∨ e)]
-
-  ; Search Trees
-  [s ()
-     (⊥ #f)
-     (g σ)
-     (s + s)
-     (s × g)
-     (delay s)]
-
-  ; Goals
-  [g ⊤           ; Trivial success
-     ⊥           ; Trivial failure
-     (t =? t)    ; Syntactic equality
-     (g ∨ g)     ; Disjunction
-     (g ∧ g)     ; Conjuction
-     (r t ...)       ; Relation call
-     (∃ x_!_ ... g)]    ; Variable introduction
-
-  ;Terms
-  [t c
-     o  ;; for "other", change to make c constant and n natural
-     x
-     empty
-     (cons t t)
-     (t : t)]
-
-
-  ;Other
-  [r (variable-prefix r:)] ; to account for arbitrary relation names
-  [x (variable-prefix x:)] ; to account for arbitrary parameter names
-  [c natural]
-  [o ;; symbol ; Why isn't this working
-   boolean
-   string]
-  [σ (state sub c)]
-  [sub ((natural t) ...)]
-  [maybe-sub sub #f]
-
-  ;-------------------------------------
-  ; Values
-  [v ()           ; Empty Node
-     (⊤ σ)        ; Singleton Node
-     ((⊤ σ) + v)] ; Answer Disjunct (yuck the letter v and logical or look the same
-
-  [prog-val (prog Γ v)]
-
-  ;-------------------------------------
-  ; Evaluation Contexts
-  [EΓ (prog Γ hole)]
-
-  ; Answer Stream
-  [Ev hole
-      ((⊤ σ) + Ev)]
-
-  ; Search Tree
-  [Es hole
-      (Es + s)
-      (Es × g)]
-
-  ; Goal
-  [Eg hole
-      (Eg ∧ g)
-      (Eg ∨ g)]
-  #:binding-forms
-  (∃ x ... g #:refers-to (shadow x ...))
-  (prog ((r x ... g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to(shadow r ...)))
-
-(default-language L)
+(require "definitions.rkt" "judgment-forms.rkt" "reduction-relations.rkt")
 
 (module+ test
 
@@ -197,146 +106,6 @@
 
   (test-results))
 
-(define-metafunction L
-  unify : t t sub -> maybe-sub
-  [(unify natural_1 natural_1 sub) sub]
-  [(unify natural t sub) (ext natural t sub)]
-  [(unify t natural sub) (ext natural t sub)]
-  [(unify (t_1a : t_1b) (t_2a : t_2b) sub)
-   (unify (walk t_1b sub_1) (walk t_2b sub_1) sub_1)
-   (where sub_1 (unify (walk t_1a sub) (walk t_2a sub) sub))]
-  [(unify t_1 t_1 sub) sub]
-  [(unify _ _ _) #f])
-
-(define-metafunction L
-  walk : t sub -> t
-  [(walk natural (name sub (_ ... [natural t] _ ...))) (walk t sub)]
-  [(walk t _) t])
-
-(define-metafunction L
-  ext : natural t sub -> maybe-sub
-  [(ext natural t sub) ([natural t] ,@(term sub))
-                       (side-condition (not (term (occurs? natural t sub))))]
-  [(ext _ _ _) #f])
-
-(define-metafunction L
-  fresh-sub : c any ... -> any
-  [(fresh-sub c) ()]
-  [(fresh-sub c x_1 x_2 ...)
-   ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
-
-
-(define-judgment-form
-  L
-  #:contract (closed-goal? g (r ...) (x ...) c)
-  #:mode (closed-goal? I I I I)
-  
-  [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
-   ------------------- "fresh-closed"
-   (closed-goal? (∃ x_1 ... g) (r ...) (x_2 ...) c)]
-  
-  [(closed-goal? g_1 (r ...) (x ...) c)
-   (closed-goal? g_2 (r ...) (x ...) c)
-   ---------- "conj-closed"
-   (closed-goal? (g_1 ∧ g_2) (r ...) (x ...) c)]
-  
-  [(closed-goal? g_1 (r ...) (x ...) c)
-   (closed-goal? g_2 (r ...) (x ...) c)
-   ---------- "disj-closed"
-   (closed-goal? (g_1 ∨ g_2) (r ...) (x ...) c)]
-
-  [(closed-term? t_1 (x ...) c)
-   (closed-term? t_2 (x ...) c)
-   ---------- "==-closed"
-   (closed-goal? (t_1 =? t_2) (r ...) (x ...) c)]
-  
-  ;; member of rs
-  [(closed-term? t (x ...) c) ...
-   ---------- "relcall-closed"
-   (closed-goal? (r_1 t ...) (r_2 ... r_1 r_3 ...) (x ...) c)]
-  )
-
-(define-judgment-form
-  L
-  #:contract (closed-tree? s (r ...))
-  #:mode (closed-tree? I I)
-
-  [
-   -------------------"empty tree is closed"
-   (closed-tree? () (r ...))]
-
-  [
-   -------------------"trivial failure is closed"
-   (closed-tree? (⊥ #f) (r ...))]
-
-  [(closed-goal? g (r ...) () c)
-   -------------------"goal w/ sub closed"
-   (closed-tree? (g (state sub c)) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-   -------------------"disj closed"
-   (closed-tree? (s_1 + s_2) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-   -------------------"conj closed"
-   (closed-tree? (s_1 × s_2) (r ...))]
-
-  [(closed-tree? s (r ...))
-   -------------------"delay closed"
-   (closed-tree? (delay s) (r ...))])
-  
-(define-judgment-form
-  L
-  #:contract (closed-term? t (x ...) c)
-  #:mode (closed-term? I I I)
-
-  [
-   ----------------- "empty is closed"
-   (closed-term? empty (x ...) c)]
-
-  [(side-condition ,(< (term c_1) (term c_2)))
-   --------------
-   (closed-term? c_1 (x ...) c_2)]
-
-  [
-   --------------
-   (closed-term? o (x ...) c)]
-
-  [(closed-term? t_2 (x ...) c)
-   (closed-term? t_1 (x ...) c)
-   --------------
-   (closed-term? (cons t_1 t_2) (x ...) c)]
-
-  [(closed-term? t_2 (x ...) c)
-   (closed-term? t_1 (x ...) c)
-   --------------
-   (closed-term? (t_1 : t_2) (x ...) c)]
-
-  [
-   --------------
-   (closed-term? x_1 (x_2 ... x_1 x_3 ...) c)])
-
-(define-judgment-form
-  L
-  #:contract (closed-program? p)
-  #:mode (closed-program? I)
-  [(closed-goal? g (r ...) (x ...) 0) ...
-   (closed-tree? s (r ...))
-   ----------------------- "program-closed"
-   (closed-program? (prog ((r x ... g) ...) s))]
-  )
-
- 
- 
-(define-relation L
-  occurs? ⊆ natural × t × sub
-  [(occurs? natural (t : _) sub) (occurs? natural t sub)]
-  [(occurs? natural (_ : t) sub) (occurs? natural t sub)]
-  [(occurs? natural_1 natural_1 sub)])
-
-
 (module+ test
 
   (test-equal
@@ -371,91 +140,6 @@
    (term #f))
 
   (test-results))
-
-(define red
-  (reduction-relation L
-                      #:domain p
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ)))))
-                           "distribute subst in disj"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∧ g_2) σ))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) × g_2))))
-                           "distribute subst over conj"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + (g_2 σ_2)) × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g)))))
-                           "distribute disj ans over conj"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ) + s) + s_2))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) + (s + s_2)))))
-                           "reassociate disj"]
-
-                      [--> (in-hole EΓ (in-hole Ev (delay s)))
-                           (in-hole EΓ (in-hole Ev s))
-                           "invoke delay"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (g σ))))
-                           "bring subst to 2nd conjunct"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-                           "prune failure conjuncts"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) + s))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es s)))
-                           "prune failure disjuncts"]
-                      
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x ... g) (state sub c)))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)))))))
-                           "fresh-n subst"]
-
-                      [--> (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ..._1 g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
-                           (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ... g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
-                           "relcall and add delay"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c)))))
-                           (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "unify succeed"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-                           "fail fails"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
-                           (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "unify fails"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s ∧ g)))))
-                           "propagate delay through conj"]
-
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s_1) + s_2))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s_2 + s_1)))))
-                           "propagate delay through disj, and flip"]
-
-                      ;; I think this is right because it's the equivalent in prolog of
-                      ;; a choice point with failure at the end, for no more results.
-                      ;; We could prune it or leave it here, either way
-                      ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
-                      ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
-                      ;;      "prune failure from end"]
-
-                      [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
-                           (in-hole EΓ (in-hole Ev ()))
-                           "prune bald failure"]
-
-                      [-->  (prog Γ ... ((v + ())))
-                            v
-                            "final reduction"]
-
-                      [--> (prog Γ ... (⊤ s))
-                           s
-                           "aldfj;a"]))
 
 (module+ test
   (test-->>
@@ -849,8 +533,6 @@
                                                             ((⊥ ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ⊥))))
                            (state () 0)))))
 
-
-
 #|
 
 ⊤           ; Trivial success
@@ -939,5 +621,7 @@ Failed w/ undefined relations
                #:print? (λ (p) #t)
                #:keep-going? #true)
 
-
-
+#;(redex-check L
+             s
+             (judgment-holds
+              (closed-tree? s ())))
