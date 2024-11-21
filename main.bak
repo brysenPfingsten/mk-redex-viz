@@ -225,9 +225,6 @@
   [(fresh-sub c x_1 x_2 ...)
    ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
 
-(define-metafunction L
-  closed-substitution? : ((natural any) ...) c -> any
-  [(closed-substitution? ((natural any) ...) c) (term ,(andmap (λ (i) (< (first i) (term c))) (term ((natural any) ...))))])
 
 (define-judgment-form
   L
@@ -273,7 +270,6 @@
    (closed-tree? (⊥ #f) (r ...))]
 
   [(closed-goal? g (r ...) () c)
-   (side-condition ,(andmap (λ (pair) (< (first pair) (term c))) (term sub)))
    -------------------"goal w/ sub closed"
    (closed-tree? (g (state sub c)) (r ...))]
 
@@ -321,18 +317,6 @@
   [
    --------------
    (closed-term? x_1 (x_2 ... x_1 x_3 ...) c)])
-
-(define-judgment-form
-  L
-  #:contract (closed-sub? sub c)
-  #:mode (closed-sub? I I)
-  [
-   ------------------ "empty sub is closed"
-   (closed-sub? (state () c))]
-
-  [
-   ------------------ "check first pair"
-   (closed-sub? (state ((natural
 
 (define-judgment-form
   L
@@ -465,10 +449,13 @@
                            (in-hole EΓ (in-hole Ev ()))
                            "prune bald failure"]
 
-                      [-->  (prog Γ ... (in-hole Es (() + s)))
-                            (prog Γ ... s)
-                            "prune-empty-disj"]
-))
+                      [-->  (prog Γ ... ((v + ())))
+                            v
+                            "final reduction"]
+
+                      [--> (prog Γ ... (⊤ s))
+                           s
+                           "aldfj;a"]))
 
 (module+ test
   (test-->>
