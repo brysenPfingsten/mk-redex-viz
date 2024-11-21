@@ -57,10 +57,6 @@
    (closed-tree? () (r ...))]
 
   [
-   -------------------"trivial failure is closed"
-   (closed-tree? (⊥ #f) (r ...))]
-
-  [
    ------------------"trivial success is closed"
    (closed-tree? ⊤ (r ...))]
 

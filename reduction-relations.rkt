@@ -20,8 +20,8 @@
                            (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) × g_2))))
                            "distribute subst over conj"]
 
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + (g_2 σ_2)) × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g)))))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + s) × g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + (s × g)))))
                            "distribute disj ans over conj"]
 
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ) + s) + s_2))))
