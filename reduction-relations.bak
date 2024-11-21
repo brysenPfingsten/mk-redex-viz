@@ -36,11 +36,11 @@
                            (in-hole EΓ (in-hole Ev (in-hole Es (g σ))))
                            "bring subst to 2nd conjunct"]
 
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (() × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ())))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) × g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
                            "prune failure conjuncts"]
 
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es (() + s))))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) + s))))
                            (in-hole EΓ (in-hole Ev (in-hole Es s)))
                            "prune failure disjuncts"]
                       
@@ -58,16 +58,16 @@
                            "unify succeed"]
 
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ())))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
                            "fail fails"]
 
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es ())))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "unify fails"]
 
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) × g))))
-                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s × g)))))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
+                           (in-hole EΓ (in-hole Ev (in-hole Es (delay (s ∧ g)))))
                            "propagate delay through conj"]
 
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s_1) + s_2))))
@@ -81,7 +81,11 @@
                       ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
                       ;;      "prune failure from end"]
 
-                      #;[--> (in-hole EΓ (in-hole Ev (⊥ #f)))
+                      [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
                            (in-hole EΓ (in-hole Ev ()))
                            "prune bald failure"]
+
+                      [-->  (prog Γ ... (in-hole Es (() + s)))
+                            (prog Γ ... s)
+                            "prune-empty-disj"]
 ))

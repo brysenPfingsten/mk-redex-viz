@@ -55,7 +55,7 @@
 
   ; Search Trees
   [s ()
-     #; (⊥ #f) ; What is this?
+     (⊥ #f) ; What is this?
      (g σ)
      (s + s)
      (s × g)
