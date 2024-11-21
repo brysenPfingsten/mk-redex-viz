@@ -612,7 +612,7 @@ Failed w/ undefined relations
 
 |#
 
-#;(redex-check L
+(redex-check L
                p
                  (implies (and (not (redex-match L prog-val (term p)))
                              (judgment-holds (closed-program?  p)))
@@ -621,9 +621,7 @@ Failed w/ undefined relations
                #:print? (λ (p) #t)
                #:keep-going? #true)
 
-(redex-check L
+#;(redex-check L
              s
              (judgment-holds
-              (closed-tree? s ()))
-             #:attempts 1000
-             #:keep-going? #true)
+              (closed-tree? s ())))

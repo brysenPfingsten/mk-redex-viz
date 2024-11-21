@@ -13,14 +13,6 @@
   L
   #:contract (closed-goal? g (r ...) (x ...) c)
   #:mode (closed-goal? I I I I)
-
-  [
-   ------------------ "trivial success closed"
-   (closed-goal? ⊤ (r ...) (x ...) c)]
-
-  [
-   ----------------- "trivial failure closed"
-   (closed-goal? ⊥ (r ...) (x ...) c)]
   
   [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
    ------------------- "fresh-closed"
@@ -76,10 +68,10 @@
    -------------------"disj closed"
    (closed-tree? (s_1 + s_2) (r ...))]
 
-  [(closed-tree? s (r ...))
-   (closed-goal? g (r ...) () 0)
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
    -------------------"conj closed"
-   (closed-tree? (s × g) (r ...))]
+   (closed-tree? (s_1 × s_2) (r ...))]
 
   [(closed-tree? s (r ...))
    -------------------"delay closed"
