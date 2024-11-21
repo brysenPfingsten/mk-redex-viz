@@ -232,27 +232,27 @@
 
   (test-->>
    red
-   (term (prog () ((⊥ #f) + (⊤ (state ((3 "boba-tea")) 0)))))
-   (term (prog () (⊤ (state ((3 "boba-tea")) 0)))))
+   (term (prog () ((⊥ (state ((3 "boba-tea")) 4)) + (⊤ (state ((3 "boba-tea")) 4)))))
+   (term (prog () (⊤ (state ((3 "boba-tea")) 4)))))
 
   (test-->>
    red
-   (term (prog () ((⊤ (state ((3 "fish")) 0)) + (⊥ #f))))
-   (term (prog () ((⊤ (state ((3 "fish")) 0)) + ()))))
+   (term (prog () ((⊤ (state ((3 "fish")) 4)) + (⊥ (state ((3 "fish")) 4)))))
+   (term (prog () ((⊤ (state ((3 "fish")) 4)) + ()))))
 
   (test-->>
    red
-   (term (prog () ((⊤ (state ((3 "fish")) 0)) + (⊥ #f))))
-   (term (prog () ((⊤ (state ((3 "fish")) 0)) + ()))))
+   (term (prog () ((⊤ (state ((3 "fish")) 4)) + (⊥ (state ((3 "fish")) 4)))))
+   (term (prog () ((⊤ (state ((3 "fish")) 4)) + ()))))
 
   (test-->>
    red
-   (term (prog () (((delay (("abc" =? "abc") (state ((3 "fish")) 0)))
-                    + (delay (("def" =? "def") (state ((4 "fish")) 0))))
-                   + (("nine" =? "nine") (state ((9 "fish")) 0)))))
-   (term (prog () ((⊤ (state ((9 "fish")) 0))
-                   + ((⊤ (state ((3 "fish")) 0))
-                      + (⊤ (state ((4 "fish")) 0)))))))
+   (term (prog () (((delay (("abc" =? "abc") (state ((3 "fish")) 10)))
+                    + (delay (("def" =? "def") (state ((4 "fish")) 10))))
+                   + (("nine" =? "nine") (state ((9 "fish")) 10)))))
+   (term (prog () ((⊤ (state ((9 "fish")) 10))
+                   + ((⊤ (state ((3 "fish")) 10))
+                      + (⊤ (state ((4 "fish")) 10)))))))
 
 
   ;; This asymmetry mirrors prolog's behavior re: choice oints.
@@ -614,16 +614,53 @@ Failed w/ undefined relations
 
 #;(redex-check L
                p
-                 (implies (and (not (redex-match L prog-val (term p)))
+               (implies (and (not (redex-match L prog-val (term p)))
                              (judgment-holds (closed-program?  p)))
                         (= (length (apply-reduction-relation red (term p))) 1))
-               #:attempts 1000
+               #:attempts 20000
                #:print? (λ (p) #t)
-               #:keep-going? #true)
+               #:keep-going? #true
+               #:attempt-size (λ (i) 7))
 
-(redex-check L
+#;(redex-check L
              s
              (judgment-holds
               (closed-tree? s ()))
              #:attempts 1000
              #:keep-going? #true)
+; ((⊥ #f) + (delay ((⊥ #f) × (empty =? empty))))
+; (prog () (() × ⊥))
+
+(redex-match?
+ L
+ Γ
+ '((r:assoco x:key x:table x:value
+             (∃ x:car x:table-cdr
+                ((x:table =? (x:car : x:table-cdr))
+                 ∧
+                 (((x:key : x:value) =? x:car)
+                  ∨
+                  (r:assoco x:key x:table-cdr x:value)))))
+   (r:same-lengtho x:l1 x:l2
+                   (((x:l1 =? empty) ∧ (x:l1 =? empty))
+                    ∨
+                    (∃ x:car1 x:cdr1 x:car2 x:cdr2
+                       ((x:l1 =? (x:car1 : x:cdr1))
+                        ∧
+                        ((x:l2 =? (x:car2 : x:cdr2))
+                         ∧
+                         (r:same-lengtho x:cdr1 x:cdr2))))))
+   (r:make-assoc-tableo x:l1 x:l2 x:table
+                        (((x:l1 =? empty)
+                          ∧
+                          ((x:l1 =? empty)
+                           ∧ (x:table =? empty)))
+                         ∨
+                         (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
+                            ((x:l1 =? (x:car1 : x:cdr1))
+                             ∧
+                             ((x:l2 =? (x:car2 : x:cdr2))
+                              ∧
+                              ((x:table =? ((x:car1 : x:car2) : x:cdr3))
+                               ∧ (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
+   ))

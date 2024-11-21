@@ -46,7 +46,7 @@
 
 (define-language L
   [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
-  [Γ ((r_!_ x_!_ ... g) ...)] ; Ensure that 'ri's are distinct
+  [Γ ((r_!_ x_!_ ... g) ..._!_)] ; Ensure that 'ri's are distinct
   ;------------------------------------
   ; Expressions
   [e ()

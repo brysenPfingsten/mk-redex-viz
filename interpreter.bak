@@ -1,0 +1,142 @@
+#lang racket
+(require racket/struct)
+
+(struct prog (relations query))
+(struct fresh (vars goal)
+  #:transparent
+   #:methods gen:custom-write
+  [(define (write-proc fv op om)
+     (match-define (fresh v g) fv)
+     (fprintf op "~a" `(∃ ,@v ,g)))])
+(define (print-list l)
+  (foldl (λ (e a) (string-append ( e) a)) "" l))
+(struct disj (g1 g2)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc conj-val output-port output-mode)
+     (fprintf output-port "(~a ∨ ~a)" (disj-g1 conj-val) (disj-g2 conj-val)))])
+(struct conj (g1 g2)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc conj-val output-port output-mode)
+     (fprintf output-port "(~a ∧ ~a)" (conj-g1 conj-val) (conj-g2 conj-val)))])
+(struct unify (t1 t2)
+  #:transparent)
+(struct succeed ())
+(struct fail ())
+(struct rel-call (name terms)
+  #:transparent)
+
+(struct nil () #:transparent)
+(struct bool (b))
+(struct konst (k) #:transparent)
+(struct kons (a d) #:transparent)
+(struct var (v) #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc vv op om)
+     (fprintf op "x:~a" (var-v vv)))])
+
+(struct relname (name)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc rnv op om)
+     (fprintf op "r:~a" (relname-name rnv)))])
+(struct defrel (name lop goal)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc dv op om)
+     (match-define (defrel dv-name dv-lop dv-goal) dv)
+     (fprintf op "~a" `(,(relname dv-name) ,@dv-lop ,dv-goal)))])
+
+(define (parse-relation-defs a-lor)
+  (map parse-relation-def a-lor))
+
+(define (parse-relation-def a-relation)
+  (match a-relation
+    [`(defrel (,r . ,params) ,g) (defrel
+                            r
+                            (map var params)
+                            (parse-goal g))]))
+
+;; fresh conde == succeed fail
+(define (parse-goal goal)
+  (match goal
+    [`(fresh ,vars . ,goals) (fresh (map var vars) (conj-goals (map parse-goal goals)))]
+    [`(conde . ,clauses) (disj-goals (map parse-clause clauses))]
+    [`(== ,t1 ,t2) (unify (parse-term t1) (parse-term t2))]
+    ['succeed (succeed)]
+    ['fail (fail)]
+    [`(,r . ,terms) (rel-call r (map parse-term terms))]))
+ 
+(define (parse-clause goals)
+  (conj-goals (map parse-goal goals)))
+
+(define (conj-goals goals)
+  (cond
+    [(empty? goals) (error "Need at least two goals")]
+    ((= (length goals) 1) (first goals))
+    [(= (length goals) 2) (conj (first goals) (second goals))]
+    [else (conj (first goals) (conj-goals (rest goals)))]))
+
+(define (disj-goals goals)
+  (cond
+    [(empty? goals) (error "Need at least two goals")]
+    ((= (length goals) 1) (first goals))
+    [(= (length goals) 2) (disj (first goals) (second goals))]
+    [else (disj (first goals) (conj-goals (rest goals)))]))
+
+(define (parse-term-within-quote t)
+  (match t
+    [(cons qta qtb) (kons (parse-term-within-quote qta)
+                          (parse-term-within-quote qtb))]
+    [s #:when (symbol? s) (konst (symbol->string s))]
+    [b #:when (boolean? b) (bool b)]
+    ['() (nil)]))
+
+(define (kons*-terms lot)
+  (foldr kons (nil) lot))
+
+
+(define (parse-term-within-qquote t)
+  (match t
+    [(list 'unquote expr) (parse-term expr)]
+    [(cons qta qtb) (kons (parse-term-within-qquote qta)
+                          (parse-term-within-qquote qtb))]
+    [s #:when (symbol? s) (konst (symbol->string s))]
+    [b #:when (boolean? b) (bool b)]
+    ['() (nil)]))
+
+
+(define (parse-term t)
+  (match t
+    [`(quote ,subterm) (parse-term-within-quote subterm)]
+    [`(quasiquote ,expr) (parse-term-within-qquote expr)]
+    [`(cons ,ta ,td) (kons (parse-term ta) (parse-term td))]
+    [`(list . ,args) (kons*-terms (map parse-term args))]
+    [sym #:when (symbol? sym) (var sym)]
+    [boo #:when (boolean? boo) (bool boo)]))
+
+(parse-relation-defs '( 
+(defrel (assoco key table value)
+  (fresh (car table-cdr)
+    (== table `(,car . ,table-cdr))
+    (conde ((== `(,key . ,value) car))
+	   ((assoco key table-cdr value)))))
+(defrel (same-lengtho l1 l2)
+  (conde ((== l1 '()) (== l1 '()))
+	 ((fresh (car1 cdr1 car2 cdr2)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (same-lengtho cdr1 cdr2)))))
+(defrel (make-assoc-tableo l1 l2 table)
+  (conde ((== l1 '()) (== l1 '()) (== table '()))
+	 ((fresh (car1 cdr1 car2 cdr2 cdr3)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (== table `((,car1 . ,car2) . ,cdr3))
+	    (make-assoc-tableo cdr1 cdr2 cdr3)))))))
+ 
+
+
+    
+                           
