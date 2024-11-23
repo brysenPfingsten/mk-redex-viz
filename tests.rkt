@@ -13,9 +13,9 @@
   ;; "bald symbols are terms"
   ;; (redex-match? L t (term cat))
 
-  (test-true
-   "lists are terms"
-   (redex-match? L t (term (cons "cat" (cons #t empty)))))
+  #; (test-true
+      "lists are terms"
+      (redex-match? L t (term (cons "cat" (cons #t empty)))))
   
   (test-true
    "bald numbers are terms"
@@ -160,7 +160,7 @@
   (test-->>
    red
    (term (prog ((r:foo x:x x:y (x:y =? x:x))) ((r:foo "abc" "abc") (state () 0))))
-   (term (prog ((r:foo x:x x:y (x:y =? x:x))) (⊤ (state () 0)))))
+   (term (prog ((r:foo x:x x:y (x:y =? x:x))) (⊤ (state () 0))))) 
 
   (test-->>
    red
@@ -520,6 +520,16 @@
 
   (test-results))
 
+(module+ test-distinct
+  (test-true
+   "A rel env with args repeated across relations is a term"
+   (redex-match
+    L
+    Γ
+    '((r:test1 x:a x:b x:c)
+     (r:test2 x:a x:b x:c)))))
+                     
+
 (test-true
  "A program w/a no relations "
  (redex-match? L p (term (prog ()
@@ -623,44 +633,140 @@ Failed w/ undefined relations
                #:attempt-size (λ (i) 7))
 
 #;(redex-check L
-             s
-             (judgment-holds
-              (closed-tree? s ()))
-             #:attempts 1000
-             #:keep-going? #true)
+               s
+               (judgment-holds
+                (closed-tree? s ()))
+               #:attempts 1000
+               #:keep-going? #true)
 ; ((⊥ #f) + (delay ((⊥ #f) × (empty =? empty))))
 ; (prog () (() × ⊥))
 
-(redex-match?
- L
- Γ
- '((r:assoco x:key x:table x:value
-             (∃ x:car x:table-cdr
-                ((x:table =? (x:car : x:table-cdr))
-                 ∧
-                 (((x:key : x:value) =? x:car)
-                  ∨
-                  (r:assoco x:key x:table-cdr x:value)))))
-   (r:same-lengtho x:l1 x:l2
-                   (((x:l1 =? empty) ∧ (x:l1 =? empty))
+#;(redex-match?
+   L
+   Γ
+   '((r:assoco x:key x:table x:value
+               (∃ x:car x:table-cdr
+                  ((x:table =? (x:car : x:table-cdr))
+                   ∧
+                   (((x:key : x:value) =? x:car)
                     ∨
-                    (∃ x:car1 x:cdr1 x:car2 x:cdr2
-                       ((x:l1 =? (x:car1 : x:cdr1))
-                        ∧
-                        ((x:l2 =? (x:car2 : x:cdr2))
-                         ∧
-                         (r:same-lengtho x:cdr1 x:cdr2))))))
-   (r:make-assoc-tableo x:l1 x:l2 x:table
-                        (((x:l1 =? empty)
+                    (r:assoco x:key x:table-cdr x:value)))))
+     (r:same-lengtho x:l1 x:l2
+                     (((x:l1 =? empty) ∧ (x:l2 =? empty))
+                      ∨
+                      (∃ x:car1 x:cdr1 x:car2 x:cdr2
+                         ((x:l1 =? (x:car1 : x:cdr1))
                           ∧
-                          ((x:l1 =? empty)
-                           ∧ (x:table =? empty)))
-                         ∨
-                         (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
-                            ((x:l1 =? (x:car1 : x:cdr1))
+                          ((x:l2 =? (x:car2 : x:cdr2))
+                           ∧
+                           (r:same-lengtho x:cdr1 x:cdr2))))))
+     (r:make-assoc-tableo x:l1 x:l2 x:table
+                          (((x:l1 =? empty)
+                            ∧
+                            ((x:l2 =? empty)
                              ∧
-                             ((x:l2 =? (x:car2 : x:cdr2))
+                             (x:table =? empty)))
+                           ∨
+                           (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
+                              ((x:l1 =? (x:car1 : x:cdr1))
+                               ∧
+                               ((x:l2 =? (x:car2 : x:cdr2))
+                                ∧
+                                ((x:table =? ((x:car1 : x:car2) : x:cdr3))
+                                 ∧ (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
+     ))
+#;(traces red (term (prog ((r:same-lengtho x:l1 x:l2
+                                           (((x:l1 =? empty) ∧ (x:l2 =? empty))
+                                            ∨
+                                            (∃ x:car1 x:cdr1 x:car2 x:cdr2
+                                               ((x:l1 =? (x:car1 : x:cdr1))
+                                                ∧
+                                                ((x:l2 =? (x:car2 : x:cdr2))
+                                                 ∧
+                                                 (r:same-lengtho x:cdr1 x:cdr2)))))))
+                          ((r:same-lengtho ("ghi" : ("jkl" : empty)) ("abc" : ("def" : empty))) (state ()  0)))))
+
+#;(traces red (term (prog ((r:same-lengtho x:l1 x:l2
+                                           (((x:l1 =? empty) ∧ (x:l2 =? empty))
+                                            ∨
+                                            (∃ x:car1 x:cdr1 x:car2 x:cdr2
+                                               ((x:l1 =? (x:car1 : x:cdr1))
+                                                ∧
+                                                ((x:l2 =? (x:car2 : x:cdr2))
+                                                 ∧
+                                                 (r:same-lengtho x:cdr1 x:cdr2)))))))
+                          ((∃ x:h1 x:h2 (r:same-lengtho x:h1 x:h2)) (state ()  0)))))
+
+#;(traces red (term (prog ((r:same-lengtho x:l1 x:l2
+                                           (((x:l1 =? empty) ∧ (x:l2 =? empty))
+                                            ∨
+                                            (∃ x:car1 x:cdr1 x:car2 x:cdr2
+                                               ((x:l1 =? (x:car1 : x:cdr1))
+                                                ∧
+                                                ((x:l2 =? (x:car2 : x:cdr2))
+                                                 ∧
+                                                 (r:same-lengtho x:cdr1 x:cdr2)))))))
+                          ((∃ x:h1 (r:same-lengtho x:h1 ("dog" : ("cat" : empty)))) (state ()  0)))))
+
+#;(traces red (term (prog ((r:cdro x:l x:d (∃ x:a (x:l =? (x:a : x:d)))))
+                          ((r:cdro ("test" : empty) empty) (state () 0)))))
+
+#;(traces red (term (prog ((r:appendo x:l x:s x:out
+                                      (((x:l =? empty) ∧ (x:s =? x:out))
+                                       ∨
+                                       (∃ x:a x:d x:res
+                                          (((x:a : x:d) =? x:l)
+                                           ∧
+                                           (((x:a : x:res) =? x:out)
+                                            ∧
+                                            (r:appendo x:d x:s x:res)))))))
+                          ((∃ x:l x:s (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
+                           (state () 0)))))
+
+#;(redex-match?
+ L
+ p
+ (term (prog (
+              (r:poso x:n
+                      (∃ x:a x:d
+                         (x:n =? (x:a : x:d))))
+              (r:dfao x:l x:state
+                      (((x:l =? empty)
+                        ∧
+                        (x:state =? q1))
+                       ∨
+                       (∃ x:a x:d x:next-state
+                          ((x:l =? (x:a : x:d))
+                           ∧
+                           ((((x:a =? zero)
                               ∧
-                              ((x:table =? ((x:car1 : x:car2) : x:cdr3))
-                               ∧ (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
-   ))
+                              ((r:poso x:d)
+                               ∧
+                               (((x:state =? q1)
+                                 ∧
+                                 (x:next-state =? q1))
+                                ∨
+                                (((x:state =? q2)
+                                  ∧
+                                  (x:next-state =? q3))
+                                 ∧
+                                 (x:state =? q3)
+                                 ∧
+                                 (x:next-state =? q2))))))
+                            ∨
+                            ((x:a =? one)
+                             ∧
+                             (((x:state =? q1)
+                               ∧
+                               (x:next-state =? q2))
+                              ∨
+                              (((x:state =? q2)
+                                ∧
+                                (x:next-state =? q1))
+                               ∧ ((x:state =? q3)
+                                  ∧
+                                  (x:next-state =? q3))))))
+                           ∧ (r:dfao x:d x:next-state))))))
+             ((∃ x:q (r:dfao x:q 'q1))
+              (state () 0)))))
+

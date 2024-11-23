@@ -75,7 +75,7 @@
      o  ;; for "other", change to make c constant and n natural
      x
      empty
-     (cons t t)
+     E; (cons t t)
      (t : t)]
 
 
@@ -117,7 +117,7 @@
       (Eg ∨ g)]
   #:binding-forms
   (∃ x ... g #:refers-to (shadow x ...))
-  (prog ((r x ... g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to(shadow r ...)))
+  (prog ((r x ... g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
 
 (default-language L)
 

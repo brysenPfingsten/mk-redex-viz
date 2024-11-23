@@ -118,14 +118,14 @@
 
 (define (conj-goals goals)
   (cond
-    [(empty? goals) (error "Need at least two goals")]
+    [(empty? goals) (error "Need at least one goal in conj")]
     ((= (length goals) 1) (first goals))
     [(= (length goals) 2) (conj (first goals) (second goals))]
     [else (conj (first goals) (conj-goals (rest goals)))]))
 
 (define (disj-goals goals)
   (cond
-    [(empty? goals) (error "Need at least two goals")]
+    [(empty? goals) (error "Need at least one goal in disj")]
     ((= (length goals) 1) (first goals))
     [(= (length goals) 2) (disj (first goals) (second goals))]
     [else (disj (first goals) (conj-goals (rest goals)))]))
