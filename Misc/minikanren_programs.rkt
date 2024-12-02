@@ -73,3 +73,5 @@
             [(== state 'q2) (== next-state 'q1)]
             [(== state 'q3) (== next-state 'q3)])])
         (dfao d next-state))]))
+
+(run* (q) (dfao q 'q1))

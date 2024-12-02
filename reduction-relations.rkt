@@ -12,7 +12,7 @@
   (reduction-relation L
                       #:domain p
 
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ))))
+                      [--> (in-hole-to-goal ((g_1 ∨ g_2) σ))
                            (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ)))))
                            "distribute subst in disj"]
 
@@ -44,12 +44,12 @@
                            (in-hole EΓ (in-hole Ev (in-hole Es s)))
                            "prune failure disjuncts"]
                       
-                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x ... g) (state sub c)))))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ (x ...) g) (state sub c)))))
                            (in-hole EΓ (in-hole Ev (in-hole Es ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)))))))
                            "fresh-n subst"]
 
-                      [--> (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ..._1 g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
-                           (prog ((r_0 x_0 ... g_0) ... (r_1 x_1 ... g_1) (r_2 x_2 ... g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ..._1) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
                            "relcall and add delay"]
 
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
