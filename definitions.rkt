@@ -6,7 +6,7 @@
 (require redex-etc)
 #;(current-traced-metafunctions 'all)
 
-(provide L unify walk extend fresh-sub occurs?)
+(provide L unify walk extend fresh-sub occurs? in-hole-to-goal)
 
 ;; Jason Hemann
 ;; Initial redex lang setup from Ryan Jung
@@ -46,7 +46,8 @@
 
 (define-language L
   [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
-  [Γ ((r_!_ x_!_ ... g) ..._!_)] ; Ensure that 'ri's are distinct
+  [Γ ((r_!_ d g) ...)] ; Ensure that 'ri's are distinct
+  [d (x_!_ ...)]
   ;------------------------------------
   ; Expressions
   [e ()
@@ -68,14 +69,13 @@
      (g ∨ g)     ; Disjunction
      (g ∧ g)     ; Conjuction
      (r t ...)       ; Relation call
-     (∃ x_!_ ... g)]    ; Variable introduction
+     (∃ d g)]    ; Variable introduction
 
   ;Terms
   [t c
      o  ;; for "other", change to make c constant and n natural
      x
      empty
-     E; (cons t t)
      (t : t)]
 
 
@@ -115,6 +115,7 @@
   [Eg hole
       (Eg ∧ g)
       (Eg ∨ g)]
+  
   #:binding-forms
   (∃ x ... g #:refers-to (shadow x ...))
   (prog ((r x ... g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
@@ -148,6 +149,10 @@
   [(fresh-sub c) ()]
   [(fresh-sub c x_1 x_2 ...)
    ,(cons (term (x_1 c)) (term (fresh-sub ,(add1 (term c)) x_2 ...)))])
+
+(define-metafunction L
+  in-hole-to-goal : g -> any
+  [(in-hole-to-goal g) (in-hole EΓ (in-hole Ev (in-hole Es g)))])
 
 (define-relation L
   occurs? ⊆ natural × t × sub

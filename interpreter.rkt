@@ -1,7 +1,14 @@
 #lang racket
 (require racket/struct)
 
-(struct prog (relations query))
+
+(struct prog (relations query)
+  #:transparent
+  #:methods  gen:custom-write
+  [(define (write-proc pv op om)
+     (match-define (prog r q) pv)
+     (fprintf op "(prog ~a ~a)" r q))])
+
 (struct fresh (vars goal)
   #:transparent
    #:methods gen:custom-write
@@ -93,6 +100,18 @@
      (match-define (defrel dv-name dv-lop dv-goal) dv)
      (fprintf op "~a" `(,(relname dv-name) ,@dv-lop ,dv-goal)))])
 
+(struct run (n q goal)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc rv op om)
+     (match-define (run n q goal) rv)
+     (fprintf op "((∃ ~a ~a) (state () 0))" q goal))])
+
+(define (parse-run r)
+  (match r
+    [`(run ,n (,q) ,g) (run n (var q) (parse-goal g))]
+    [`(run* (,q) ,g) (run +inf.0 (var q) (parse-goal g))]))
+
 (define (parse-relation-defs a-lor)
   (map parse-relation-def a-lor))
 
@@ -180,8 +199,65 @@
 	    (== l2 `(,car2 . ,cdr2))
 	    (== table `((,car1 . ,car2) . ,cdr3))
 	    (make-assoc-tableo cdr1 cdr2 cdr3)))))))
+
+
+ (define (parse-prog . p)
+  (define defrels '())
+  (define run #f)
+
+  (map
+   (λ (expr)
+     (println expr)
+     (match expr
+       [`(defrel . ,d) (set! defrels (cons expr defrels))]
+       [`(run . ,d)    (set! run expr)]
+       [`(run* . ,d)   (set! run expr)]
+       [else (error "Not a defrel or run form")]))
+   p) 
+
+  (prog (parse-relation-defs defrels) (parse-run run)))
  
 
+#;(parse-prog '((defrel (assoco key table value)
+  (fresh (car table-cdr)
+    (== table `(,car . ,table-cdr))
+    (conde ((== `(,key . ,value) car))
+	   ((assoco key table-cdr value)))))
+(defrel (same-lengtho l1 l2)
+  (conde ((== l1 '()) (== l1 '()))
+	 ((fresh (car1 cdr1 car2 cdr2)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (same-lengtho cdr1 cdr2)))))
+(defrel (make-assoc-tableo l1 l2 table)
+  (conde ((== l1 '()) (== l1 '()) (== table '()))
+	 ((fresh (car1 cdr1 car2 cdr2 cdr3)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (== table `((,car1 . ,car2) . ,cdr3))
+	    (make-assoc-tableo cdr1 cdr2 cdr3)))))
+(run 5 (q) (same-lengtho '(abc def ghi) q))))
+
+#;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table
+        (((x:l1 =? empty) ∧ ((x:l1 =? empty) ∧ (x:table =? empty)))
+         ∨
+         (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
+            ((x:l1 =? (x:car1 : x:cdr1))
+             ∧
+             ((x:l2 =? (x:car2 : x:cdr2))
+              ∧
+              ((x:table =? ((x:car1 : x:car2) : x:cdr3))
+               ∧
+               (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
+       (r:same-lengtho x:l1 x:l2
+        (((x:l1 =? empty) ∧ (x:l1 =? empty))
+         ∨
+         (∃ x:car1 x:cdr1 x:car2 x:cdr2
+            ((x:l1 =? (x:car1 : x:cdr1)) ∧ ((x:l2 =? (x:car2 : x:cdr2)) ∧ (r:same-lengtho x:cdr1 x:cdr2))))))
+       (r:assoco x:key x:table x:value
+                 (∃ x:car x:table-cdr
+                    ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
+      ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
     
                            
