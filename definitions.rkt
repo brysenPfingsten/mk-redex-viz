@@ -47,7 +47,7 @@
 (define-language L
   [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
   [Γ ((r_!_ d g) ...)] ; Ensure that 'ri's are distinct
-  [d (x_!_ ...)]
+  [d (x_!_ ...)] ; Distinct variable declarations
   ;------------------------------------
   ; Expressions
   [e ()

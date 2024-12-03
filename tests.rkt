@@ -31,7 +31,7 @@
 
   (test-true
    "a fresh call over an equation is a goal"
-   (redex-match? L g (term (∃ x:x (x:x =? "abc")))))
+   (redex-match? L g (term (∃ (x:x) (x:x =? "abc")))))
 
   (test-true
    "an empty list is a substitution"
@@ -43,15 +43,15 @@
 
   (test-true
    "A goal w/a state is a search tree"
-   (redex-match? L s (term ((∃ x:x (x:x =? "abc")) (state () 0)))))
+   (redex-match? L s (term ((∃ (x:x) (x:x =? "abc")) (state () 0)))))
 
   (test-true
    "A goal w/a state is a query expression"
-   (redex-match? L e (term ((∃ x:x (x:x =? "abc")) (state () 0)))))
+   (redex-match? L e (term ((∃ (x:x) (x:x =? "abc")) (state () 0)))))
 
   (test-true
    "A program w/a single relation and an empty search tree is a program"
-   (redex-match? L p (term (prog ((r:add x:x (x:x =? "cat"))) ()))))
+   (redex-match? L p (term (prog ((r:add (x:x) (x:x =? "cat"))) ()))))
 
   (test-true
    "matching a small unify program with symbol constants"
@@ -70,7 +70,7 @@
     L
     p
     (term
-     (prog ((r:add x:x (x:x =? "cat"))) (⊤ (state () 0))))))
+     (prog ((r:add (x:x) (x:x =? "cat"))) (⊤ (state () 0))))))
 
   (test-true
    "matching a full program with a relation call"
@@ -78,30 +78,30 @@
     L
     p
     (term
-     (prog ((r:add x:x (x:x =? "cat"))) ((r:add "dog") (state () 0))))))
+     (prog ((r:add (x:x) (x:x =? "cat"))) ((r:add "dog") (state () 0))))))
 
   (test-true
    "Small relation lookup matches reduction pattern"
    (redex-match?
     L
-    (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
-    (term (prog ((r:foo x:x ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))))
+    (prog ((r_0 (x_0) g_0) ... (r_1 (x_1) g_1) (r_2 (x_2) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
+    (term (prog ((r:foo (x:x) ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))))
 
   (redex-match?
    L
    p
    (term
     (prog
-     ((r:add x:x (∃ x:a
-                    (∃ x:d
+     ((r:add (x:x) (∃ (x:a)
+                    (∃ (x:d)
                        ((x:x =? (x:a : x:d))
                         ∧ (((x:a =? "z")
                             ∧ (x:d =? ("s" : "z")))
-                           ∨ (∃ x:a2
-                                (∃ x:d2
+                           ∨ (∃ (x:a2)
+                                (∃ (x:d2)
                                    (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                     ∧ (r:add (x:a2 : x:d2)))))))))))
-     ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
+     ((∃ (x:y) (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
 
 
   (test-results))
@@ -149,18 +149,18 @@
 
   (test-->>
    red
-   (term (prog () ((∃ x:x ⊤) (state () 0))))
+   (term (prog () ((∃ (x:x) ⊤) (state () 0))))
    (term (prog () (⊤ (state () 1)))))
 
   (test-->>
    red
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) (⊤ (state () 0)))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) (⊤ (state () 0)))))
 
   (test-->>
    red
-   (term (prog ((r:foo x:x x:y (x:y =? x:x))) ((r:foo "abc" "abc") (state () 0))))
-   (term (prog ((r:foo x:x x:y (x:y =? x:x))) (⊤ (state () 0))))) 
+   (term (prog ((r:foo (x:x x:y) (x:y =? x:x))) ((r:foo "abc" "abc") (state () 0))))
+   (term (prog ((r:foo (x:x x:y) (x:y =? x:x))) (⊤ (state () 0))))) 
 
   (test-->>
    red
@@ -176,8 +176,8 @@
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) (⊤ (state () 0)))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) ((r:foo "abc") (state () 0))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) (⊤ (state () 0)))))
 
   (test-->>
    red
@@ -192,9 +192,9 @@
    red
    #:equiv alpha-equivalent?
    (term
-    (prog ((r:add x:x (x:x =? "cat"))) ((r:add "dog") (state () 0))))
+    (prog ((r:add (x:x) (x:x =? "cat"))) ((r:add "dog") (state () 0))))
    (term
-    (prog ((r:add x:x (x:x =? "cat"))) ())))
+    (prog ((r:add (x:x) (x:x =? "cat"))) ())))
 
   (test-->>
    red
@@ -316,24 +316,24 @@
   (test-->>
    red
    (term
-    (prog ((r:add x:x (∃ x:a
-                         (∃ x:d
+    (prog ((r:add (x:x) (∃ (x:a)
+                         (∃ (x:d)
                             ((x:x =? (x:a : x:d))
                              ∧ (((x:a =? "z")
                                  ∧ (x:d =? ("s" : "z")))
-                                ∨ (∃ x:a2
-                                     (∃ x:d2
+                                ∨ (∃ (x:a2)
+                                     (∃ (x:d2)
                                         (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                          ∧ (r:add (x:a2 : x:d2)))))))))))
-          ((∃ x:y (x:y =? x:y))
+          ((∃ (x:y) (x:y =? x:y))
            (state () 0))))
-   (term (prog ((r:add x:x (∃ x:a
-                              (∃ x:d
+   (term (prog ((r:add (x:x) (∃ (x:a)
+                              (∃ (x:d)
                                  ((x:x =? (x:a : x:d))
                                   ∧ (((x:a =? "z")
                                       ∧ (x:d =? ("s" : "z")))
-                                     ∨ (∃ x:a2
-                                          (∃ x:d2
+                                     ∨ (∃ (x:a2)
+                                          (∃ (x:d2)
                                              (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                               ∧ (r:add (x:a2 : x:d2)))))))))))
                (⊤ (state () 1)))))
@@ -342,11 +342,11 @@
   (test-->>
    red
    (term
-    (prog ((r:add x:x (∃ x:a (x:a =? x:x))))
-          ((∃ x:y (r:add (("s" : "z") : x:y)))
+    (prog ((r:add (x:x) (∃ (x:a) (x:a =? x:x))))
+          ((∃ (x:y) (r:add (("s" : "z") : x:y)))
            (state () 0))))
    (term
-    (prog ((r:add x:x (∃ x:a (x:a =? x:x))))
+    (prog ((r:add (x:x) (∃ (x:a) (x:a =? x:x))))
           (⊤ (state ((1 (("s" : "z") : 0))) 2)))))
 
   (test-->>
@@ -354,13 +354,13 @@
    #:equiv alpha-equivalent?
    (term
     (prog
-     ((r:add x:x (∃ x:a
-                    (∃ x:d
+     ((r:add (x:x) (∃ (x:a)
+                    (∃ (x:d)
                        (x:x =? (x:a : x:d))))))
-     ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y)))
+     ((∃ (x:y) (r:add (("s" : ("s" : ("s" : "z"))) : x:y)))
       (state () 0))))
    (term (prog
-          ((r:add x:x (∃ x:a (∃ x:d (x:x =? (x:a : x:d))))))
+          ((r:add (x:x) (∃ (x:a) (∃ (x:d) (x:x =? (x:a : x:d))))))
           (⊤ (state ((0 2) (1 ("s" : ("s" : ("s" : "z"))))) 3)))))
 
   (test-->>
@@ -368,27 +368,27 @@
    #:equiv alpha-equivalent?
    (term
     (prog
-     ((r:add x:x
-             (∃ x:a
-                (∃ x:d ((x:x =? (x:a : x:d))
+     ((r:add (x:x)
+             (∃ (x:a)
+                (∃ (x:d) ((x:x =? (x:a : x:d))
                         ∧
                         (((x:a =? "z")
                           ∧ (x:d =? ("s" : "z")))
-                         ∨ (∃ x:a2
-                              (∃ x:d2
+                         ∨ (∃ (x:a2)
+                              (∃ (x:d2)
                                  (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                   ∧ (r:add (x:a2 : x:d2)))))))))))
-     ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0))))
+     ((∃ (x:y) (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0))))
    (term
     (prog
-     ((r:add x:x
-             (∃ x:a
-                (∃ x:d ((x:x =? (x:a : x:d))
+     ((r:add (x:x)
+             (∃ (x:a)
+                (∃ (x:d) ((x:x =? (x:a : x:d))
                         ∧
                         (((x:a =? "z")
                           ∧ (x:d =? ("s" : "z")))
-                         ∨ (∃ x:a2
-                              (∃ x:d2
+                         ∨ (∃ (x:a2)
+                              (∃ (x:d2)
                                  (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                   ∧ (r:add (x:a2 : x:d2)))))))))))
      ((⊤
@@ -433,21 +433,21 @@
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) ((r:foo "six") (state () 0))))
-   (term (prog ((r:foo x:x ("abc" =? "abc"))) (⊤ (state () 0)))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) ((r:foo "six") (state () 0))))
+   (term (prog ((r:foo (x:x) ("abc" =? "abc"))) (⊤ (state () 0)))))
 
   ;; This is a state mid-run
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term (prog () (((∃ x:x ("abc" =? "abc")) (state () 0)) + (⊤ (state () 0)))))
+   (term (prog () (((∃ (x:x) ("abc" =? "abc")) (state () 0)) + (⊤ (state () 0)))))
    (term (prog () ((⊤ (state () 1)) + (⊤ (state () 0))))))
 
   ;; This is a state mid-run
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term (prog () (((∃ x:x ("abc" =? "abc")) ∨ ⊤) (state () 0))))
+   (term (prog () (((∃ (x:x) ("abc" =? "abc")) ∨ ⊤) (state () 0))))
    (term (prog () ((⊤ (state () 1)) + (⊤ (state () 0))))))
 
   (test-->>
@@ -455,17 +455,17 @@
    #:equiv alpha-equivalent?
    (term
     (prog
-     ((r:add x:x
-             (∃ x:a
-                (∃ x:d ((x:x =? (x:a : x:d))
+     ((r:add (x:x)
+             (∃ (x:a)
+                (∃ (x:d) ((x:x =? (x:a : x:d))
                         ∧
                         (((x:a =? "z")
                           ∧ (x:d =? ("s" : "z")))
-                         ∨ (∃ x:a2
-                              (∃ x:d2
+                         ∨ (∃ (x:a2)
+                              (∃ (x:d2)
                                  (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                   ∧ (r:add (x:a2 : x:d2)))))))))))
-     ((∃ x:y (r:add ("z" : x:y))) (state () 0))))
+     ((∃ (x:y) (r:add ("z" : x:y))) (state () 0))))
    (term
     (prog
      ()
@@ -727,15 +727,15 @@ Failed w/ undefined relations
  L
  p
  (term (prog (
-              (r:poso x:n
-                      (∃ x:a x:d
+              (r:poso (x:n)
+                      (∃ (x:a x:d)
                          (x:n =? (x:a : x:d))))
-              (r:dfao x:l x:state
+              (r:dfao (x:l x:state)
                       (((x:l =? empty)
                         ∧
                         (x:state =? q1))
                        ∨
-                       (∃ x:a x:d x:next-state
+                       (∃ (x:a x:d x:next-state)
                           ((x:l =? (x:a : x:d))
                            ∧
                            ((((x:a =? zero)
@@ -767,6 +767,6 @@ Failed w/ undefined relations
                                   ∧
                                   (x:next-state =? q3))))))
                            ∧ (r:dfao x:d x:next-state))))))
-             ((∃ x:q (r:dfao x:q 'q1))
+             ((∃ (x:q) (r:dfao x:q 'q1))
               (state () 0)))))
 

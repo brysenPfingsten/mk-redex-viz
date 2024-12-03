@@ -1,37 +1,88 @@
 #lang racket
 (require racket/struct)
 
-(struct prog (relations query))
+
+(struct prog (relations query)
+  #:transparent
+  #:methods  gen:custom-write
+  [(define (write-proc pv op om)
+     (match-define (prog r q) pv)
+     (fprintf op "(prog ~a ~a)" r q))])
+
 (struct fresh (vars goal)
   #:transparent
    #:methods gen:custom-write
   [(define (write-proc fv op om)
      (match-define (fresh v g) fv)
      (fprintf op "~a" `(∃ ,@v ,g)))])
-(define (print-list l)
-  (foldl (λ (e a) (string-append ( e) a)) "" l))
+
 (struct disj (g1 g2)
   #:transparent
   #:methods gen:custom-write
-  [(define (write-proc conj-val output-port output-mode)
-     (fprintf output-port "(~a ∨ ~a)" (disj-g1 conj-val) (disj-g2 conj-val)))])
+  [(define (write-proc disj-val output-port output-mode)
+     (match-define (disj g1 g2) disj-val)
+     (fprintf output-port "(~a ∨ ~a)" g1 g2))])
+
 (struct conj (g1 g2)
   #:transparent
   #:methods gen:custom-write
   [(define (write-proc conj-val output-port output-mode)
-     (fprintf output-port "(~a ∧ ~a)" (conj-g1 conj-val) (conj-g2 conj-val)))])
-(struct unify (t1 t2)
-  #:transparent)
-(struct succeed ())
-(struct fail ())
-(struct rel-call (name terms)
-  #:transparent)
+     (match-define (conj g1 g2) conj-val)
+     (fprintf output-port "(~a ∧ ~a)" g1 g2))])
 
-(struct nil () #:transparent)
-(struct bool (b))
-(struct konst (k) #:transparent)
-(struct kons (a d) #:transparent)
-(struct var (v) #:transparent
+(struct unify (t1 t2)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc unify-val op om)
+     (match-define (unify t1 t2) unify-val)
+     (fprintf op "(~a =? ~a)" t1 t2))])
+
+(struct succeed ()
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc sv op om)
+     (fprintf op "⊤"))])
+
+(struct fail ()
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc fv op om)
+     (fprintf op "⊥"))])
+
+(struct relcall (name terms)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc rcv op om)
+     (match-define (relcall n t) rcv)
+     (fprintf op "~a" `(,n ,@t)))])
+
+(struct nil ()
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc nv op om)
+     (fprintf op "empty"))])
+
+(struct bool (b)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc bv op om)
+     (fprintf op "~a" (bool-b bv)))])
+
+(struct konst (k)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc kv op om)
+     (fprintf op "~a" (konst-k kv)))])
+
+(struct kons (a d)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc kv op om)
+     (match-define (kons a d) kv)
+     (fprintf op "(~a : ~a)" a d))])
+
+(struct var (v)
+  #:transparent
   #:methods gen:custom-write
   [(define (write-proc vv op om)
      (fprintf op "x:~a" (var-v vv)))])
@@ -41,12 +92,25 @@
   #:methods gen:custom-write
   [(define (write-proc rnv op om)
      (fprintf op "r:~a" (relname-name rnv)))])
+
 (struct defrel (name lop goal)
   #:transparent
   #:methods gen:custom-write
   [(define (write-proc dv op om)
      (match-define (defrel dv-name dv-lop dv-goal) dv)
      (fprintf op "~a" `(,(relname dv-name) ,@dv-lop ,dv-goal)))])
+
+(struct run (n q goal)
+  #:transparent
+  #:methods gen:custom-write
+  [(define (write-proc rv op om)
+     (match-define (run n q goal) rv)
+     (fprintf op "((∃ ~a ~a) (state () 0))" q goal))])
+
+(define (parse-run r)
+  (match r
+    [`(run ,n (,q) ,g) (run n (var q) (parse-goal g))]
+    [`(run* (,q) ,g) (run +inf.0 (var q) (parse-goal g))]))
 
 (define (parse-relation-defs a-lor)
   (map parse-relation-def a-lor))
@@ -66,21 +130,21 @@
     [`(== ,t1 ,t2) (unify (parse-term t1) (parse-term t2))]
     ['succeed (succeed)]
     ['fail (fail)]
-    [`(,r . ,terms) (rel-call r (map parse-term terms))]))
+    [`(,r . ,terms) (relcall (relname r) (map parse-term terms))]))
  
 (define (parse-clause goals)
   (conj-goals (map parse-goal goals)))
 
 (define (conj-goals goals)
   (cond
-    [(empty? goals) (error "Need at least two goals")]
+    [(empty? goals) (error "Need at least one goal in conj")]
     ((= (length goals) 1) (first goals))
     [(= (length goals) 2) (conj (first goals) (second goals))]
     [else (conj (first goals) (conj-goals (rest goals)))]))
 
 (define (disj-goals goals)
   (cond
-    [(empty? goals) (error "Need at least two goals")]
+    [(empty? goals) (error "Need at least one goal in disj")]
     ((= (length goals) 1) (first goals))
     [(= (length goals) 2) (disj (first goals) (second goals))]
     [else (disj (first goals) (conj-goals (rest goals)))]))
@@ -135,8 +199,65 @@
 	    (== l2 `(,car2 . ,cdr2))
 	    (== table `((,car1 . ,car2) . ,cdr3))
 	    (make-assoc-tableo cdr1 cdr2 cdr3)))))))
+
+
+ (define (parse-prog . p)
+  (define defrels '())
+  (define run #f)
+
+  (map
+   (λ (expr)
+     (println expr)
+     (match expr
+       [`(defrel . ,d) (set! defrels (cons expr defrels))]
+       [`(run . ,d)    (set! run expr)]
+       [`(run* . ,d)   (set! run expr)]
+       [else (error "Not a defrel or run form")]))
+   p) 
+
+  (prog (parse-relation-defs (reverse defrels)) (parse-run run))) ;; Reverse defrels to maintain same order
  
 
+#;(parse-prog '((defrel (assoco key table value)
+  (fresh (car table-cdr)
+    (== table `(,car . ,table-cdr))
+    (conde ((== `(,key . ,value) car))
+	   ((assoco key table-cdr value)))))
+(defrel (same-lengtho l1 l2)
+  (conde ((== l1 '()) (== l1 '()))
+	 ((fresh (car1 cdr1 car2 cdr2)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (same-lengtho cdr1 cdr2)))))
+(defrel (make-assoc-tableo l1 l2 table)
+  (conde ((== l1 '()) (== l1 '()) (== table '()))
+	 ((fresh (car1 cdr1 car2 cdr2 cdr3)
+	    (== l1 `(,car1 . ,cdr1))
+	    (== l2 `(,car2 . ,cdr2))
+	    (== table `((,car1 . ,car2) . ,cdr3))
+	    (make-assoc-tableo cdr1 cdr2 cdr3)))))
+(run 5 (q) (same-lengtho '(abc def ghi) q))))
+
+#;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table
+        (((x:l1 =? empty) ∧ ((x:l1 =? empty) ∧ (x:table =? empty)))
+         ∨
+         (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
+            ((x:l1 =? (x:car1 : x:cdr1))
+             ∧
+             ((x:l2 =? (x:car2 : x:cdr2))
+              ∧
+              ((x:table =? ((x:car1 : x:car2) : x:cdr3))
+               ∧
+               (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
+       (r:same-lengtho x:l1 x:l2
+        (((x:l1 =? empty) ∧ (x:l1 =? empty))
+         ∨
+         (∃ x:car1 x:cdr1 x:car2 x:cdr2
+            ((x:l1 =? (x:car1 : x:cdr1)) ∧ ((x:l2 =? (x:car2 : x:cdr2)) ∧ (r:same-lengtho x:cdr1 x:cdr2))))))
+       (r:assoco x:key x:table x:value
+                 (∃ x:car x:table-cdr
+                    ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
+      ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
     
                            
