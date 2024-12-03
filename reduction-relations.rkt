@@ -12,7 +12,7 @@
   (reduction-relation L
                       #:domain p
 
-                      [--> (in-hole-to-goal ((g_1 ∨ g_2) σ))
+                      [--> (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ))))
                            (in-hole EΓ (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ)))))
                            "distribute subst in disj"]
 
@@ -73,15 +73,4 @@
                       [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s_1) + s_2))))
                            (in-hole EΓ (in-hole Ev (in-hole Es (delay (s_2 + s_1)))))
                            "propagate delay through disj, and flip"]
-
-                      ;; I think this is right because it's the equivalent in prolog of
-                      ;; a choice point with failure at the end, for no more results.
-                      ;; We could prune it or leave it here, either way
-                      ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
-                      ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
-                      ;;      "prune failure from end"]
-
-                      #;[--> (in-hole EΓ (in-hole Ev (⊥ #f)))
-                           (in-hole EΓ (in-hole Ev ()))
-                           "prune bald failure"]
 ))
