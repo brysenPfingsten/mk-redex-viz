@@ -5,7 +5,7 @@
 (check-redundancy #t)
 (require redex-etc)
 
-(require "definitions.rkt" "judgment-forms.rkt" "reduction-relations.rkt")
+(require "definitions.rkt" "judgment-forms.rkt" "reduction-relations.rkt" "interpreter.rkt")
 
 (module+ test
 
@@ -102,6 +102,14 @@
                                    (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                     ∧ (r:add (x:a2 : x:d2)))))))))))
      ((∃ (x:y) (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
+
+  (test-true
+   "A rel env with args repeated across relations is a term"
+   (redex-match?
+    L
+    Γ
+    '((r:test1 (x:a x:b x:c) ("abc" =? "abc"))
+     (r:test2 (x:a x:b x:c) ("def" =? "def")))))
 
 
   (test-results))
@@ -428,7 +436,7 @@
                  )))
   )
 
-(module+ traces
+(module+ test
 
   (test-->>
    red
@@ -454,30 +462,35 @@
    red
    #:equiv alpha-equivalent?
    (term
-    (prog
-     ((r:add (x:x)
-             (∃ (x:a)
-                (∃ (x:d) ((x:x =? (x:a : x:d))
-                        ∧
-                        (((x:a =? "z")
-                          ∧ (x:d =? ("s" : "z")))
-                         ∨ (∃ (x:a2)
-                              (∃ (x:d2)
-                                 (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
-                                  ∧ (r:add (x:a2 : x:d2)))))))))))
-     ((∃ (x:y) (r:add ("z" : x:y))) (state () 0))))
+   (prog ((r:add
+        (x:x x:y)
+        (((x:x =? "z") ∧ (x:y =? ("s" : "z")))
+         ∨
+         (∃ (x:x^ x:y^) ((x:x =? ("s" : x:x^))
+                         ∧
+                         ((x:y =? ("s" : x:y^))
+                          ∧
+                          (r:add x:x^ x:y^)))))))
+         ((∃ (x:q) (r:add ("s" : ("s" : ("s" : "z"))) x:q)) (state () 0))))
    (term
     (prog
-     ()
-     ((⊤ (state ((3 "x")) 0))
-      +
-      ((⊤ (state ((3 "x")) 0))
-       +
-       ((⊤ (state ((3 "x")) 0))
-        +
-        ((⊤ (state ((3 "x")) 0))
-         +
-         (⊤ (state ((3 "x")) 0)))))))))
+     ((r:add
+        (x:x x:y)
+        (((x:x =? "z") ∧ (x:y =? ("s" : "z")))
+         ∨
+         (∃ (x:x^ x:y^) ((x:x =? ("s" : x:x^))
+                         ∧
+                         ((x:y =? ("s" : x:y^))
+                          ∧
+                          (r:add x:x^ x:y^)))))))
+      ((⊤ (state (
+                  (6 ("s" : "z"))
+                  (4 ("s" : 6))
+                  (5 "z")
+                  (2 ("s" : 4))
+                  (3 ("s" : "z"))
+                  (0 ("s" : 2))
+                  (1 ("s" : ("s" : "z")))) 7)) + ()))))
 
   (traces
    red
@@ -520,14 +533,40 @@
 
   (test-results))
 
-(module+ test-distinct
+
+(test-true
+ "Variables are properly shadowed"
+ (redex-match? L Γ (term ((r:test (x:a x:b x:c) ("abc" =? "abc"))))))
+
+(test-false
+ "Variables are properly shadowed"
+ (redex-match? L Γ (term ((r:test x:a x:b x:c ("abc" =? "abc"))))))
+
+#;(module+ test-translator
   (test-true
-   "A rel env with args repeated across relations is a term"
-   (redex-match
-    L
-    Γ
-    '((r:test1 x:a x:b x:c)
-     (r:test2 x:a x:b x:c)))))
+   ""
+   (judgment-holds
+    (closed-program?
+     (parse-prog
+ '(defrel (assoco key table value)
+    (fresh (car table-cdr)
+           (== table `(,car . ,table-cdr))
+           (conde ((== `(,key . ,value) car))
+                  ((assoco key table-cdr value)))))
+ '(defrel (same-lengtho l1 l2)
+    (conde ((== l1 '()) (== l1 '()))
+           ((fresh (car1 cdr1 car2 cdr2)
+                   (== l1 `(,car1 . ,cdr1))
+                   (== l2 `(,car2 . ,cdr2))
+                   (same-lengtho cdr1 cdr2)))))
+ '(defrel (make-assoc-tableo l1 l2 table)
+    (conde ((== l1 '()) (== l1 '()) (== table '()))
+           ((fresh (car1 cdr1 car2 cdr2 cdr3)
+                   (== l1 `(,car1 . ,cdr1))
+                   (== l2 `(,car2 . ,cdr2))
+                   (== table `((,car1 . ,car2) . ,cdr3))
+                   (make-assoc-tableo cdr1 cdr2 cdr3)))))
+ '(run 5 (q) (same-lengtho '(abc def ghi) q)))))))
                      
 
 (test-true

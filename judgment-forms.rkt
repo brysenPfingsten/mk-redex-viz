@@ -24,7 +24,7 @@
   
   [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
    ------------------- "fresh-closed"
-   (closed-goal? (∃ x_1 ... g) (r ...) (x_2 ...) c)]
+   (closed-goal? (∃ (x_1 ...) g) (r ...) (x_2 ...) c)]
   
   [(closed-goal? g_1 (r ...) (x ...) c)
    (closed-goal? g_2 (r ...) (x ...) c)
@@ -101,16 +101,11 @@
   [(closed-term? t_2 (x ...) c)
    (closed-term? t_1 (x ...) c)
    -------------- "list is closed"
-   (closed-term? (cons t_1 t_2) (x ...) c)]
-
-  [(closed-term? t_2 (x ...) c)
-   (closed-term? t_1 (x ...) c)
-   -------------- "list is closed2"
    (closed-term? (t_1 : t_2) (x ...) c)]
 
   [
    -------------- "lexical var is closed"
-   (closed-term? x_1 (x_2 ... x_1 x_3 ...) c)])
+   (closed-term? x_2 (x_1 ... x_2 x_3 ...) c)])
 
 (define-judgment-form
   L
@@ -119,13 +114,6 @@
   [
    ------------------ "empty sub is closed"
    (closed-sub? () c)]
-
-  #;[(closed-term? t_1 () c_3)
-   (closed-term? t_2 () c_3)
-   #;(closed-sub? ((c_1 t_2)) c_3)
-   (closed-sub? ((c_2 t_3) ...) c_3)
-   ------------------ "sub with list is closed"
-   (closed-sub?  ((c_1 (t_1 : t_2)) (c_2 t_3) ...) c_3)]
 
   [(closed-term? t_1 () c_3)
    (closed-term? c_1 () c_3)
@@ -140,5 +128,5 @@
   [(closed-goal? g (r ...) (x ...) 0) ...
    (closed-tree? s (r ...))
    ----------------------- "program-closed"
-   (closed-program? (prog ((r x ... g) ...) s))]
+   (closed-program? (prog ((r (x ...) g) ...) s))]
   )

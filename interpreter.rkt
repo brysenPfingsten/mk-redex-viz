@@ -1,6 +1,7 @@
 #lang racket
 (require racket/struct)
 
+(provide parse-prog)
 
 (struct prog (relations query)
   #:transparent
@@ -183,9 +184,9 @@
 ;; defrels run -> program
 ;; Translate the relation definitions and run query of a minikanren
 ;; program into our redex syntax
-(define (parse-prog . p)
+(define (parse-prog x . p)
   (define defrels '())
-  (define run #f)
+  (define run '())
 
   (map
    (λ (expr)
@@ -194,7 +195,7 @@
        [`(run . ,d)    (set! run expr)]
        [`(run* . ,d)   (set! run expr)]
        [else (error "Not a defrel or run form")]))
-   p) 
+   (cons x p)) 
 
   (prog (parse-relation-defs (reverse defrels)) (parse-run run))) ;; Reverse defrels to maintain same order
  
