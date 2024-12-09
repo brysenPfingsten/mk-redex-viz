@@ -169,6 +169,7 @@
                           (parse-term-within-qquote qtb))]
     [s #:when (symbol? s) (konst (symbol->string s))]
     [b #:when (boolean? b) (bool b)]
+    [str #:when (string? str) (konst str)]
     ['() (nil)]))
 
 
@@ -179,7 +180,8 @@
     [`(cons ,ta ,td) (kons (parse-term ta) (parse-term td))]
     [`(list . ,args) (kons*-terms (map parse-term args))]
     [sym #:when (symbol? sym) (var sym)]
-    [boo #:when (boolean? boo) (bool boo)]))
+    [boo #:when (boolean? boo) (bool boo)]
+    [str #:when (string? str) (konst str)]))
 
 ;; defrels run -> program
 ;; Translate the relation definitions and run query of a minikanren

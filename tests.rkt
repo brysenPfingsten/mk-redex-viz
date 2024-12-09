@@ -531,6 +531,11 @@
       (("ghi" =? "ghi")
        (state ((3 "x")) 0))))))
 
+  (stepper
+   red (term (prog ((r:add (x:x x:y) ((∃ (x:x^ x:y^) ((x:x =? ("s" : x:x^)) ∧ ((x:y =? ("s" : x:y^)) ∧ (r:add x:x^ x:y^)))) ∨ ((x:x =? "z") ∧ (x:y =? ("s" : "z")))))) ((∃ (x:q) (r:add
+                                                                                                                                                                     ("s" : ("s" : "z"))
+                                                                                                                                                                     x:q)) (state () 0)))))
+
   (test-results))
 
 
