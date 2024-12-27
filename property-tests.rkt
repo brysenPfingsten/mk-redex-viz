@@ -1,0 +1,20 @@
+#lang racket
+(require redex redex/gui)
+(require redex/reduction-semantics)
+(require rackunit)
+(check-redundancy #t)
+(require redex-etc)
+
+(require "definitions.rkt" "judgment-forms.rkt" "reduction-relations.rkt" "interpreter.rkt")
+
+(redex-check L
+             p
+             (implies (and (not (redex-match L prog-val (term p)))
+                           (judgment-holds (closed-program?  p)))
+                      (= (length (apply-reduction-relation red (term p))) 1))
+             #:attempts 20000
+             #:print? (λ (p) #t)
+             #:keep-going? #true
+             #:attempt-size (λ (i) 7))
+
+
