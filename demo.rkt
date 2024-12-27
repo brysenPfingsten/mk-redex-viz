@@ -32,7 +32,7 @@
                  ((x:x =? "z")
                   ∧
                   (x:y =? ("s" : x:x))))))
-        ((∃ (x:q) (r:add ("s" : ("s" : "z")) x:q)) (state () 0)))))
+        ((∃ (x:q x:n) (r:add x:n x:q)) (state () 0)))))
 
 #;(stepper
  red
@@ -93,4 +93,14 @@
                        ∧
                        (r:dfao x:d x:next-state)))))))
         ((∃ (x:q) (r:dfao x:q "q1")) (state () 0)))))
+
+
+
+(apply-reduction-relation* red (term (prog () ((("ghi" =? "ghi") (state () 2)) +-> ((("def" =? "def") (state () 1)) +-> (("abc" =? "abc") (state () 0)))))))
+
+(apply-reduction-relation* red (term (prog () (((("abc" =? "abc") (state () 0)) <-+ (("def" =? "def") (state () 1))) <-+ (("ghi" =? "ghi") (state () 2))))))
+
+(apply-reduction-relation* red (term (prog () (((("def" =? "def") (state () 1)) +-> (("abc" =? "abc") (state () 0))) <-+ (("ghi" =? "ghi") (state () 2))))))
+
+(apply-reduction-relation* red (term (prog () (((("def" =? "def") (state () 1)) <-+ (("ghi" =? "ghi") (state () 2))) +-> (("abc" =? "abc") (state () 0)))))) 
        
