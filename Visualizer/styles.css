@@ -1,0 +1,34 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    overflow: auto; 
+}
+
+.scroll-container {
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    width: 100vw;
+    height: 100vh;
+    overflow: auto; 
+    position: relative;
+}
+
+
+svg {
+    display: block;
+    overflow: visible;
+}
+
+.node rect {
+    fill: lightgray;
+    stroke: black;
+}
+
+.link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 2px;
+}
