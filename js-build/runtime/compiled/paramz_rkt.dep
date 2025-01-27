@@ -1,0 +1,1 @@
+("8.10" ta6le ("4b1996d7814cfaa059b24657e50c2506077ee8a8" . "fca03a22a201ddf30ef3c12252c2dba5b7c10720") (collects #"racket" #"runtime-config.rkt") (collects #"racketscript" #"boot" #"lang" #"reader.rkt") (collects #"racketscript" #"boot.rkt") (collects #"racketscript" #"compiler" #"runtime" #"lib.rkt") (collects #"racketscript" #"interop.rkt"))

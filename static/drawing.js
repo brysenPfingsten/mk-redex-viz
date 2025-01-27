@@ -18,6 +18,7 @@ function drawAnswerNode(group) {
 
 function drawUnifyNode(group, data) {
     const unificationText = `(== ${data.left} ${data.right})`;
+    const hasSub = data.sub;
 
     // Add the text to the group first to measure its size
     const textElement = group.append("text")
@@ -34,7 +35,7 @@ function drawUnifyNode(group, data) {
         .attr("width", textWidth + 2 * boxPadding)
         .attr("height", 30) // Fixed height
         .style("fill", "white") // Light gray background
-        .style("stroke", "#000000") // Black border
+        .style("stroke", hasSub ? "yellow" : "black") // Black border
         .style("stroke-width", 2)
         .attr("x", -(textWidth / 2 + boxPadding)) // Center horizontally
         .attr("y", -15); // Center vertically
@@ -170,6 +171,7 @@ function drawRelCallNode(group, d) {
     const rel = d.rel || ""; // Default if `d.rel` is undefined
     const argsText = d.args ? d.args.join(" ") : "";
     const textContent = `(${rel} ${argsText})`;
+    const hasSub = d.sub;
 
     // Add the text first to measure its size
     const textElement = group.append("text")
@@ -188,8 +190,8 @@ function drawRelCallNode(group, d) {
         .attr("width", textWidth + 2 * padding)
         .attr("height", 40)
         .style("fill", "white")
-        .style("stroke", "black")
-        .style("stroke-width", d.sub ? "12px" : "2px");
+        .style("stroke", hasSub ? "yellow" : "black")
+        .style("stroke-width", hasSub ? "6px" : "2px");
 
     // Move the text to the front (since the rectangle is added after)
     textElement.raise();
@@ -241,19 +243,30 @@ function drawEmptyNode(group) {
     // Draw white circle
     group.append("circle")
     .attr("r", radius)
-    .style("fill", "white")
+    .style("fill", "red")
     .style("stroke", "black")
     .style("stroke-width", "2px");
 }
 
+function drawSucceedNode(group, d) {
+    const radius = 25;
+
+    group.append("circle")
+    .attr("r", radius)
+    .attr("fill", "green")
+    .attr("stroke", "black")
+    .attr("stroke-width", "2px")
+}
+
 function drawTree(nodeGroups) {
-    console.log("here");
     nodeGroups.each(function (d) {
         const group = d3.select(this);
         const { name } = d.data;
 
         if (name === "Answer") {
             drawAnswerNode(group);
+        } else if (name === "Succeed") {
+            drawSucceedNode(group, d.data)
         } else if (name === "Unify") {
             drawUnifyNode(group, d.data);
         } else if (["Disjunction", "<-+", "+->"].includes(name)) {
@@ -275,3 +288,14 @@ function drawTree(nodeGroups) {
         }
     });
 } 
+
+function redrawTree(treeData) {
+    const svg = d3.select("svg").append("g");
+
+    const treeLayout = d3.tree().nodeSize([150, 100]);
+    const root = d3.hierarchy(addColors(treeData));
+    treeLayout(root);
+
+    const nodes = root.descendants();
+    const links = root.links();
+}
