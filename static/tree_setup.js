@@ -3,8 +3,6 @@ export { addColors, flattenGoalConj }
 
 function addColors(tree) {
     let children = tree.children
-    console.log(children)
-    console.log(tree.name)
     switch (tree.name) {
         case "<-+":
             children[0].color = "green";
