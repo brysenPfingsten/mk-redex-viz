@@ -1,77 +1,91 @@
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 export { drawTree }
 
-function drawAnswerNode(group) {
-    group.append("circle")
-        .attr("r", 30)
-        .attr("fill", "green")
-        .attr("stroke", "yellow")
-        .attr("stroke-width", "5px");
-
-    group.append("text")
-        .text("Answer")
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em")
-        .style("font-size", "12px")
-        .style("fill", "#000000");
-}
-
-function drawUnifyNode(group, data) {
-    const unificationText = `(== ${data.left} ${data.right})`;
-    const hasSub = data.sub;
-
-    // Add the text to the group first to measure its size
-    const textElement = group.append("text")
-        .text(unificationText)
-        .style("font-size", "14px")
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em");
-
-    const textWidth = textElement.node().getBBox().width; // Measure the text width
-    const boxPadding = 10; // Padding around the text
-
-    // Draw the rectangle with dynamic width based on the text size
-    group.append("rect")
-        .attr("width", textWidth + 2 * boxPadding)
-        .attr("height", 30) // Fixed height
-        .style("fill", "white") // Light gray background
-        .style("stroke", hasSub ? "yellow" : "black") // Black border
-        .style("stroke-width", 2)
-        .attr("x", -(textWidth / 2 + boxPadding)) // Center horizontally
-        .attr("y", -15); // Center vertically
-
-    // Bring the text to the front
-    textElement.raise();
-}
-
-
-function drawDisjunctionNode(group) {
-    const size = 30; 
-
-
+function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
+    const size = 30;
     const points = [
-        [0, -size],       // Top point
-        [size, 0],        // Right point
-        [0, size],        // Bottom point
-        [-size, 0]        // Left point
-    ]
-    .map(point => point.join(","))
-    .join(" "); 
+        [0, -size], [size, 0], [0, size], [-size, 0]
+    ].map(point => point.join(",")).join(" ");
 
-    // Draw the diamond 
     group.append("polygon")
         .attr("points", points)
-        .attr("fill", "orange")
+        .attr("fill", fillColor)
         .attr("stroke", "black")
         .attr("stroke-width", "2px");
 
     group.append("text")
-        .text("+") 
+        .text(symbol)
         .attr("text-anchor", "middle")
-        .attr("dy", ".35em") 
+        .attr("dy", ".35em")
         .style("font-size", "20px")
-        .style("fill", "black");
+        .style("fill", textColor);
 }
+
+function drawDisjunctionNode(group) { drawPolygonNode(group, "orange", "+"); }
+function drawConjunctionNode(group) { drawPolygonNode(group, "blue", "×", "white"); }
+
+function drawCircle(group, fill, hasSub, text = "", textColor = "black", fontSize = "20px") {
+    const radius = 25
+    group.append("circle")
+        .attr("r", radius)
+        .attr("fill", fill)
+        .attr("stroke", hasSub ? "yellow" : "black")
+        .attr("stroke-width", hasSub ? "6px" : "2px");
+
+    if (text) {
+        group.append("text")
+            .text(text)
+            .attr("text-anchor", "middle")
+            .attr("dy", ".35em")
+            .style("font-size", fontSize)
+            .style("fill", textColor);
+    }
+}
+
+function drawGoalConjNode(group, d) { drawCircle(group, "purple", d.sub, "∧", "white"); }
+function drawGoalDisjNode(group, d) { drawCircle(group, "#FF69B4", d.sub, "∨"); }
+function drawSucceedNode(group, d)  { drawCircle(group, "green", d.sub); }
+function drawAnswerNode(group, d)   { drawCircle(group, "green", d.sub, "Answer", undefined, "10px") }
+function drawEmptyNode(group, d)    { drawCircle(group, "white", d.sub) }
+
+function drawTextNode(group, textContent, hasSub, padding = 10) {
+    const textElement = group.append("text")
+        .text(textContent)
+        .attr("text-anchor", "middle")
+        .attr("dy", ".35em")
+        .style("font-size", "14px");
+
+    const textWidth = textElement.node().getBBox().width;
+
+    group.append("rect")
+        .attr("x", -textWidth / 2 - padding)
+        .attr("y", -15)
+        .attr("width", textWidth + 2 * padding)
+        .attr("height", 30) 
+        .style("fill", "white")
+        .style("stroke", hasSub ? "yellow" : "black")
+        .style("stroke-width", hasSub ? "6px" : "2px");
+
+    textElement.raise();
+}
+
+function drawUnifyNode(group, data) {
+    const textContent = `(== ${data.left} ${data.right})`;
+    drawTextNode(group, textContent, data.sub);
+}
+
+function drawFreshNode(group, data) {
+    const varsText = data.vars ? data.vars.join(" ") : "";
+    const textContent = `(fresh (${varsText}) ...)`;
+    drawTextNode(group, textContent, data.sub);
+}
+
+function drawRelCallNode(group, data) {
+    const argsText = data.args ? data.args.join(" ") : "";
+    const textContent = `(${data.rel} ${argsText})`;
+    drawTextNode(group, textContent, data.sub);
+}
+
 
 function drawDelayNode(group) {
     const radius = 20; 
@@ -104,198 +118,31 @@ function drawDelayNode(group) {
         .attr("stroke-width", "2px");
 }
 
-function drawConjunctionNode(group) {
-    const size = 30; 
+const nodeDrawFunctions = {
+    "Answer": drawAnswerNode,
+    "Succeed": drawSucceedNode,
+    "Unify": drawUnifyNode,
+    "Disjunction": drawDisjunctionNode,
+    "<-+": drawDisjunctionNode,
+    "+->": drawDisjunctionNode,
+    "Delay": drawDelayNode,
+    "Conjunction": drawConjunctionNode,
+    "Fresh": drawFreshNode,
+    "Rel-Call": drawRelCallNode,
+    "Goal-Conj": drawGoalConjNode,
+    "Goal-Disj": drawGoalDisjNode,
+    "Empty": drawEmptyNode
+};
 
-    const points = [
-        [0, -size],       // Top point
-        [size, 0],        // Right point
-        [0, size],        // Bottom point
-        [-size, 0]        // Left point
-    ]
-    .map(point => point.join(","))
-    .join(" "); 
-
-    // Draw the diamond 
-    group.append("polygon")
-        .attr("points", points)
-        .attr("fill", "blue")
-        .attr("stroke", "black")
-        .attr("stroke-width", "2px");
-
-    // Add the conjunction symbol (∧) at the center
-    group.append("text")
-        .text("×") 
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em") 
-        .style("font-size", "20px")
-        .style("fill", "white");
-}
-
-function drawFreshNode(group, d) {
-    const padding = 5; // Padding around the text
-
-    // Extract variables and subs from the data
-    const varsText = d.vars ? d.vars.join(" ") : "";
-    const textContent = `(fresh (${varsText}) ...)`;
-    const subExists = d.sub ? true : false;
-
-    // Add text first to measure its size
-    const textElement = group.append("text")
-        .text(textContent)
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em")
-        .style("font-size", "14px");
-
-    // Measure the text width dynamically
-    const textWidth = textElement.node().getBBox().width;
-
-    // Draw the rectangle with dynamic width
-    group.append("rect")
-        .attr("x", -textWidth / 2 - padding)
-        .attr("y", -15) // Set height dynamically or fixed
-        .attr("width", textWidth + 2 * padding)
-        .attr("height", 30) // Adjust height as needed
-        .style("fill", "white")
-        .style("stroke", subExists ? "yellow" : "black")
-        .style("stroke-width", "4px");
-
-    // Move the text to the front (since the rectangle is added after)
-    textElement.raise();
-}
-
-function drawRelCallNode(group, d) {
-    const padding = 10; // Padding around the text
-
-    // Extract `rel` and `args` from the data
-    const rel = d.rel || ""; // Default if `d.rel` is undefined
-    const argsText = d.args ? d.args.join(" ") : "";
-    const textContent = `(${rel} ${argsText})`;
-    const hasSub = d.sub;
-
-    // Add the text first to measure its size
-    const textElement = group.append("text")
-        .text(textContent)
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em")
-        .style("font-size", "14px");
-
-    // Measure the text width dynamically
-    const textWidth = textElement.node().getBBox().width;
-
-    // Draw the rectangle with dynamic width
-    group.append("rect")
-        .attr("x", -textWidth / 2 - padding)
-        .attr("y", -20) 
-        .attr("width", textWidth + 2 * padding)
-        .attr("height", 40)
-        .style("fill", "white")
-        .style("stroke", hasSub ? "yellow" : "black")
-        .style("stroke-width", hasSub ? "6px" : "2px");
-
-    // Move the text to the front (since the rectangle is added after)
-    textElement.raise();
-}
-
-function drawGoalConjNode(group, d) {
-    const radius = 25; 
-    const hasSub = d.sub;
-
-    // Draw the circle
-    group.append("circle")
-        .attr("r", radius)
-        .attr("fill", "purple") 
-        .attr("stroke", hasSub? "yellow" :"black")
-        .attr("stroke-width", hasSub? "6px": "2px");
-
-    // Add the AND symbol
-    group.append("text")
-        .text("∧") // Logical AND symbol
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em") 
-        .style("font-size", "20px")
-        .style("fill", "white"); 
-}
-
-function drawGoalDisjNode(group, d) {
-    const radius = 25; 
-    const hasSub = d.sub;
-
-    // Draw the circle
-    group.append("circle")
-        .attr("r", radius)
-        .attr("fill", "#FF69B4")
-        .attr("stroke", hasSub? "yellow" : "black")
-        .attr("stroke-width", hasSub? "6px" :  "2px");
-
-    // Add the OR symbol
-    group.append("text")
-        .text("∨") // Logical OR symbol
-        .attr("text-anchor", "middle")
-        .attr("dy", ".35em") 
-        .style("font-size", "20px")
-        .style("fill", "black"); 
-}
-
-function drawEmptyNode(group) {
-    const radius = 25;
-
-    // Draw white circle
-    group.append("circle")
-    .attr("r", radius)
-    .style("fill", "red")
-    .style("stroke", "black")
-    .style("stroke-width", "2px");
-}
-
-function drawSucceedNode(group, d) {
-    const radius = 25;
-
-    group.append("circle")
-    .attr("r", radius)
-    .attr("fill", "green")
-    .attr("stroke", "black")
-    .attr("stroke-width", "2px")
-}
 
 function drawTree(nodeGroups) {
     nodeGroups.each(function (d) {
         const group = d3.select(this);
-        const { name } = d.data;
+        const data = d.data
+        const drawFunction = nodeDrawFunctions[data.name];
 
-        if (name === "Answer") {
-            drawAnswerNode(group);
-        } else if (name === "Succeed") {
-            drawSucceedNode(group, d.data)
-        } else if (name === "Unify") {
-            drawUnifyNode(group, d.data);
-        } else if (["Disjunction", "<-+", "+->"].includes(name)) {
-            drawDisjunctionNode(group);
-        } else if (name === "Delay") {
-            drawDelayNode(group);
-        } else if (name === "Conjunction") {
-            drawConjunctionNode(group);
-        } else if (name === "Fresh") {
-            drawFreshNode(group, d.data);
-        } else if (name === "Rel-Call") {
-            drawRelCallNode(group, d.data);
-        } else if (name === "Goal-Conj") {
-            drawGoalConjNode(group, d.data);
-        } else if (name === "Goal-Disj") {
-            drawGoalDisjNode(group, d.data)
-        } else if (name === "Empty") {
-            drawEmptyNode(group);
+        if (drawFunction) {
+            drawFunction(group, data);
         }
     });
-} 
-
-function redrawTree(treeData) {
-    const svg = d3.select("svg").append("g");
-
-    const treeLayout = d3.tree().nodeSize([150, 100]);
-    const root = d3.hierarchy(addColors(treeData));
-    treeLayout(root);
-
-    const nodes = root.descendants();
-    const links = root.links();
 }
