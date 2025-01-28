@@ -1,2 +1,5 @@
 *.bak
 /compiled
+/racksstuff
+*.rkt~
+*.app
