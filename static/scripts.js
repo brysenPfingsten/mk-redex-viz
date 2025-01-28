@@ -61,29 +61,26 @@ let treeData = {
 };
 
 function redrawTree(treeData) {
-    const svg = d3.select("svg").html("").append("g"); // Clear and re-append
-    const treeLayout = d3.tree().nodeSize([150, 100]);
+    const svg = d3.select("svg").html("").append("g");
+
+    const treeLayout = d3.tree()
+        .nodeSize([150, 100]) ;
+        // .separation((a, b) => a.parent === b.parent ? (a.data.width + b.data.width) * 2 : 100); 
+
     const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
-    treeLayout(root);
+    treeLayout(root); 
 
     const nodes = root.descendants();
     const links = root.links();
 
-    console.log(nodes)
-
-    // Apply force-directed layout
-    // const simulation = d3.forceSimulation(nodes)
-    //     .force("link", d3.forceLink(links).distance(100))
-    //     .force("charge", d3.forceManyBody().strength(-200))
-    //     .force("center", d3.forceCenter(500, 300))
-    //     .force("collision", d3.forceCollide().radius(100))
-    //     .on("tick", () => updatePositions(svg, nodes, links));
+    console.log(nodes);
 
     drawLinks(svg, links);
     drawNodes(svg, nodes);
     updateScrollBar(nodes);
-    addTooltips(svg.selectAll(".node"))
+    addTooltips(svg.selectAll(".node"));
 }
+
 
 function drawLinks(svg, links) {
     svg.selectAll(".link")
@@ -106,6 +103,24 @@ function drawNodes(svg, nodes) {
     addTooltips(nodeGroups);
     drawTree(nodeGroups);
 }
+
+function adjustNodePositions(root) {
+    const depthMap = new Map(); // Track x-positions at each depth
+
+    root.eachBefore(node => {
+        if (!depthMap.has(node.depth)) {
+            depthMap.set(node.depth, 0); // Initialize x-tracking at depth
+        }
+
+        const previousX = depthMap.get(node.depth);
+        const nodeWidth = node.data.width || 100; // Set a default width if undefined
+        node.x = previousX + nodeWidth / 2; // Assign new x-position
+        depthMap.set(node.depth, node.x + nodeWidth / 2 + 20); // Store updated x
+    });
+
+    return root;
+}
+
 
 function updatePositions(svg, nodes, links) {
     nodes.forEach(d => d.y = d.depth * 150); // Maintain vertical alignment
