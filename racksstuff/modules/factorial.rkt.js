@@ -1,1 +1,0 @@
-import * as $rjs_core from '../runtime/core.js';import * as M0 from "../runtime/kernel.rkt.js";var factorial = function(n1) {if (arguments.length!==1) {throw $rjs_core.racketContractError("arity mismatch");} else {}if (M0.__lt__eq_(n1,1)!==false) {var if_res1 = 1;} else {var if_res1 = n1*factorial(M0.sub1(n1));}return if_res1;};var __rjs_quoted__ = {};export { __rjs_quoted__ };
