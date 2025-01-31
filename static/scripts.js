@@ -2,63 +2,66 @@ import { drawTree } from './drawing.js';
 import { addColors, flattenGoalConj } from './tree_setup.js';
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
-let treeData = {
-    "name": "Answer",
-    "sub": [
-        { "key": 0, "value": "\"abc\"" },
-        { "key": 1, "value": "def" },
-        { "key": 2, "value": "ghi" }
-    ],
-    "children": [
-        {
-            "name": "+->",
-            "children": [
-                {
-                    "name": "Fresh",
-                    "vars": ["a", "ad", "add"],
-                    "children": [
-                        {
-                            "name": "Goal-Conj",
-                            "children": [
-                                { "name": "Unify", "left": "a", "right": "d" },
-                                { "name": "Unify", "left": "add", "right": "jkl" }
-                            ]
-                        }
-                    ],
-                    "sub": [
-                        { "key": 0, "value": "mno" },
-                        { "key": 1, "value": "pqr" },
-                        { "key": 2, "value": "stu" }
-                    ]
-                },
-                {
-                    "name": "<-+",
-                    "children": [
-                        {
-                            "name": "Conjunction",
-                            "children": [
-                                { "name": "Delay", "children": [{ "name": "Empty" }] },
-                                { "name": "Rel-Call", "rel": "testo", "args": ["abc"] }
-                            ]
-                        },
-                        {
-                            "name": "Goal-Disj",
-                            "children": [
-                                { "name": "Rel-Call", "rel": "testo", "args": ["vwx", "yz"] },
-                                { "name": "Unify", "left": "abc", "right": "abc" }
-                            ],
-                            "sub": [
-                                { "key": 0, "value": "def" },
-                                { "key": 1, "value": 2 },
-                                { "key": 2, "value": ["ghi", "jkl", "empty"] }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-};
+let treeData = { 
+    "name" : "Empty",
+    "children" : []
+}
+//     "name": "Answer",
+//     "sub": [
+//         { "key": 0, "value": "\"abc\"" },
+//         { "key": 1, "value": "def" },
+//         { "key": 2, "value": "ghi" }
+//     ],
+//     "children": [
+//         {
+//             "name": "+->",
+//             "children": [
+//                 {
+//                     "name": "Fresh",
+//                     "vars": ["a", "ad", "add"],
+//                     "children": [
+//                         {
+//                             "name": "Goal-Conj",
+//                             "children": [
+//                                 { "name": "Unify", "left": "a", "right": "d" },
+//                                 { "name": "Unify", "left": "add", "right": "jkl" }
+//                             ]
+//                         }
+//                     ],
+//                     "sub": [
+//                         { "key": 0, "value": "mno" },
+//                         { "key": 1, "value": "pqr" },
+//                         { "key": 2, "value": "stu" }
+//                     ]
+//                 },
+//                 {
+//                     "name": "<-+",
+//                     "children": [
+//                         {
+//                             "name": "Conjunction",
+//                             "children": [
+//                                 { "name": "Delay", "children": [{ "name": "Empty" }] },
+//                                 { "name": "Rel-Call", "rel": "testo", "args": ["abc"] }
+//                             ]
+//                         },
+//                         {
+//                             "name": "Goal-Disj",
+//                             "children": [
+//                                 { "name": "Rel-Call", "rel": "testo", "args": ["vwx", "yz"] },
+//                                 { "name": "Unify", "left": "abc", "right": "abc" }
+//                             ],
+//                             "sub": [
+//                                 { "key": 0, "value": "def" },
+//                                 { "key": 1, "value": 2 },
+//                                 { "key": 2, "value": ["ghi", "jkl", "empty"] }
+//                             ]
+//                         }
+//                     ]
+//                 }
+//             ]
+//         }
+//     ]
+// };
 
 function redrawTree(treeData) {
     const svg = d3.select("svg").html("").append("g");

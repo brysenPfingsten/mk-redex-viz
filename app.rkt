@@ -10,18 +10,18 @@
 (require "definitions.rkt" "reduction-relations.rkt")
 
 (define program (term (prog ((r:appendo (x:l x:s x:out)
-                           (((x:l =? empty) ∧ (x:s =? x:out))
-                            ∨
-                            (∃ (x:a x:d x:res)
-                               (((x:a : x:d) =? x:l)
-                                ∧
-                                (((x:a : x:res) =? x:out)
-                                 ∧
-                                 (r:appendo x:d x:s x:res)))))))
-               ((∃ (x:l x:s) (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
-                           (state () 0)))))
+                                        (((x:l =? empty) ∧ (x:s =? x:out))
+                                         ∨
+                                         (∃ (x:a x:d x:res)
+                                            (((x:a : x:d) =? x:l)
+                                             ∧
+                                             (((x:a : x:res) =? x:out)
+                                              ∧
+                                              (r:appendo x:d x:s x:res)))))))
+                            ((∃ (x:l x:s) (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
+                             (state () 0)))))
 
-;; Define CORS headers as structured 'header' objects
+;; Define CORS headers
 (define cors-headers
   (list
    (header #"Access-Control-Allow-Origin" #"*")
@@ -31,20 +31,18 @@
 ;; API handler that responds with JSON and includes CORS headers
 (define (api-handler req)
   (begin
-  (define search-tree (term (prog->tree ,program)))
-  (define result (term (to-json ,search-tree)))
-  (set! program (car (apply-reduction-relation red (term ,program))))
-  (display program)
-  (newline)
-  (newline)
-     (response/jsexpr result
-   #:mime-type #"application/json; charset=utf-8"
-   #:headers cors-headers)))
+    (define search-tree (term (prog->tree ,program))) ; Get the search tree
+    (define result (term (to-json ,search-tree))) ; Convert it to JSON
+    (set! program (car (apply-reduction-relation red (term ,program)))) ; Step once
+    (display program) (newline) (newline) ; Display the program
+    (response/jsexpr result ; Send response
+                     #:mime-type #"application/json; charset=utf-8"
+                     #:headers cors-headers)))
 
 ;; OPTIONS request handler for CORS preflight
 (define (options-handler req)
   (response/output
-   (lambda (out) (display "" out)) ;; Empty body for preflight
+   (lambda (out) (display "" out)) 
    #:code 204 ;; No Content response
    #:headers cors-headers))
 
@@ -53,9 +51,8 @@
   (display req)
   (cond
     [(equal? (request-method req) #"OPTIONS") (options-handler req)] ;; Handle preflight
-    [else (api-handler req)]))
+    [(equal? (request-method req) #"GET") (api-handler req)] ;; Handle get requests
+    [else #f]))
 
-(term (to-json (("hello" =? "hello") (state () 0))))
-
-;; Start the Racket web server on port 5000
+;; Start the server on port 5000
 (serve/servlet dispatcher #:port 5000 #:servlet-regexp #rx"" #:launch-browser? #f)
