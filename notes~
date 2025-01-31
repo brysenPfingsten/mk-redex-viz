@@ -1,0 +1,10 @@
+#lang racket
+#|
+Tags for unification
+- While parsing
+- As a reduction step
+- Own function
+- Metafunction
+Carrying unifcations through the state
+proceed (dont delay) ; Invert delays
+|#
