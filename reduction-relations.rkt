@@ -49,20 +49,25 @@
                            (in-hole Ex s)
                            "prune right failure disjuncts"]
                       
-                      [--> (in-hole Ex ((∃ (x ...) g) (state sub c)))
-                           (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)))))
+                      [--> (in-hole Ex ((∃ (x ...) g) (state sub c trail)))
+                           (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
                            "fresh-n subst"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ..._1) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
                            "relcall and add delay"]
+                      #|
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ..._1) σ))))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute* g_1 (x_1 t) ...) σ)))))
+                           "relcall and add delay"]
+                      |#
 
-                      [--> (in-hole Ex ((t_1 =? t_2) (state sub c)))
-                           (in-hole Ex (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c)))
+                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
+                           (in-hole Ex (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))))
                            (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "unify succeed"]
 
-                      [--> (in-hole Ex ((t_1 =? t_2) (state sub c)))
+                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c trail)))
                            (in-hole Ex ())
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "unify fails"]
