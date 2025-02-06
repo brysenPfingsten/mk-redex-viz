@@ -1,11 +1,11 @@
 # Modeling-miniKanren-in-Redex
-## Railway switch implementation of reodering miniKanren search tree.
+## Railway switch implementation of reordering miniKanren search tree.
 
-Clone this branch and run the demo.rkt file. 
+Clone this branch and run the demo.rkt file.
 
 Two stepper windows will appear.
 
-In the bottom right select **Reduce until propagate left delay through disj, and flip**. 
+In the bottom right select **Reduce until propagate left delay through disj, and flip**.
 
 Click the arrow on the RHS of the screen.
 
@@ -13,3 +13,10 @@ Click the arrow on the RHS of the screen.
 
 ![image](https://github.com/user-attachments/assets/cdbd0b1c-1c8f-435d-ab98-5696c937e69e)
 
+## Visualization in the browser
+
+Visualization requires local installation of `apache2`
+
+To start, run `sudo apachectl start`
+
+By default this should start a server on port 8080

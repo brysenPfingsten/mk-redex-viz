@@ -21,7 +21,9 @@
 
 (stepper
  red
- (term (prog
+ (term 
+   (add-tags
+      (prog
         ((r:add (x:x x:y)
                 ((∃ (x:x^ x:y^) ((x:x =? ("s" : x:x^))
                                  ∧
@@ -32,11 +34,13 @@
                  ((x:x =? "z")
                   ∧
                   (x:y =? ("s" : x:x))))))
-        ((∃ (x:q x:n) (r:add x:n x:q)) (state () 0)))))
+        ((∃ (x:q x:n) (r:add x:n x:q)) (state () 0 ()))))))
 
 #;(stepper
  red
- (term (prog
+ (term 
+   (add-tags 
+      (prog
         ((r:add (x:x x:y)
                 (((x:x =? "z")
                   ∧
@@ -47,11 +51,13 @@
                                  ((x:y =? ("s" : x:y^))
                                   ∧
                                   (r:add x:x^ x:y^)))))))
-        ((∃ (x:q) (r:add x:q ("s" : ("s" : ("s" : "z"))))) (state () 0)))))
+        ((∃ (x:q) (r:add x:q ("s" : ("s" : ("s" : "z"))))) (state () 0 ()))))))
 
 (stepper
  red
- (term (prog
+ (term
+   (add-tags 
+      (prog
         ((r:poso (x:n)
                  (∃ (x:a x:d)
                     ((x:a : x:d) =? x:n)))
@@ -92,15 +98,15 @@
                             (x:next-state =? "q3"))))))
                        ∧
                        (r:dfao x:d x:next-state)))))))
-        ((∃ (x:q) (r:dfao x:q "q1")) (state () 0)))))
+        ((∃ (x:q) (r:dfao x:q "q1")) (state () 0 ()))))))
 
 
 
-(apply-reduction-relation* red (term (prog () ((("ghi" =? "ghi") (state () 2)) +-> ((("def" =? "def") (state () 1)) +-> (("abc" =? "abc") (state () 0)))))))
+(apply-reduction-relation* red (term (add-tags (prog () ((("ghi" =? "ghi") (state () 2 ())) +-> ((("def" =? "def") (state () 1 ())) +-> (("abc" =? "abc") (state () 0 ()))))))))
 
-(apply-reduction-relation* red (term (prog () (((("abc" =? "abc") (state () 0)) <-+ (("def" =? "def") (state () 1))) <-+ (("ghi" =? "ghi") (state () 2))))))
+(apply-reduction-relation* red (term (add-tags (prog () (((("abc" =? "abc") (state () 0 ())) <-+ (("def" =? "def") (state () 1 ()))) <-+ (("ghi" =? "ghi") (state () 2 ())))))))
 
-(apply-reduction-relation* red (term (prog () (((("def" =? "def") (state () 1)) +-> (("abc" =? "abc") (state () 0))) <-+ (("ghi" =? "ghi") (state () 2))))))
+(apply-reduction-relation* red (term (add-tags (prog () (((("def" =? "def") (state () 1 ())) +-> (("abc" =? "abc") (state () 0 ()))) <-+ (("ghi" =? "ghi") (state () 2 ())))))))
 
-(apply-reduction-relation* red (term (prog () (((("def" =? "def") (state () 1)) <-+ (("ghi" =? "ghi") (state () 2))) +-> (("abc" =? "abc") (state () 0)))))) 
+(apply-reduction-relation* red (term (add-tags (prog () (((("def" =? "def") (state () 1 ())) <-+ (("ghi" =? "ghi") (state () 2 ()))) +-> (("abc" =? "abc") (state () 0 ()))))))) 
        
