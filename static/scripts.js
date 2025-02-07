@@ -6,82 +6,44 @@ let treeData = {
     "name" : "Empty",
     "children" : []
 }
-//     "name": "Answer",
-//     "sub": [
-//         { "key": 0, "value": "\"abc\"" },
-//         { "key": 1, "value": "def" },
-//         { "key": 2, "value": "ghi" }
-//     ],
-//     "children": [
-//         {
-//             "name": "+->",
-//             "children": [
-//                 {
-//                     "name": "Fresh",
-//                     "vars": ["a", "ad", "add"],
-//                     "children": [
-//                         {
-//                             "name": "Goal-Conj",
-//                             "children": [
-//                                 { "name": "Unify", "left": "a", "right": "d" },
-//                                 { "name": "Unify", "left": "add", "right": "jkl" }
-//                             ]
-//                         }
-//                     ],
-//                     "sub": [
-//                         { "key": 0, "value": "mno" },
-//                         { "key": 1, "value": "pqr" },
-//                         { "key": 2, "value": "stu" }
-//                     ]
-//                 },
-//                 {
-//                     "name": "<-+",
-//                     "children": [
-//                         {
-//                             "name": "Conjunction",
-//                             "children": [
-//                                 { "name": "Delay", "children": [{ "name": "Empty" }] },
-//                                 { "name": "Rel-Call", "rel": "testo", "args": ["abc"] }
-//                             ]
-//                         },
-//                         {
-//                             "name": "Goal-Disj",
-//                             "children": [
-//                                 { "name": "Rel-Call", "rel": "testo", "args": ["vwx", "yz"] },
-//                                 { "name": "Unify", "left": "abc", "right": "abc" }
-//                             ],
-//                             "sub": [
-//                                 { "key": 0, "value": "def" },
-//                                 { "key": 1, "value": 2 },
-//                                 { "key": 2, "value": ["ghi", "jkl", "empty"] }
-//                             ]
-//                         }
-//                     ]
-//                 }
-//             ]
-//         }
-//     ]
-// };
 
 function redrawTree(treeData) {
     const svg = d3.select("svg").html("").append("g");
 
     const treeLayout = d3.tree()
-        .nodeSize([150, 100]) ;
-        // .separation((a, b) => a.parent === b.parent ? (a.data.width + b.data.width) * 2 : 100); 
+        .nodeSize([150, 100]); // Adjust vertical/horizontal spacing
 
     const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
-    treeLayout(root); 
+    treeLayout(root);
 
     const nodes = root.descendants();
     const links = root.links();
 
-    console.log(nodes);
+    // Calculate bounding box of the tree
+    const minX = Math.min(...nodes.map(d => d.x));
+    const maxX = Math.max(...nodes.map(d => d.x));
+    const minY = Math.min(...nodes.map(d => d.y));
+    const maxY = Math.max(...nodes.map(d => d.y));
+    const padding = 100; // Increase padding if nodes are clipped
 
+    // Calculate total width/height of the tree (including padding)
+    const treeWidth = maxX - minX + padding * 2;
+    const treeHeight = maxY - minY + padding * 2;
+
+    // Set the SVG dimensions and viewBox to encapsulate the entire tree
+    d3.select("svg")
+        .attr("width", treeWidth)
+        .attr("height", treeHeight)
+        .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet"); // Centers content
+
+    // Draw the tree
     drawLinks(svg, links);
     drawNodes(svg, nodes);
-    updateScrollBar(nodes);
-    addTooltips(svg.selectAll(".node"));
+
+    // Debugging: Log key metrics
+    console.log("Bounding Box:", { minX, maxX, minY, maxY });
+    console.log("SVG Dimensions:", { treeWidth, treeHeight });
 }
 
 
@@ -166,7 +128,7 @@ function toString(node) {
 }
 
 function subToString(sub) {
-    return sub.map(({ key, value }) => `${key} => ${value}`).join("\n");
+    return sub.map(({ key, value }) => `${key} ${value}`).join("\n");
 }
 
 function addTooltips(nodeGroups) {

@@ -4,7 +4,7 @@
                     (fresh fresh_)))
 (require "definitions.rkt")
 
-(provide reify to-json)
+(provide reify to-json prog->tree)
 
 (define (reify sub)
   (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
@@ -17,9 +17,7 @@
 (define (extract-name input-str)
   (define re #px"^[x,r]:([a-zA-Z]+)") ;; (x or r):letters ; Stops at the <<...>>
   (define matches (regexp-match re input-str))
-  (if matches
-      (second matches) 
-      ""))
+  (if matches (second matches) input-str))
 
 (define-metafunction L
   list->json : any -> any
@@ -52,23 +50,23 @@
 
 (define-metafunction L
   sub->json : σ -> string
-  [(sub->json (state () c)) ""]
-  [(sub->json (state ((c t)) c_1))
+  [(sub->json (state () c _)) ""]
+  [(sub->json (state ((c t)) c_1 _))
    ,(string-append
     "{\"key\": " (number->string (term c))
     ", \"value\": " (term (term->json t)) "}")] 
-  [(sub->json (state ((c t) (c_1 t_1) ...) c_2))
+  [(sub->json (state ((c t) (c_1 t_1) ...) c_2 any))
    ,(string-append
     "{\"key\": " (number->string (term c))
     ", \"value\": " (term (term->json t)) "}, "
-    (term (sub->json (state ((c_1 t_1) ...) c_2))))])
+    (term (sub->json (state ((c_1 t_1) ...) c_2 any))))])
 
 (define-metafunction L
   goal->json : g -> string
   [(goal->json ⊤)
    "{\"name\": \"Succeed\"}"]
 
-  [(goal->json (t_1 =? t_2))
+  [(goal->json (t_1 =? t_2 _))
    ,(let* ([left-json (term (term->json  t_1))]
            [right-json (term (term->json t_2))])
       (string-append

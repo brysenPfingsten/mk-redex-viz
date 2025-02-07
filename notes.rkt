@@ -10,4 +10,9 @@ proceed (dont delay) ; Invert delays
 - How does distributing delays now work?
 - How is this any different
 reification
+Docker file?
+Talk to data labs
+Lists in reification
+Gettings CORS again
+
 |#
