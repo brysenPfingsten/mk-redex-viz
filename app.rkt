@@ -7,9 +7,9 @@
          redex
          redex/reduction-semantics)
 
-(require "definitions.rkt" "reduction-relations.rkt")
+(require "definitions.rkt" "reduction-relations.rkt" "metafunctions.rkt")
 
-(define program (term (prog ((r:appendo (x:l x:s x:out)
+(define program (term (add-tags (prog ((r:appendo (x:l x:s x:out)
                                         (((x:l =? empty) ∧ (x:s =? x:out))
                                          ∨
                                          (∃ (x:a x:d x:res)
@@ -19,7 +19,7 @@
                                               ∧
                                               (r:appendo x:d x:s x:res)))))))
                             ((∃ (x:l x:s) (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
-                             (state () 0)))))
+                             (state () 0 ()))))))
 
 ;; Define CORS headers
 (define cors-headers
