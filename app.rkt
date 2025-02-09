@@ -21,6 +21,8 @@
                             ((∃ (x:l x:s) (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
                              (state () 0 ()))))))
 
+(define init-program program)
+
 
 ;; Define CORS headers
 (define cors-headers
@@ -30,7 +32,7 @@
    (header #"Access-Control-Allow-Headers" #"Content-Type, Authorization")))
 
 ;; API handler that responds with JSON and includes CORS headers
-(define (api-handler req)
+(define (get-handler req)
   (begin
     (define search-tree (term (prog->tree ,program))) ; Get the search tree
     (define result (term (to-json ,search-tree))) ; Convert it to JSON
@@ -47,12 +49,18 @@
    #:code 204 ;; No Content response
    #:headers cors-headers))
 
+;; POST requester handler for resetting the state
+(define (post-handler req)
+  (set! program init-program)
+  (get-handler req))
+
 ;; Dispatcher: Routes requests based on URL and method
 (define (dispatcher req)
   (display req)
   (cond
     [(equal? (request-method req) #"OPTIONS") (options-handler req)] ;; Handle preflight
-    [(equal? (request-method req) #"GET") (api-handler req)] ;; Handle get requests
+    [(equal? (request-method req) #"GET") (get-handler req)]
+    [(equal? (request-method req) #"POST") (post-handler req)]
     [else #f]))
 
 ;; Start the server on port 5000

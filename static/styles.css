@@ -14,6 +14,31 @@ body {
     overflow: auto;
     padding: 20px;
 }
+.button-container {
+    display: flex;
+    justify-content: space-around; /* Evenly spaces buttons */
+    margin-top: 10px;
+    gap: 15px; /* Adds spacing between buttons */
+}
+
+.button-container button {
+    font-size: 18px; /* Bigger text */
+    padding: 12px 20px; /* Bigger buttons */
+    flex: 1; /* Ensures even width */
+    max-width: 150px; /* Prevents buttons from getting too wide */
+    height: 50px; /* Sets uniform height */
+    border-radius: 8px; /* Rounded corners */
+    border: none; /* Removes default border */
+    background-color: #007bff; /* Blue color */
+    color: white; /* White text */
+    cursor: pointer;
+    text-align: center;
+}
+
+.button-container button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
 textarea {
     width: 100%;
     height: 90%;
