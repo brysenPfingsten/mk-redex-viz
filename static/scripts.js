@@ -172,9 +172,45 @@ function fetchAndUpdateTree() {
     .catch(error => console.error("Error:", error));
 }
 
-document.addEventListener("keyup", function(event) {
-    if (event.key === "j") { fetchAndUpdateTree() }
+function resetTree() {
+    fetch("http://localhost:5000/api/post", {  
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return response.text();  
+    })
+    .then(text => {
+        try {
+            console.log(text)
+            const data = JSON.parse(JSON.parse(text));  
+            console.log(data)
+            redrawTree(data); 
+        } catch (error) {
+            console.error("Error parsing JSON:", error);
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("debug-btn").addEventListener("click", () => {
+        console.log("Debug button clicked!");
+        // Do nothing for now
+    });
+
+    document.getElementById("reset-btn").addEventListener("click", () => {
+        console.log("Reset button clicked!");
+        resetTree();
+    });
+
+    document.getElementById("step-btn").addEventListener("click", () => {
+        console.log("Step button clicked!");
+        fetchAndUpdateTree();
+    });
 });
+
 
 
 // Initial render
