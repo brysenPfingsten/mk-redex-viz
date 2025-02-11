@@ -1,22 +1,23 @@
 # Modeling-miniKanren-in-Redex
-## Railway switch implementation of reordering miniKanren search tree.
+## **Docker Setup**
 
-Clone this branch and run the demo.rkt file.
+Follow the steps below to clone this repository, set up Docker, and run the application.
 
-Two stepper windows will appear.
+### **Prerequisites**
+Before you begin, ensure you have the following installed:
 
-In the bottom right select **Reduce until propagate left delay through disj, and flip**.
+- **[Docker](https://docs.docker.com/get-docker/)** – to run containers
+- **[Docker Compose](https://docs.docker.com/compose/install/)** – to manage multi-container applications
 
-Click the arrow on the RHS of the screen.
+---
 
-![image](https://github.com/user-attachments/assets/d7e828a7-20dc-48b8-8ad0-a93f921292a3)
+## **Installation and Setup**
 
-![image](https://github.com/user-attachments/assets/cdbd0b1c-1c8f-435d-ab98-5696c937e69e)
-
-## Visualization in the browser
-
-Visualization requires local installation of `apache2`
-
-To start, run `sudo apachectl start`
-
-By default this should start a server on port 8080
+Open a terminal and run:
+```sh
+git clone https://github.com/brysenPfingsten/Modeling-miniKanren-in-Redex.git
+cd Modeling-miniKanren-in-Redex
+docker-compose build
+docker-compose up
+```
+Finally, visit [localhost:3000](http://localhost:3000).
