@@ -1,5 +1,5 @@
 #lang racket
-(require redex redex/gui)
+(require redex)
 (require redex/reduction-semantics)
 (require rackunit)
 (check-redundancy #t)

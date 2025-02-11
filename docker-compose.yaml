@@ -1,0 +1,25 @@
+version: '3'
+services:
+  racket-server:
+    image: racket-server
+    build:
+      context: ./racket-server
+    ports:
+      - "5000:5000"
+    networks:
+      - app-network
+
+  node-proxy:
+    image: node-proxy
+    build:
+      context: ./node-proxy
+    ports:
+      - "3000:3000"
+    depends_on:
+      - racket-server
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
