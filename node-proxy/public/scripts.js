@@ -151,7 +151,7 @@ function addTooltips(nodeGroups) {
 }
 
 function fetchAndUpdateTree() {
-    fetch("http://localhost:5000/api/get", {  
+    fetch("/api/get", {  
         method: "GET",
         headers: { "Content-Type": "application/json" }
     })
@@ -173,7 +173,7 @@ function fetchAndUpdateTree() {
 }
 
 function resetTree() {
-    fetch("http://localhost:5000/api/post", {  
+    fetch("/api/post", {  
         method: "POST",
         headers: { "Content-Type": "application/json" }
     })

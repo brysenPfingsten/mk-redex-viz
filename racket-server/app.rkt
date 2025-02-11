@@ -64,4 +64,4 @@
     [else #f]))
 
 ;; Start the server on port 5000
-(serve/servlet dispatcher #:port 5000 #:servlet-regexp #rx"" #:launch-browser? #f)
+(serve/servlet dispatcher #:port 5000 #:servlet-regexp #rx"" #:listen-ip "0.0.0.0" #:launch-browser? #f)
