@@ -2,12 +2,16 @@ import { drawTree } from './drawing.js';
 import { addColors, flattenGoalConj } from './tree_setup.js';
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
-let treeData = { 
+const treeData = { 
     "name" : "Empty",
     "children" : []
 }
 
+let history = [treeData]
+let previous
+
 function redrawTree(treeData) {
+    previous = treeData
     const svg = d3.select("svg").html("").append("g");
     
     const treeLayout = d3.tree()
@@ -182,6 +186,7 @@ function fetchAndUpdateTree() {
         try {
             console.log(text)
             const data = JSON.parse(JSON.parse(text));  
+            history.push(previous)
             console.log(data)
             redrawTree(data); 
         } catch (error) {
@@ -192,12 +197,13 @@ function fetchAndUpdateTree() {
 }
 
 function resetTree() {
-    fetch("/api/post", {  
+    fetch("/api/post/reset", {  
         method: "POST",
         headers: { "Content-Type": "application/json" }
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        history = []
         return response.text();  
     })
     .then(text => {
@@ -247,18 +253,34 @@ function lockCode() {
     overlay.style.display = "block";
 }
 
+function back() {
+    fetch("/api/post/back", {  
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        history = []
+        return response.text();  
+    })
+    .then(text => {
+        try {
+            console.log(text)
+            const data = JSON.parse(JSON.parse(text));  
+            console.log(data)
+            redrawTree(data); 
+        } catch (error) {
+            console.error("Error parsing JSON:", error);
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("debug-btn").addEventListener("click", lockCode);
-    
-    document.getElementById("reset-btn").addEventListener("click", () => {
-        console.log("Reset button clicked!");
-        resetTree();
-    });
-    
-    document.getElementById("step-btn").addEventListener("click", () => {
-        console.log("Step button clicked!");
-        fetchAndUpdateTree();
-    });
+    document.getElementById("back-btn").addEventListener("click", back)
+    document.getElementById("reset-btn").addEventListener("click", resetTree);
+    document.getElementById("step-btn").addEventListener("click", fetchAndUpdateTree);
 });
 
 
