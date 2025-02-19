@@ -3,6 +3,7 @@
          web-server/servlet-env
          web-server/http/json
          web-server/http
+         net/url-structs
          json
          redex
          redex/reduction-semantics)
@@ -17,6 +18,8 @@
      (∃ (x:a x:d x:res) (((x:a : x:d) =? x:l "g1100547") ∧ (((x:a : x:res) =? x:out "g1100548") ∧ (r:appendo x:d x:s x:res)))))))
   ((∃ (x:q) (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q)) (state () 0 ())))))
 
+(define history (list program))
+
 #; (define program (term (add-tags (prog () ((∃ (x:q) (x:q =? "hello")) (state () 0 ()))))))
 
 (define init-program program)
@@ -29,13 +32,15 @@
    (header #"Access-Control-Allow-Methods" #"GET, POST, OPTIONS")
    (header #"Access-Control-Allow-Headers" #"Content-Type, Authorization")))
 
+
 ;; API handler that responds with JSON and includes CORS headers
 (define (get-handler req)
   (begin
     (define search-tree (term (prog->tree ,program))) ; Get the search tree
     (define result (term (to-json ,search-tree))) ; Convert it to JSON
+    (set! history (cons program history))
     (set! program (car (apply-reduction-relation red (term ,program)))) ; Step once
-    (display program) (newline) (newline) ; Display the program
+    (display program) (newline) (newline) (newline); Display the program
     (response/jsexpr result ; Send response
                      #:mime-type #"application/json; charset=utf-8"
                      ;;#:headers cors-headers
@@ -46,12 +51,31 @@
   (response/output
    (lambda (out) (display "" out)) 
    #:code 204 ;; No Content response
-   #:headers cors-headers))
+   ;#:headers cors-headers
+   ))
+
+(define (get-path req)
+  (string-join (map path/param-path (url-path (request-uri req))) "/"))
 
 ;; POST requester handler for resetting the state
 (define (post-handler req)
-  (set! program init-program)
-  (get-handler req))
+  (display (get-path req))
+  (cond
+    [(equal? (get-path req) "post/reset")
+     (set! program init-program)]
+    [(and (equal? (get-path req) "post/back")
+          (cons? history))
+     (set! program (first history))
+     (set! history (rest history))]
+    [else (void)])
+  (begin
+    (define search-tree (term (prog->tree ,program))) ; Get the search tree
+    (define result (term (to-json ,search-tree))) ; Convert it to JSON
+    (display program) (newline) (newline) (newline); Display the program
+    (response/jsexpr result ; Send response
+                     #:mime-type #"application/json; charset=utf-8"
+                     ;;#:headers cors-headers
+                     )))
 
 ;; Dispatcher: Routes requests based on URL and method
 (define (dispatcher req)
