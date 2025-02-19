@@ -39,6 +39,23 @@ body {
     background-color: #0056b3; /* Darker blue on hover */
 }
 
+/* Initially, show the editable textarea and hide the overlay */
+#highlight-overlay {
+    display: none;
+}
+
+/* After locking, the textarea’s text is made transparent so the overlay shows */
+textarea.locked {
+    color: transparent;
+    caret-color: transparent;
+}
+
+.hidden-tag.highlight {
+    background-color: yellow; /* or any style you prefer */
+  }
+  
+
+/* The base styling for the textarea */
 textarea {
     width: 100%;
     height: 90%;
@@ -48,6 +65,29 @@ textarea {
     box-sizing: border-box;
 }
 
+/* NEW: Wrap the textarea in a relatively positioned container */
+.editor-wrapper {
+    position: relative;
+}
+
+/* NEW: Position the overlay absolutely on top of the textarea,
+   match its dimensions, and preserve whitespace */
+#highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 90%;
+    padding: 10px;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    pointer-events: none;  /* Let user interact with the textarea's resize handle */
+}
+
+/* Provided styles for D3 elements */
 .node rect {
     fill: lightgray;
     stroke: black;
