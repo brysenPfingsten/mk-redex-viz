@@ -6,13 +6,11 @@
 
 (provide reify to-json prog->tree)
 
-
-
 (define-metafunction L
   term->mk : t -> any
-  [(term->mk (t_1 : t_2)) ,(cons (term (term->mk t_1)) (term (term->mk t_2)))]
-  [(term->mk empty) ()]
-  [(term->mk c) ,(string->symbol (string-append "_" (number->string (term c))))]
+  [(term->mk (t_1 : t_2)) `((term->mk t_1) . ,(term->mk t_2))] ; ugh
+  [(term->mk empty) '()]
+  [(term->mk c) (term ,(string->symbol (string-append "_" (number->string (term c)))))]
   [(term->mk t) t])
 
 (define (reify sub)
@@ -20,6 +18,10 @@
          [freshen (λ (p) (underscore (car p)))]
          [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p)))
                             ,(term (term->mk ,(second p)))))])
+    (display (map freshen sub))
+    (newline)
+    (newline)
+    (display (map unify sub))
     (car (eval `(run* (q) (fresh_ ,(map freshen sub) ,@(map unify sub)))))))
                            
 
@@ -62,13 +64,33 @@
   [(sub->json ()) ""]
   [(sub->json ((c t)))
    ,(string-append
-    "{\"key\": " (number->string (term c))
-    ", \"value\": " (term (term->json t)) "}")] 
+     "{\"key\": " (number->string (term c))
+     ", \"value\": " (term (term->json t)) "}")] 
   [(sub->json ((c t) (c_1 t_1) ...))
    ,(string-append
-    "{\"key\": " (number->string (term c))
-    ", \"value\": " (term (term->json t)) "}, "
-    (term (sub->json (state ((c_1 t_1) ...) c_2 any))))])
+     "{\"key\": " (number->string (term c))
+     ", \"value\": " (term (term->json t)) "}, "
+     (term (sub->json ((c_1 t_1) ...))))])
+
+(define-metafunction L
+  crumb->json : (t =? t o) sub -> string
+  [(crumb->json (t_1 =? t_2 o) sub)
+   ,(let* ([left (term (term->json (walk t_1 sub)))]
+           [right (term (term->json (walk t_2 sub)))]
+           [id (term (term->json o))])
+      (string-append
+       "{\"left\": " left ", "
+       "\"right\": " right ", "
+       "\"id\": " id "}"))])
+
+(define-metafunction L
+  trail->json : trail sub -> string
+  [(trail->json ((t_1 =? t_2 o)) sub)
+   (crumb->json (t_1 =? t_2 o) sub)]
+  [(trail->json ((t_1 =? t_2 o_1) (t_3 =? t_4 o_2) ...) sub)
+   ,(string-append (term (crumb->json (t_1 =? t_2 o_1) sub))
+                   ", "
+                   (term (trail->json (trail->json ((t_3 =? t_4 o_2) ...) sub))))])
 
 (define-metafunction L
   goal->json : g -> string
@@ -97,7 +119,7 @@
       (string-append
        "{\"name\": \"Goal-Disj\", "
        "\"children\": [" left-json ", "
-                         right-json "]}"))]
+       right-json "]}"))]
 
   [(goal->json (g_1 ∧ g_2))
    ,(let* ([left-json (term (goal->json g_1))]
@@ -105,7 +127,7 @@
       (string-append
        "{\"name\": \"Goal-Conj\", "
        "\"children\": [" left-json ", "
-                         right-json "]}"))]
+       right-json "]}"))]
 
   [(goal->json (∃ d g))
    ,(let* ([var-name  (term (list->json d))]
@@ -120,13 +142,15 @@
   [(to-json ())
    "{\"name\": \"Empty\"}"]
 
-  [(to-json (g (_ sub _ _)))
+  [(to-json (g (_ sub _ trail)))
    ,(let* ([goal-json (term (goal->json g))]
            [sigma-json (term (sub->json sub))]
+           [trail-json (term (trail->json trail sub))]
            #;[reified (reify (term sub))])
       (string-append
        (substring goal-json 0 (sub1 (string-length goal-json))) ", "
-       "\"sub\": [" sigma-json "]}"
+       "\"sub\": [" sigma-json "], "
+       "\"trail\": [" trail-json "]}"
        #;"\"reified\": " #;reified #;"}"))]
 
   [(to-json (s_1 +-> s_2))
@@ -135,7 +159,7 @@
       (string-append
        "{\"name\": \"+->\", "
        "\"children\": [" left-json ", "
-                         right-json "]}"))]
+       right-json "]}"))]
 
   [(to-json (s_1 <-+ s_2))
    ,(let* ([left-json (term (to-json s_1))]
@@ -143,14 +167,16 @@
       (string-append
        "{\"name\": \"<-+\", "
        "\"children\": [" left-json ", "
-                         right-json "]}"))]
+       right-json "]}"))]
 
-  [(to-json ((⊤ (_ sub _ _)) + s))
+  [(to-json ((⊤ (_ sub _ trail)) + s))
    ,(let* ([sub-json (term (sub->json sub))]
-           [rest-json (term (to-json s))])
+           [rest-json (term (to-json s))]
+           [trail-json (term (trail->json trail sub))])
       (string-append
        "{\"name\": \"Answer\", "
        "\"sub\": [" sub-json "], "
+       "\"trail\": [" trail-json "], "
        "\"children\": [" rest-json "]}"))]
 
   [(to-json (s × g))
