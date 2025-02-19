@@ -6,11 +6,20 @@
 
 (provide reify to-json prog->tree)
 
+
+
+(define-metafunction L
+  term->mk : t -> any
+  [(term->mk (t_1 : t_2)) ,(cons (term (term->mk t_1)) (term (term->mk t_2)))]
+  [(term->mk empty) ()]
+  [(term->mk c) ,(string->symbol (string-append "_" (number->string (term c))))]
+  [(term->mk t) t])
+
 (define (reify sub)
   (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
          [freshen (λ (p) (underscore (car p)))]
          [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p)))
-                            ,(if (number? (cadr p)) (underscore (cadr p)) (cadr p))))])
+                            ,(term (term->mk ,(second p)))))])
     (car (eval `(run* (q) (fresh_ ,(map freshen sub) ,@(map unify sub)))))))
                            
 
@@ -49,13 +58,13 @@
      "]")])
 
 (define-metafunction L
-  sub->json : σ -> string
-  [(sub->json (state () c _)) ""]
-  [(sub->json (state ((c t)) c_1 _))
+  sub->json : sub -> string
+  [(sub->json ()) ""]
+  [(sub->json ((c t)))
    ,(string-append
     "{\"key\": " (number->string (term c))
     ", \"value\": " (term (term->json t)) "}")] 
-  [(sub->json (state ((c t) (c_1 t_1) ...) c_2 any))
+  [(sub->json ((c t) (c_1 t_1) ...))
    ,(string-append
     "{\"key\": " (number->string (term c))
     ", \"value\": " (term (term->json t)) "}, "
@@ -111,12 +120,14 @@
   [(to-json ())
    "{\"name\": \"Empty\"}"]
 
-  [(to-json (g σ))
+  [(to-json (g (_ sub _ _)))
    ,(let* ([goal-json (term (goal->json g))]
-           [sigma-json (term (sub->json σ))])
+           [sigma-json (term (sub->json sub))]
+           #;[reified (reify (term sub))])
       (string-append
        (substring goal-json 0 (sub1 (string-length goal-json))) ", "
-       "\"sub\": [" sigma-json "]}"))]
+       "\"sub\": [" sigma-json "]}"
+       #;"\"reified\": " #;reified #;"}"))]
 
   [(to-json (s_1 +-> s_2))
    ,(let* ([left-json (term (to-json s_1))]
@@ -134,8 +145,8 @@
        "\"children\": [" left-json ", "
                          right-json "]}"))]
 
-  [(to-json ((⊤ σ) + s))
-   ,(let* ([sub-json (term (sub->json σ))]
+  [(to-json ((⊤ (_ sub _ _)) + s))
+   ,(let* ([sub-json (term (sub->json sub))]
            [rest-json (term (to-json s))])
       (string-append
        "{\"name\": \"Answer\", "

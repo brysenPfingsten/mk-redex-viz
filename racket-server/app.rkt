@@ -9,7 +9,7 @@
 
 (require "definitions.rkt" "reduction-relations.rkt" "metafunctions.rkt")
 
-(define program (term (add-tags (prog ((r:appendo (x:l x:s x:out)
+#;(define program (term (add-tags (prog ((r:appendo (x:l x:s x:out)
                                         (((x:l =? empty) ∧ (x:s =? x:out))
                                          ∨
                                          (∃ (x:a x:d x:res)
@@ -18,8 +18,10 @@
                                              (((x:a : x:res) =? x:out)
                                               ∧
                                               (r:appendo x:d x:s x:res)))))))
-                            ((∃ (x:l x:s) (r:appendo x:l x:s ("dog" : ("cat" : ("bear" : empty)))))
+                            ((∃ (x:q x:l x:s) (r:appendo x:l x:s x:q))
                              (state () 0 ()))))))
+
+(define program (term (add-tags (prog () ((∃ (x:q) (x:q =? "hello")) (state () 0 ()))))))
 
 (define init-program program)
 
@@ -40,7 +42,8 @@
     (display program) (newline) (newline) ; Display the program
     (response/jsexpr result ; Send response
                      #:mime-type #"application/json; charset=utf-8"
-                     #:headers cors-headers)))
+                     ;;#:headers cors-headers
+                     )))
 
 ;; OPTIONS request handler for CORS preflight
 (define (options-handler req)
