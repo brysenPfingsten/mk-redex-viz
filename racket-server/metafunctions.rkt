@@ -85,12 +85,12 @@
 
 (define-metafunction L
   trail->json : trail sub -> string
-  [(trail->json ((t_1 =? t_2 o)) sub)
-   (crumb->json (t_1 =? t_2 o) sub)]
+  [(trail->json () _) ""]
+  [(trail->json ((t_1 =? t_2 o)) sub) (crumb->json (t_1 =? t_2 o) sub)]
   [(trail->json ((t_1 =? t_2 o_1) (t_3 =? t_4 o_2) ...) sub)
    ,(string-append (term (crumb->json (t_1 =? t_2 o_1) sub))
                    ", "
-                   (term (trail->json (trail->json ((t_3 =? t_4 o_2) ...) sub))))])
+                   (term (trail->json ((t_3 =? t_4 o_2) ...) sub)))]) 
 
 (define-metafunction L
   goal->json : g -> string
@@ -198,3 +198,15 @@
 
 
 
+(define p (term (prog ((r:appendo«597» (x:l«598» x:s«599» x:out«600»)
+                       (((x:l«598» =? empty g14056) ∧ (x:s«599» =? x:out«600» g14057))
+                        ∨
+                        (∃ (x:a«41» x:d«42» x:res«43»)
+                           (((x:a«41» : x:d«42») =? x:l«598» g14058)
+                            ∧ (((x:a«41» : x:res«43») =? x:out«600» g14059)
+                               ∧ (r:appendo«597» x:d«42» x:s«599» x:res«43»)))))))
+      (((⊤ (state ((1 empty)) 3 ((1 =? empty "g14056")))) × (2 =? 0 "g14057"))
+       <-+ ((∃ (x:a«333» x:d«334» x:res«335») (((x:a«333» : x:d«334») =? 1 "g14058")
+                                               ∧ (((x:a«333» : x:res«335») =? 0 "g14059")
+                                                  ∧ (r:appendo«597» x:d«334» 2 x:res«335»))))
+            (state () 3 ()))))))

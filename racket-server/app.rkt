@@ -9,19 +9,15 @@
 
 (require "definitions.rkt" "reduction-relations.rkt" "metafunctions.rkt")
 
-#;(define program (term (add-tags (prog ((r:appendo (x:l x:s x:out)
-                                        (((x:l =? empty) ∧ (x:s =? x:out))
-                                         ∨
-                                         (∃ (x:a x:d x:res)
-                                            (((x:a : x:d) =? x:l)
-                                             ∧
-                                             (((x:a : x:res) =? x:out)
-                                              ∧
-                                              (r:appendo x:d x:s x:res)))))))
-                            ((∃ (x:q x:l x:s) (r:appendo x:l x:s x:q))
-                             (state () 0 ()))))))
+(define program (term (prog
+  ((r:appendo
+    (x:l x:s x:out)
+    (((x:l =? empty "g1100545") ∧ (x:s«2» =? x:out "g1100546"))
+     ∨
+     (∃ (x:a x:d x:res) (((x:a : x:d) =? x:l "g1100547") ∧ (((x:a : x:res) =? x:out "g1100548") ∧ (r:appendo x:d x:s x:res)))))))
+  ((∃ (x:q) (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q)) (state () 0 ())))))
 
-(define program (term (add-tags (prog () ((∃ (x:q) (x:q =? "hello")) (state () 0 ()))))))
+#; (define program (term (add-tags (prog () ((∃ (x:q) (x:q =? "hello")) (state () 0 ()))))))
 
 (define init-program program)
 

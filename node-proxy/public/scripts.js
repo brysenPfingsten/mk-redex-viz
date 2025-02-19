@@ -9,38 +9,38 @@ let treeData = {
 
 function redrawTree(treeData) {
     const svg = d3.select("svg").html("").append("g");
-
+    
     const treeLayout = d3.tree()
-        .nodeSize([150, 100]); // Adjust vertical/horizontal spacing
-
+    .nodeSize([150, 100]); // Adjust vertical/horizontal spacing
+    
     const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
     treeLayout(root);
-
+    
     const nodes = root.descendants();
     const links = root.links();
-
+    
     // Calculate bounding box of the tree
     const minX = Math.min(...nodes.map(d => d.x));
     const maxX = Math.max(...nodes.map(d => d.x));
     const minY = Math.min(...nodes.map(d => d.y));
     const maxY = Math.max(...nodes.map(d => d.y));
     const padding = 100; // Increase padding if nodes are clipped
-
+    
     // Calculate total width/height of the tree (including padding)
     const treeWidth = maxX - minX + padding * 2;
     const treeHeight = maxY - minY + padding * 2;
-
+    
     // Set the SVG dimensions and viewBox to encapsulate the entire tree
     d3.select("svg")
-        .attr("width", treeWidth)
-        .attr("height", treeHeight)
-        .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
-        .attr("preserveAspectRatio", "xMidYMid meet"); // Centers content
-
+    .attr("width", treeWidth)
+    .attr("height", treeHeight)
+    .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
+    .attr("preserveAspectRatio", "xMidYMid meet"); // Centers content
+    
     // Draw the tree
     drawLinks(svg, links);
     drawNodes(svg, nodes);
-
+    
     // Debugging: Log key metrics
     console.log("Bounding Box:", { minX, maxX, minY, maxY });
     console.log("SVG Dimensions:", { treeWidth, treeHeight });
@@ -49,52 +49,52 @@ function redrawTree(treeData) {
 
 function drawLinks(svg, links) {
     svg.selectAll(".link")
-        .data(links)
-        .join("path")
-        .attr("class", "link")
-        .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y))
-        .style("stroke", d => (d.target.data.color ? d.target.data.color : "#ccc"))
-        .style("stroke-width", 4);
+    .data(links)
+    .join("path")
+    .attr("class", "link")
+    .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y))
+    .style("stroke", d => (d.target.data.color ? d.target.data.color : "#ccc"))
+    .style("stroke-width", 4);
 }
 
 function drawNodes(svg, nodes) {
     const nodeGroups = svg.selectAll(".node")
-        .data(nodes)
-        .join("g")
-        .attr("class", "node")
-        .attr("transform", d => `translate(${d.x},${d.y})`)
-        .on("click", (event, d) => alert(toString(d.data)));
-
+    .data(nodes)
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .on("click", (event, d) => alert(toString(d.data)));
+    
     addTooltips(nodeGroups);
     drawTree(nodeGroups);
 }
 
 function adjustNodePositions(root) {
     const depthMap = new Map(); // Track x-positions at each depth
-
+    
     root.eachBefore(node => {
         if (!depthMap.has(node.depth)) {
             depthMap.set(node.depth, 0); // Initialize x-tracking at depth
         }
-
+        
         const previousX = depthMap.get(node.depth);
         const nodeWidth = node.data.width || 100; // Set a default width if undefined
         node.x = previousX + nodeWidth / 2; // Assign new x-position
         depthMap.set(node.depth, node.x + nodeWidth / 2 + 20); // Store updated x
     });
-
+    
     return root;
 }
 
 
 function updatePositions(svg, nodes, links) {
     nodes.forEach(d => d.y = d.depth * 150); // Maintain vertical alignment
-
+    
     svg.selectAll(".node")
-        .attr("transform", d => `translate(${d.x},${d.y})`);
-
+    .attr("transform", d => `translate(${d.x},${d.y})`);
+    
     svg.selectAll(".link")
-        .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
+    .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
 }
 
 function updateScrollBar(nodes) {
@@ -103,51 +103,70 @@ function updateScrollBar(nodes) {
     const minY = Math.min(...nodes.map(d => d.y));
     const maxY = Math.max(...nodes.map(d => d.y));
     const padding = 100;
-
+    
     const svgWidth = maxX - minX + padding;
     const svgHeight = maxY - minY + padding;
-
+    
     // Compute the center of the tree
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-
+    
     // Update SVG dimensions
     d3.select("svg")
-        .attr("width", svgWidth)
-        .attr("height", svgHeight)
-        .attr("transform", `translate(${-(minX - padding)}, 0`);
-}
-
-
-
-function toString(node) {
-    if (node.name === "Conjunction" && node.sub) {
-        return `Conjunction\n${subToString(node.sub)}`;
-    }
-    return node.name;
+    .attr("width", svgWidth)
+    .attr("height", svgHeight)
+    .attr("transform", `translate(${-(minX - padding)}, 0`);
 }
 
 function subToString(sub) {
-    return sub.map(({ key, value }) => `${key} ${value}`).join("\n");
+    return sub ? sub.map(({ key, value }) => `${key} => ${value}`).join("\n") : "";
 }
+
+function trailToString(trail) {
+    return trail? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "";
+}
+
+function toString(sub, trail) {
+    return `Substitutions:\n${subToString(sub)}\n\nTrail:\n${trailToString(trail)}`
+}
+
+
+function highlightIDs(ids) {
+    // First, clear any existing highlights.
+    document.querySelectorAll('.hidden-tag.highlight').forEach(el => {
+        el.classList.remove('highlight');
+    });
+    
+    // For each ID in the array, add the highlight class to its corresponding elements.
+    ids.forEach(id => {
+        console.log(id)
+        const elements = document.querySelectorAll(`.hidden-tag[data-id="${id}"]`);
+        elements.forEach(el => {
+            el.classList.add('highlight');
+        });
+    });
+}
+
 
 function addTooltips(nodeGroups) {
     const tooltip = d3.select("body").append("div")
-        .style("position", "absolute")
-        .style("background-color", "white")
-        .style("border", "1px solid #ccc")
-        .style("border-radius", "5px")
-        .style("padding", "5px")
-        .style("visibility", "hidden");
-
-    nodeGroups.filter(d => d.data.sub)
-        .on("mouseover", (event, d) => {
-            tooltip.html(subToString(d.data.sub).replace(/\n/g, "<br>"))
-                .style("left", `${event.pageX + 10}px`)
-                .style("top", `${event.pageY + 10}px`)
-                .style("visibility", "visible");
-        })
-        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+    .style("position", "absolute")
+    .style("background-color", "white")
+    .style("border", "1px solid #ccc")
+    .style("border-radius", "5px")
+    .style("padding", "5px")
+    .style("visibility", "hidden");
+    
+    nodeGroups.filter(d => d.data.sub || d.data.trail)
+    .on("click", (event, d) => {
+        tooltip.html(toString(d.data.sub, d.data.trail).replace(/\n/g, "<br>"))
+        .style("left", `${event.pageX + 10}px`)
+        .style("top", `${event.pageY + 10}px`)
+        .style("visibility", "visible");
+        let ids = d.data.trail.map(trail => trail.id)
+        highlightIDs(ids)
+    })
+    .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
 function fetchAndUpdateTree() {
@@ -194,17 +213,48 @@ function resetTree() {
     .catch(error => console.error("Error:", error));
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("debug-btn").addEventListener("click", () => {
-        console.log("Debug button clicked!");
-        // Do nothing for now
+// Function to update the overlay by processing marker syntax (e.g., [[tag]]...[[/tag]])
+function updateOverlay() {
+    const codeInput = document.getElementById("code-input");
+    const overlay = document.getElementById("highlight-overlay");
+    let code = codeInput.value;
+    
+    // Replace opening markers with a span tag
+    code = code.replace(/\[\[([a-zA-Z0-9_-]+)\]\]/g, (match, p1) => {
+        return `<span class="hidden-tag" data-id="${p1}">`;
     });
+    // Replace closing markers with a span closing tag
+    code = code.replace(/\[\[\/([a-zA-Z0-9_-]+)\]\]/g, "</span>");
+    
+    overlay.innerHTML = code;
+}
 
+// Function to lock the code: disable the textarea and show the overlay
+function lockCode() {
+    const textarea = document.getElementById("code-input");
+    const overlay = document.getElementById("highlight-overlay");
+    
+    // Disable editing
+    textarea.disabled = true;
+    
+    // Process the content to update the overlay
+    updateOverlay();
+    
+    // Change the textarea style so its text becomes transparent
+    textarea.classList.add("locked");
+    
+    // Show the overlay
+    overlay.style.display = "block";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("debug-btn").addEventListener("click", lockCode);
+    
     document.getElementById("reset-btn").addEventListener("click", () => {
         console.log("Reset button clicked!");
         resetTree();
     });
-
+    
     document.getElementById("step-btn").addEventListener("click", () => {
         console.log("Step button clicked!");
         fetchAndUpdateTree();

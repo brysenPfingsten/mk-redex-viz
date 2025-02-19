@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>miniKanren Search Tree</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>miniKanren Search Tree</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="input-container">
-        <textarea placeholder="Enter your miniKanren query here..."></textarea>
-        <div class="button-container">
-            <button id="debug-btn">Debug</button>
-            <button id="reset-btn">Reset</button>
-            <button id="step-btn">Step</button>
-        </div>
+  <div class="input-container">
+    <div class="editor-wrapper">
+      <textarea id="code-input" placeholder="Enter your miniKanren query here..."></textarea>
+      <div id="highlight-overlay"></div>
     </div>
-    
-    <div class="scroll-container">
-        <svg></svg>
+    <div class="button-container">
+      <button id="debug-btn">Debug</button>
+      <button id="reset-btn">Reset</button>
+      <button id="step-btn">Step</button>
     </div>
-
-    <script type="module" src="scripts.js"></script>
+  </div>
+  
+  <div class="scroll-container">
+    <svg></svg>
+  </div>
+  
+  <script type="module" src="scripts.js"></script>
 </body>
 </html>
