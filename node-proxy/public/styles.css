@@ -39,6 +39,14 @@ body {
     background-color: #0056b3; /* Darker blue on hover */
 }
 
+.button-container button:disabled {
+    background-color: gray !important; /* Change button color */
+    color: white !important; /* Change text color */
+    cursor: not-allowed; /* Show "not-allowed" cursor */
+    opacity: 0.6; /* Make it visually different */
+}
+
+
 /* Initially, show the editable textarea and hide the overlay */
 #highlight-overlay {
     display: none;
