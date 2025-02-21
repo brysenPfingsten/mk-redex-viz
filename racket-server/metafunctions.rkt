@@ -8,9 +8,9 @@
 
 (define-metafunction L
   term->mk : t -> any
-  [(term->mk (t_1 : t_2)) `((term->mk t_1) . ,(term->mk t_2))] ; ugh
+  [(term->mk (t_1 : t_2)) (cons (term->mk t_1) (term->mk t_2))] ; ugh
   [(term->mk empty) '()]
-  [(term->mk c) (term ,(string->symbol (string-append "_" (number->string (term c)))))]
+  [(term->mk c) ,(string->symbol (string-append "_" (number->string (term c))))]
   [(term->mk t) t])
 
 (define (reify sub)
@@ -18,10 +18,6 @@
          [freshen (λ (p) (underscore (car p)))]
          [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p)))
                             ,(term (term->mk ,(second p)))))])
-    (display (map freshen sub))
-    (newline)
-    (newline)
-    (display (map unify sub))
     (car (eval `(run* (q) (fresh_ ,(map freshen sub) ,@(map unify sub)))))))
                            
 
