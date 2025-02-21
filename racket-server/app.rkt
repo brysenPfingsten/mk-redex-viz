@@ -45,16 +45,22 @@
 ;; Purpose: Applies one reduction step and sends the new JSON data of that tree
 (define (step)
   (set! history (cons program history)) ; Update the history
-
-  (let* [(tree (term (prog->tree ,program)))  ; Get the search tree
+  (let* [(new-program (car (apply-reduction-relation red (term ,program)))) ; Step once
+         (tree (term (prog->tree ,new-program)))  ; Get the search tree
          (tree-json (term (to-json ,tree)))   ; Convert tree to JSON
-         (response (create-response tree-json))     ; Prepare response
-         (new-program (car (apply-reduction-relation red (term ,program))))] ; Step once
+         (response (create-response tree-json))]     ; Prepare response
 
     (set! program new-program)  ; Update the program
-    (display program) (newline) (newline) (newline) ; Display the program
+    
+    ; (display program) (newline) (newline) (newline) ; Display the program
     
     response))  ; Return the response
+
+;; _ -> response
+;; Purpose: To initialize the tree
+;; Note: this will change once the interpreter is functional
+(define (init-tree)
+  (reset))
 
 
 ;; reset: _ -> response
@@ -64,16 +70,24 @@
   (set! history (list program))
   (send-current-state))
 
-;; back: -> response
+;; send-last-tree: _ -> response
+;; Purpose: Sends the last tree in the history (init-program) with a header indicating it is the last
+(define (send-last-tree)
+  (set! program (first history))
+  (let* ([tree (term (prog->tree ,program))]
+         [tree-json (term (to-json ,tree))])
+    (response/jsexpr tree-json
+                     #:mime-type #"application/json; charset=utf-8"
+                     #:headers (list (make-header #"X-Is-Last" #"true")))))
+
+;; back: _ -> response
 ;; Purpose: Step the programs backwards one step and send that state
 (define (back)
-  (if (empty? history)
-      (response/output
-       (λ (out) (display "" out))
-      #:code 400) ; bad request
+  (if (= (length history) 1)
+      (send-last-tree)
       (begin
-        (set! program (first history))
-        (set! history (rest history))
+        (set! program (car history))
+        (set! history (cdr history))
         (send-current-state))))
 
 
@@ -83,12 +97,15 @@
   (string-join (map path/param-path (url-path (request-uri req))) "/"))
 
 
-;; dispatcher: request -> request
-;; Purpose: Maps the input request to an output request
+;; dispatcher: request -> response
+;; Purpose: Maps the input request to an output response
 (define (dispatcher req)
-  (display req)
+  (display (length history))
+  (newline) (newline) (newline)
+  ; (display req)
   (case (get-path req)
-    [("get") (step)]
+    [("get/next") (step)]
+    [("get/init") (init-tree)]
     [("post/reset") (reset)]
     [("post/back") (back)]))
 

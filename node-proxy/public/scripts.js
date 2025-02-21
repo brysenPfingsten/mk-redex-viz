@@ -7,11 +7,7 @@ const treeData = {
     "children" : []
 }
 
-let history = [treeData]
-let previous
-
 function redrawTree(treeData) {
-    previous = treeData
     const svg = d3.select("svg").html("").append("g");
     
     const treeLayout = d3.tree()
@@ -127,7 +123,7 @@ function subToString(sub) {
 }
 
 function trailToString(trail) {
-    return trail? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "";
+    return trail ? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "";
 }
 
 function toString(sub, trail) {
@@ -173,50 +169,54 @@ function addTooltips(nodeGroups) {
     .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
-function fetchAndUpdateTree() {
-    fetch("/api/get", {  
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+function sendRequest(method, path) {
+    if (method === 'GET') { document.getElementById('back-btn').disabled = false; }
+
+    fetch(path, {
+        method: method,
+        headers: {'Content-Type': 'application/json'}
     })
     .then(response => {
+        if (response.headers.get('X-Is-Last') === 'true') {
+            setDisabled(['back'], true)
+        }
+
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
         return response.text();  
     })
     .then(text => {
         try {
-            console.log(text)
-            const data = JSON.parse(JSON.parse(text));  
-            history.push(previous)
-            console.log(data)
-            redrawTree(data); 
+            const data = JSON.parse(JSON.parse(text));
+            redrawTree(data);
         } catch (error) {
-            console.error("Error parsing JSON:", error);
+            console.error('Error parsing JSON: ', error);
         }
     })
-    .catch(error => console.error("Error:", error));
+    .catch(error => console.error('Error: ', error));
+}
+
+function fetchAndUpdateTree() {
+    sendRequest('GET', 'api/get/next');
 }
 
 function resetTree() {
-    fetch("/api/post/reset", {  
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        history = []
-        return response.text();  
-    })
-    .then(text => {
-        try {
-            console.log(text)
-            const data = JSON.parse(JSON.parse(text));  
-            console.log(data)
-            redrawTree(data); 
-        } catch (error) {
-            console.error("Error parsing JSON:", error);
-        }
-    })
-    .catch(error => console.error("Error:", error));
+    sendRequest('POST', 'api/post/reset');
+}
+
+function back() {
+    sendRequest('POST', 'api/post/back');
+}
+
+function getInit() {
+    sendRequest('GET', 'api/get/init');
+}
+
+function setDisabled(buttons, flag) {
+    if (buttons.includes('debug')) { document.getElementById('debug-btn').disabled = flag };
+    if (buttons.includes('reset')) { document.getElementById('reset-btn').disabled = flag };
+    if (buttons.includes('back')) { document.getElementById('back-btn').disabled = flag };
+    if (buttons.includes('step')) { document.getElementById('step-btn').disabled = flag };
 }
 
 // Function to update the overlay by processing marker syntax (e.g., [[tag]]...[[/tag]])
@@ -237,6 +237,8 @@ function updateOverlay() {
 
 // Function to lock the code: disable the textarea and show the overlay
 function lockCode() {
+    getInit();
+    setDisabled(['reset', 'step'], false)
     const textarea = document.getElementById("code-input");
     const overlay = document.getElementById("highlight-overlay");
     
@@ -253,28 +255,7 @@ function lockCode() {
     overlay.style.display = "block";
 }
 
-function back() {
-    fetch("/api/post/back", {  
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        history = []
-        return response.text();  
-    })
-    .then(text => {
-        try {
-            console.log(text)
-            const data = JSON.parse(JSON.parse(text));  
-            console.log(data)
-            redrawTree(data); 
-        } catch (error) {
-            console.error("Error parsing JSON:", error);
-        }
-    })
-    .catch(error => console.error("Error:", error));
-}
+
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("debug-btn").addEventListener("click", lockCode);
@@ -286,4 +267,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // Initial render
+setDisabled(['reset', 'back', 'step'], true);
 redrawTree(treeData);
