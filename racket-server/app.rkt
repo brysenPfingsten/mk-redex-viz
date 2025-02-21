@@ -8,15 +8,17 @@
          redex
          redex/reduction-semantics)
 
-(require "definitions.rkt" "reduction-relations.rkt" "metafunctions.rkt")
+(require "definitions.rkt"
+         "reduction-relations.rkt"
+         "metafunctions.rkt")
 
 (define program (term (prog
-  ((r:appendo
-    (x:l x:s x:out)
-    (((x:l =? empty "g1100545") ∧ (x:s«2» =? x:out "g1100546"))
-     ∨
-     (∃ (x:a x:d x:res) (((x:a : x:d) =? x:l "g1100547") ∧ (((x:a : x:res) =? x:out "g1100548") ∧ (r:appendo x:d x:s x:res)))))))
-  ((∃ (x:q) (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q)) (state () 0 ())))))
+                       ((r:appendo
+                         (x:l x:s x:out)
+                         (((x:l =? empty "g1100545") ∧ (x:s«2» =? x:out "g1100546"))
+                          ∨
+                          (∃ (x:a x:d x:res) (((x:a : x:d) =? x:l "g1100547") ∧ (((x:a : x:res) =? x:out "g1100548") ∧ (r:appendo x:d x:s x:res)))))))
+                       ((∃ (x:q) (r:appendo ("cat" : ("dog" : empty)) ("bear" : ("lion" : empty)) x:q)) (state () 0 ())))))
 
 (define history (list program))
 
@@ -24,67 +26,76 @@
 
 (define init-program program)
 
-
-;; Define CORS headers
-(define cors-headers
-  (list
-   (header #"Access-Control-Allow-Origin" #"*")
-   (header #"Access-Control-Allow-Methods" #"GET, POST, OPTIONS")
-   (header #"Access-Control-Allow-Headers" #"Content-Type, Authorization")))
+;; create-response: json -> response
+;; Purpose: Create a reponse structure from the given JSON data
+(define (create-response response)
+  (response/jsexpr response
+                   #:mime-type #"application/json; charset=utf-8"))
 
 
-;; API handler that responds with JSON and includes CORS headers
-(define (get-handler req)
-  (begin
-    (define search-tree (term (prog->tree ,program))) ; Get the search tree
-    (define result (term (to-json ,search-tree))) ; Convert it to JSON
-    (set! history (cons program history))
-    (set! program (car (apply-reduction-relation red (term ,program)))) ; Step once
-    (display program) (newline) (newline) (newline); Display the program
-    (response/jsexpr result ; Send response
-                     #:mime-type #"application/json; charset=utf-8"
-                     ;;#:headers cors-headers
-                     )))
+;; send-current-state: _ -> response
+;; Purpose: Creates a response with the current state of the program
+(define (send-current-state)
+  (let* ([tree (term (prog->tree ,program))]
+         [tree-json (term (to-json ,tree))])
+    (create-response tree-json)))
 
-;; OPTIONS request handler for CORS preflight
-(define (options-handler req)
-  (response/output
-   (lambda (out) (display "" out)) 
-   #:code 204 ;; No Content response
-   ;#:headers cors-headers
-   ))
 
+;; step: _ -> response
+;; Purpose: Applies one reduction step and sends the new JSON data of that tree
+(define (step)
+  (set! history (cons program history)) ; Update the history
+
+  (let* [(tree (term (prog->tree ,program)))  ; Get the search tree
+         (tree-json (term (to-json ,tree)))   ; Convert tree to JSON
+         (response (create-response tree-json))     ; Prepare response
+         (new-program (car (apply-reduction-relation red (term ,program))))] ; Step once
+
+    (set! program new-program)  ; Update the program
+    (display program) (newline) (newline) (newline) ; Display the program
+    
+    response))  ; Return the response
+
+
+;; reset: _ -> response
+;; Purpose: Resets the state of the program to the initial state
+(define (reset)
+  (set! program init-program)
+  (set! history (list program))
+  (send-current-state))
+
+;; back: -> response
+;; Purpose: Step the programs backwards one step and send that state
+(define (back)
+  (if (empty? history)
+      (response/output
+       (λ (out) (display "" out))
+      #:code 400) ; bad request
+      (begin
+        (set! program (first history))
+        (set! history (rest history))
+        (send-current-state))))
+
+
+;; get-path: request -> string
+;; Purpose: Gets the path that was pinged as it was on the javascript side
 (define (get-path req)
   (string-join (map path/param-path (url-path (request-uri req))) "/"))
 
-;; POST requester handler for resetting the state
-(define (post-handler req)
-  (display (get-path req))
-  (cond
-    [(equal? (get-path req) "post/reset")
-     (set! program init-program)]
-    [(and (equal? (get-path req) "post/back")
-          (cons? history))
-     (set! program (first history))
-     (set! history (rest history))]
-    [else (void)])
-  (begin
-    (define search-tree (term (prog->tree ,program))) ; Get the search tree
-    (define result (term (to-json ,search-tree))) ; Convert it to JSON
-    (display program) (newline) (newline) (newline); Display the program
-    (response/jsexpr result ; Send response
-                     #:mime-type #"application/json; charset=utf-8"
-                     ;;#:headers cors-headers
-                     )))
 
-;; Dispatcher: Routes requests based on URL and method
+;; dispatcher: request -> request
+;; Purpose: Maps the input request to an output request
 (define (dispatcher req)
   (display req)
-  (cond
-    [(equal? (request-method req) #"OPTIONS") (options-handler req)] ;; Handle preflight
-    [(equal? (request-method req) #"GET") (get-handler req)]
-    [(equal? (request-method req) #"POST") (post-handler req)]
-    [else #f]))
+  (case (get-path req)
+    [("get") (step)]
+    [("post/reset") (reset)]
+    [("post/back") (back)]))
+
 
 ;; Start the server on port 5000
-(serve/servlet dispatcher #:port 5000 #:servlet-regexp #rx"" #:listen-ip "0.0.0.0" #:launch-browser? #f)
+(serve/servlet dispatcher
+               #:port 5000
+               #:servlet-regexp #rx""
+               #:listen-ip "0.0.0.0" ; any
+               #:launch-browser? #f)
