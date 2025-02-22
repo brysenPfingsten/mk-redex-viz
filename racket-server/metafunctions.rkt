@@ -4,7 +4,11 @@
 
 (require "definitions.rkt" "reification.rkt")
 
-(provide to-json prog->tree)                     
+(provide to-json prog->tree)
+
+(define-metafunction L
+  prog->tree : p -> e
+  [(prog->tree (prog Γ e)) e])
 
 (define (extract-name input-str)
   (define re #px"^[x,r]:([a-zA-Z]+)") ;; (x or r):letters ; Stops at the <<...>>
@@ -174,10 +178,6 @@
       (string-append
        "{\"name\": \"Delay\", "
        "\"children\": [" tree-json "]}"))])
-
-(define-metafunction L
-  prog->tree : p -> e
-  [(prog->tree (prog Γ e)) e])
 
 
 

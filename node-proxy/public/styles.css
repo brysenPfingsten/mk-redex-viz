@@ -1,69 +1,90 @@
 body {
-    display: flex;
     margin: 0;
     height: 100vh;
+    font-family: sans-serif;
 }
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
 .input-container {
     flex: 1;
     padding: 20px;
     background-color: #f4f4f4;
     border-right: 1px solid #ccc;
+    box-sizing: border-box;
 }
-.scroll-container {
+
+.right-pane {
     flex: 2;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+
+.step-info-container {
+    padding: 10px 20px;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+    min-height: 40px;
+    overflow: auto;
+}
+
+.scroll-container {
+    flex: 1;
     overflow: auto;
     padding: 20px;
+    box-sizing: border-box;
 }
+
 .button-container {
     display: flex;
-    justify-content: space-around; /* Evenly spaces buttons */
+    justify-content: space-around; 
     margin-top: 10px;
-    gap: 15px; /* Adds spacing between buttons */
+    gap: 15px; 
 }
 
 .button-container button {
-    font-size: 18px; /* Bigger text */
-    padding: 12px 20px; /* Bigger buttons */
-    flex: 1; /* Ensures even width */
-    max-width: 150px; /* Prevents buttons from getting too wide */
-    height: 50px; /* Sets uniform height */
-    border-radius: 8px; /* Rounded corners */
-    border: none; /* Removes default border */
-    background-color: #007bff; /* Blue color */
-    color: white; /* White text */
+    font-size: 18px; 
+    padding: 12px 20px; 
+    flex: 1; 
+    max-width: 150px; 
+    height: 50px;
+    border-radius: 8px;
+    border: none; 
+    background-color: #007bff;
+    color: white;
     cursor: pointer;
     text-align: center;
 }
 
 .button-container button:hover {
-    background-color: #0056b3; /* Darker blue on hover */
+    background-color: #0056b3; 
 }
 
 .button-container button:disabled {
-    background-color: gray !important; /* Change button color */
-    color: white !important; /* Change text color */
-    cursor: not-allowed; /* Show "not-allowed" cursor */
-    opacity: 0.6; /* Make it visually different */
+    background-color: gray !important; 
+    color: white !important; 
+    cursor: not-allowed; 
+    opacity: 0.6; 
 }
 
-
-/* Initially, show the editable textarea and hide the overlay */
 #highlight-overlay {
     display: none;
 }
 
-/* After locking, the textarea’s text is made transparent so the overlay shows */
 textarea.locked {
     color: transparent;
     caret-color: transparent;
 }
 
 .hidden-tag.highlight {
-    background-color: yellow; /* or any style you prefer */
-  }
-  
+    background-color: yellow; 
+}
 
-/* The base styling for the textarea */
 textarea {
     width: 100%;
     height: 90%;
@@ -73,13 +94,10 @@ textarea {
     box-sizing: border-box;
 }
 
-/* NEW: Wrap the textarea in a relatively positioned container */
 .editor-wrapper {
     position: relative;
 }
 
-/* NEW: Position the overlay absolutely on top of the textarea,
-   match its dimensions, and preserve whitespace */
 #highlight-overlay {
     position: absolute;
     top: 0;
@@ -92,10 +110,9 @@ textarea {
     font-size: 14px;
     white-space: pre-wrap;
     word-wrap: break-word;
-    pointer-events: none;  /* Let user interact with the textarea's resize handle */
+    pointer-events: none;
 }
 
-/* Provided styles for D3 elements */
 .node rect {
     fill: lightgray;
     stroke: black;

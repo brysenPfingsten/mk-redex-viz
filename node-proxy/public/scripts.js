@@ -193,7 +193,11 @@ function sendRequest(method, path) {
     .then(text => {
         try {
             const data = JSON.parse(JSON.parse(text));
-            redrawTree(data);
+            const redStep = data.stepName;
+            const stepNum = data.step;
+            const tree = data.program
+            document.getElementById('step-info').innerHTML = `Step: ${stepNum}<br>Reduction Step: ${redStep}`;
+            redrawTree(tree);
         } catch (error) {
             console.error('Error parsing JSON: ', error);
         }
@@ -206,6 +210,7 @@ function fetchAndUpdateTree() {
 }
 
 function resetTree() {
+    setDisabled(['back'], true)
     sendRequest('POST', 'api/post/reset');
 }
 
@@ -242,6 +247,7 @@ function updateOverlay() {
 
 // Function to lock the code: disable the textarea and show the overlay
 function lockCode() {
+    console.log('clicked')
     getInit();
     setDisabled(['reset', 'step'], false)
     const textarea = document.getElementById("code-input");
