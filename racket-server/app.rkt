@@ -49,6 +49,7 @@
          (tree (term (prog->tree ,new-program)))  ; Get the search tree
          (tree-json (term (to-json ,tree)))   ; Convert tree to JSON
          (response (create-response tree-json))]     ; Prepare response
+    (display tree-json)
 
     (set! program new-program)  ; Update the program
     
@@ -100,7 +101,6 @@
 ;; dispatcher: request -> response
 ;; Purpose: Maps the input request to an output response
 (define (dispatcher req)
-  (display (length history))
   (newline) (newline) (newline)
   ; (display req)
   (case (get-path req)
