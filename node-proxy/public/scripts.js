@@ -119,15 +119,20 @@ function updateScrollBar(nodes) {
 }
 
 function subToString(sub) {
-    return sub ? sub.map(({ key, value }) => `${key} => ${value}`).join("\n") : "";
+    return sub ? sub.map(({ key, value }) => `${key} => ${value}`).join("\n") : "\n";
 }
 
 function trailToString(trail) {
-    return trail ? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "";
+    return trail ? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "\n";
 }
 
-function toString(sub, trail) {
-    return `Substitutions:\n${subToString(sub)}\n\nTrail:\n${trailToString(trail)}`
+function reificationToString(reification) {
+    console.log(reification)
+    return reification ? reification.join('\n') : '';
+}
+
+function toString(sub, trail, reification) {
+    return `Substitutions:\n${subToString(sub)}\nTrail:\n${trailToString(trail)}\nCurrent Answer:\n${reificationToString(reification)}`
 }
 
 
@@ -157,9 +162,9 @@ function addTooltips(nodeGroups) {
     .style("padding", "5px")
     .style("visibility", "hidden");
     
-    nodeGroups.filter(d => d.data.sub || d.data.trail)
+    nodeGroups.filter(d => d.data.sub || d.data.trail || d.data.reified)
     .on("click", (event, d) => {
-        tooltip.html(toString(d.data.sub, d.data.trail).replace(/\n/g, "<br>"))
+        tooltip.html(toString(d.data.sub, d.data.trail, d.data.reified).replace(/\n/g, "<br>"))
         .style("left", `${event.pageX + 10}px`)
         .style("top", `${event.pageY + 10}px`)
         .style("visibility", "visible");
@@ -224,7 +229,7 @@ function updateOverlay() {
     const codeInput = document.getElementById("code-input");
     const overlay = document.getElementById("highlight-overlay");
     let code = codeInput.value;
-    
+
     // Replace opening markers with a span tag
     code = code.replace(/\[\[([a-zA-Z0-9_-]+)\]\]/g, (match, p1) => {
         return `<span class="hidden-tag" data-id="${p1}">`;

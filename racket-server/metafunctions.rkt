@@ -1,25 +1,10 @@
 #lang racket
 (require redex)
-(require (rename-in minikanren
-                    (fresh fresh_)))
-(require "definitions.rkt")
+(require (prefix-in mk: minikanren)) 
 
-(provide reify to-json prog->tree)
+(require "definitions.rkt" "reification.rkt")
 
-(define-metafunction L
-  term->mk : t -> any
-  [(term->mk (t_1 : t_2)) (cons (term->mk t_1) (term->mk t_2))] ; ugh
-  [(term->mk empty) '()]
-  [(term->mk c) ,(string->symbol (string-append "_" (number->string (term c))))]
-  [(term->mk t) t])
-
-(define (reify sub)
-  (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
-         [freshen (λ (p) (underscore (car p)))]
-         [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p)))
-                            ,(term (term->mk ,(second p)))))])
-    (car (eval `(run* (q) (fresh_ ,(map freshen sub) ,@(map unify sub)))))))
-                           
+(provide to-json prog->tree)                     
 
 (define (extract-name input-str)
   (define re #px"^[x,r]:([a-zA-Z]+)") ;; (x or r):letters ; Stops at the <<...>>
@@ -138,16 +123,16 @@
   [(to-json ())
    "{\"name\": \"Empty\"}"]
 
-  [(to-json (g (_ sub _ trail)))
+  [(to-json (g (_ sub c trail)))
    ,(let* ([goal-json (term (goal->json g))]
            [sigma-json (term (sub->json sub))]
            [trail-json (term (trail->json trail sub))]
-           #;[reified (reify (term sub))])
+           [reified (reify (term sub) (term c))])
       (string-append
        (substring goal-json 0 (sub1 (string-length goal-json))) ", "
        "\"sub\": [" sigma-json "], "
-       "\"trail\": [" trail-json "]}"
-       #;"\"reified\": " #;reified #;"}"))]
+       "\"trail\": [" trail-json "], "
+       "\"reified\": " reified "}"))]
 
   [(to-json (s_1 +-> s_2))
    ,(let* ([left-json (term (to-json s_1))]
@@ -165,14 +150,16 @@
        "\"children\": [" left-json ", "
        right-json "]}"))]
 
-  [(to-json ((⊤ (_ sub _ trail)) + s))
+  [(to-json ((⊤ (_ sub c trail)) + s))
    ,(let* ([sub-json (term (sub->json sub))]
            [rest-json (term (to-json s))]
-           [trail-json (term (trail->json trail sub))])
+           [trail-json (term (trail->json trail sub))]
+           [reified (reify (term sub) (term c))])
       (string-append
        "{\"name\": \"Answer\", "
        "\"sub\": [" sub-json "], "
        "\"trail\": [" trail-json "], "
+       "\"reified\": " reified ", "
        "\"children\": [" rest-json "]}"))]
 
   [(to-json (s × g))
@@ -195,14 +182,14 @@
 
 
 (define p (term (prog ((r:appendo«597» (x:l«598» x:s«599» x:out«600»)
-                       (((x:l«598» =? empty g14056) ∧ (x:s«599» =? x:out«600» g14057))
-                        ∨
-                        (∃ (x:a«41» x:d«42» x:res«43»)
-                           (((x:a«41» : x:d«42») =? x:l«598» g14058)
-                            ∧ (((x:a«41» : x:res«43») =? x:out«600» g14059)
-                               ∧ (r:appendo«597» x:d«42» x:s«599» x:res«43»)))))))
-      (((⊤ (state ((1 empty)) 3 ((1 =? empty "g14056")))) × (2 =? 0 "g14057"))
-       <-+ ((∃ (x:a«333» x:d«334» x:res«335») (((x:a«333» : x:d«334») =? 1 "g14058")
-                                               ∧ (((x:a«333» : x:res«335») =? 0 "g14059")
-                                                  ∧ (r:appendo«597» x:d«334» 2 x:res«335»))))
-            (state () 3 ()))))))
+                                       (((x:l«598» =? empty g14056) ∧ (x:s«599» =? x:out«600» g14057))
+                                        ∨
+                                        (∃ (x:a«41» x:d«42» x:res«43»)
+                                           (((x:a«41» : x:d«42») =? x:l«598» g14058)
+                                            ∧ (((x:a«41» : x:res«43») =? x:out«600» g14059)
+                                               ∧ (r:appendo«597» x:d«42» x:s«599» x:res«43»)))))))
+                      (((⊤ (state ((1 empty)) 3 ((1 =? empty "g14056")))) × (2 =? 0 "g14057"))
+                       <-+ ((∃ (x:a«333» x:d«334» x:res«335») (((x:a«333» : x:d«334») =? 1 "g14058")
+                                                               ∧ (((x:a«333» : x:res«335») =? 0 "g14059")
+                                                                  ∧ (r:appendo«597» x:d«334» 2 x:res«335»))))
+                            (state () 3 ()))))))
