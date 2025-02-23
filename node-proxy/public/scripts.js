@@ -118,17 +118,30 @@ function updateScrollBar(nodes) {
     .attr("transform", `translate(${-(minX - padding)}, 0`);
 }
 
+function arrayToString(arr) {
+    return "(cons " + arr.map(item => 
+        Array.isArray(item) ? arrayToString(item) : item
+    ).join(" ") + ")";
+}
+
+
+function termToString(term) {
+    if (Array.isArray(term)) { return arrayToString(term); }
+    return term
+}
+
 function subToString(sub) {
-    return sub ? sub.map(({ key, value }) => `${key} => ${value}`).join("\n") : "\n";
+    return sub ? sub.map(({ key, value }) => `${key} => ${termToString(value)}`).join("\n") : "\n";
 }
 
 function trailToString(trail) {
-    return trail ? trail.map(crumb => `(== ${crumb.left} ${crumb.right})`).join("\n") : "\n";
+    return trail ? trail.map(crumb => `(== ${termToString(crumb.left)} ${termToString(crumb.right)})`).join("\n") : "\n";
 }
 
 function reificationToString(reification) {
-    console.log(reification)
-    return reification ? reification.join('\n') : '';
+    if (!reification) { return ''; }
+    if (reification.length === 1) { return reification[0] }
+    return arrayToString(reification)
 }
 
 function toString(sub, trail, reification) {
