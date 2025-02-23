@@ -13,7 +13,7 @@
 
 (define current-prog (term (prog 
                             ((r:appendo (x:l x:s x:out)
-                                        (((x:l =? empty "g1100545") ∧ (x:s«2» =? x:out "g1100546"))
+                                        (((x:l =? empty "g1100545") ∧ (x:s =? x:out "g1100546"))
                                          ∨
                                          (∃ (x:a x:d x:res)
                                             (((x:a : x:d) =? x:l "g1100547")
