@@ -1,5 +1,6 @@
 import { drawTree } from './drawing.js';
 import { addColors, flattenGoalConj } from './tree_setup.js';
+import { toString } from './strings.js';
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
 const treeData = { 
@@ -117,37 +118,6 @@ function updateScrollBar(nodes) {
     .attr("height", svgHeight)
     .attr("transform", `translate(${-(minX - padding)}, 0`);
 }
-
-function arrayToString(arr) {
-    return "(cons " + arr.map(item => 
-        Array.isArray(item) ? arrayToString(item) : item
-    ).join(" ") + ")";
-}
-
-
-function termToString(term) {
-    if (Array.isArray(term)) { return arrayToString(term); }
-    return term
-}
-
-function subToString(sub) {
-    return sub ? sub.map(({ key, value }) => `${key} => ${termToString(value)}`).join("\n") : "\n";
-}
-
-function trailToString(trail) {
-    return trail ? trail.map(crumb => `(== ${termToString(crumb.left)} ${termToString(crumb.right)})`).join("\n") : "\n";
-}
-
-function reificationToString(reification) {
-    if (!reification) { return ''; }
-    if (reification.length === 1) { return reification[0] }
-    return arrayToString(reification)
-}
-
-function toString(sub, trail, reification) {
-    return `Substitutions:\n${subToString(sub)}\nTrail:\n${trailToString(trail)}\nCurrent Answer:\n${reificationToString(reification)}`
-}
-
 
 function highlightIDs(ids) {
     // First, clear any existing highlights.
