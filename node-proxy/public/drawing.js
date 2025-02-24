@@ -1,4 +1,5 @@
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+import { termToString } from './strings.js';
 export { drawTree }
 
 function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
@@ -70,18 +71,18 @@ function drawTextNode(group, textContent, hasSub, padding = 10) {
 }
 
 function drawUnifyNode(group, data) {
-    const textContent = `(== ${data.left} ${data.right})`;
+    const textContent = `(== ${termToString(data.left)} ${termToString(data.right)})`;
     drawTextNode(group, textContent, data.sub);
 }
 
 function drawFreshNode(group, data) {
-    const varsText = data.vars ? data.vars.join(" ") : "";
+    const varsText = data.vars ? data.vars.map(t => t.var).join(' ') : '';
     const textContent = `(fresh (${varsText}) ...)`;
     drawTextNode(group, textContent, data.sub);
 }
 
 function drawRelCallNode(group, data) {
-    const argsText = data.args ? data.args.join(" ") : "";
+    const argsText = data.args ? data.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
     const textContent = `(${data.rel} ${argsText})`;
     drawTextNode(group, textContent, data.sub);
 }

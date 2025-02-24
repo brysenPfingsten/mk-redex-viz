@@ -36,7 +36,7 @@
   [(term->json #t) "\"#t\""]
   [(term->json #f) "\"#f\""]
   [(term->json string) ,(string-append "\"" (term string) "\"")]
-  [(term->json x) ,(string-append "\"" (extract-name (symbol->string (term x))) "\"")]
+  [(term->json x) ,(string-append "{\"var\": \"" (extract-name (symbol->string (term x))) "\"}")]
   [(term->json empty) "\"empty\""]
   [(term->json (t_1 : t_2))
    ,(string-append
