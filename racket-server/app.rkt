@@ -19,9 +19,9 @@
                                             (((x:a : x:d) =? x:l "g1100547")
                                              ∧ (((x:a : x:res) =? x:out "g1100548")
                                                 ∧ (r:appendo x:d x:s x:res)))))))
-                            ((∃ (x:q) (r:appendo
-                                       ("cat" : ("dog" : empty))
-                                       ("bear" : ("lion" : empty))
+                            ((∃ (x:q x:s x:l) (r:appendo
+                                       x:l
+                                       x:s
                                        x:q))
                              (state () 0 ())))))
 

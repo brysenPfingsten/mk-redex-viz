@@ -11,40 +11,76 @@ const treeData = {
 function redrawTree(treeData) {
     const svg = d3.select("svg").html("").append("g");
     
-    const treeLayout = d3.tree()
-    .nodeSize([150, 100]); // Adjust vertical/horizontal spacing
-    
+    // Create hierarchy and prepare data
     const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
-    treeLayout(root);
     
+    // First pass: measure node sizes
+    const tempSvg = d3.select("body").append("svg")
+        .style("position", "absolute")
+        .style("left", "-9999px");
+    const tempNodes = tempSvg.selectAll(".temp-node")
+        .data(root.descendants())
+        .join("g")
+        .attr("class", "temp-node")
+        .attr("transform", d => `translate(${d.x},${d.y})`);
+    
+    // Draw the temp nodes
+    drawTree(tempNodes); 
+    
+    // Measure each node and store dimensions
+    tempNodes.each(function(d) {
+        const bbox = this.getBBox();
+        d.data.measuredWidth = bbox.width;
+        d.data.measuredHeight = bbox.height;
+    });
+    tempSvg.remove();
+
+    // Configure tree layout with dynamic spacing
+    const treeLayout = d3.tree()
+        .nodeSize([1, 100]) // Base horizontal unit, vertical spacing
+        .separation((a, b) => {
+            const padding = 20; // Adjust based on your needs
+            if (a.parent === b.parent) return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding;
+            else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;s
+        });
+
+    // Compute the layout with adjusted spacing
+    treeLayout(root);
+
+    // Calculate dimensions and update SVG
     const nodes = root.descendants();
     const links = root.links();
     
-    // Calculate bounding box of the tree
-    const minX = Math.min(...nodes.map(d => d.x));
-    const maxX = Math.max(...nodes.map(d => d.x));
+    // Calculate bounding box with padding
+    const minX = Math.min(...nodes.map(d => d.x - d.data.measuredWidth/2));
+    const maxX = Math.max(...nodes.map(d => d.x + d.data.measuredWidth/2));
     const minY = Math.min(...nodes.map(d => d.y));
     const maxY = Math.max(...nodes.map(d => d.y));
-    const padding = 100; // Increase padding if nodes are clipped
+    const padding = 50;
     
-    // Calculate total width/height of the tree (including padding)
     const treeWidth = maxX - minX + padding * 2;
     const treeHeight = maxY - minY + padding * 2;
     
-    // Set the SVG dimensions and viewBox to encapsulate the entire tree
     d3.select("svg")
-    .attr("width", treeWidth)
-    .attr("height", treeHeight)
-    .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
-    .attr("preserveAspectRatio", "xMidYMid meet"); // Centers content
-    
-    // Draw the tree
+        .attr("width", treeWidth)
+        .attr("height", treeHeight)
+        .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+
+    // Draw elements
     drawLinks(svg, links);
     drawNodes(svg, nodes);
+}
+
+function drawNodes(svg, nodes) {
+    const nodeGroups = svg.selectAll(".node")
+        .data(nodes)
+        .join("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.x},${d.y})`);
     
-    // Debugging: Log key metrics
-    console.log("Bounding Box:", { minX, maxX, minY, maxY });
-    console.log("SVG Dimensions:", { treeWidth, treeHeight });
+    addTooltips(nodeGroups);
+    drawTree(nodeGroups); 
 }
 
 
@@ -58,66 +94,6 @@ function drawLinks(svg, links) {
     .style("stroke-width", 4);
 }
 
-function drawNodes(svg, nodes) {
-    const nodeGroups = svg.selectAll(".node")
-    .data(nodes)
-    .join("g")
-    .attr("class", "node")
-    .attr("transform", d => `translate(${d.x},${d.y})`)
-    .on("click", (event, d) => alert(toString(d.data)));
-    
-    addTooltips(nodeGroups);
-    drawTree(nodeGroups);
-}
-
-function adjustNodePositions(root) {
-    const depthMap = new Map(); // Track x-positions at each depth
-    
-    root.eachBefore(node => {
-        if (!depthMap.has(node.depth)) {
-            depthMap.set(node.depth, 0); // Initialize x-tracking at depth
-        }
-        
-        const previousX = depthMap.get(node.depth);
-        const nodeWidth = node.data.width || 100; // Set a default width if undefined
-        node.x = previousX + nodeWidth / 2; // Assign new x-position
-        depthMap.set(node.depth, node.x + nodeWidth / 2 + 20); // Store updated x
-    });
-    
-    return root;
-}
-
-
-function updatePositions(svg, nodes, links) {
-    nodes.forEach(d => d.y = d.depth * 150); // Maintain vertical alignment
-    
-    svg.selectAll(".node")
-    .attr("transform", d => `translate(${d.x},${d.y})`);
-    
-    svg.selectAll(".link")
-    .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
-}
-
-function updateScrollBar(nodes) {
-    const minX = Math.min(...nodes.map(d => d.x));
-    const maxX = Math.max(...nodes.map(d => d.x));
-    const minY = Math.min(...nodes.map(d => d.y));
-    const maxY = Math.max(...nodes.map(d => d.y));
-    const padding = 100;
-    
-    const svgWidth = maxX - minX + padding;
-    const svgHeight = maxY - minY + padding;
-    
-    // Compute the center of the tree
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    
-    // Update SVG dimensions
-    d3.select("svg")
-    .attr("width", svgWidth)
-    .attr("height", svgHeight)
-    .attr("transform", `translate(${-(minX - padding)}, 0`);
-}
 
 function highlightIDs(ids) {
     // First, clear any existing highlights.

@@ -41,14 +41,12 @@
     [(symbol? a) (term (term->json ,(symbol->string a)))]
     [(pair? a) (list-answer->json a)]
     [else (term (term->json ,a))]))
-
-                
-
+  
 (define (reify sub c)
   (if (empty? sub)
       "[]"
       (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
-             [freshen (map (λ (i) (string->symbol (string-append "_" (number->string i)))) (range 1 c))]
+             [freshen (map (λ (i) (string->symbol (string-append "_" (number->string i)))) (range 0 c))]
              [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p))) 
                                 ,(term (term->mk ,(second p)))))]
              [ns (make-base-namespace)] ; Create a new namespace

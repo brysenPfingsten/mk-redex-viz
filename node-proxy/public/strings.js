@@ -17,7 +17,7 @@ export function termToString(term) {
     }    
     if (Array.isArray(term)) { return arrayToString(term); }
     if (term === 'empty') { return "'()"}
-    if (typeof term === "string") { return `"${term}"`}
+    if (typeof term === "string" && !term.includes('_.')) { return `"${term}"`}
     if (typeof term === "number") { return `${term}`}
     return term
 }
