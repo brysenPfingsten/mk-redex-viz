@@ -21,8 +21,7 @@ function redrawTree(treeData) {
     const tempNodes = tempSvg.selectAll(".temp-node")
         .data(root.descendants())
         .join("g")
-        .attr("class", "temp-node")
-        .attr("transform", d => `translate(${d.x},${d.y})`);
+        .attr("class", "temp-node");
     
     // Draw the temp nodes
     drawTree(tempNodes); 
@@ -134,18 +133,17 @@ function addTooltips(nodeGroups) {
 }
 
 function sendRequest(method, path) {
-    if (method === 'GET') { document.getElementById('back-btn').disabled = false; }
-
-    fetch(path, {
+    return fetch(path, {
         method: method,
         headers: {'Content-Type': 'application/json'}
     })
     .then(response => {
-        if (response.headers.get('X-Is-Last') === 'true') {
-            setDisabled(['back'], true)
+        if (!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            return false;
         }
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (response.headers.get('X-Is-Last') === 'true' ) { setDisabled(['back'], true); }
 
         return response.text();  
     })
@@ -157,29 +155,52 @@ function sendRequest(method, path) {
             const tree = data.program
             document.getElementById('step-info').innerHTML = `Step: ${stepNum}<br>Reduction Step: ${redStep}`;
             redrawTree(tree);
+            return true;
         } catch (error) {
             console.error('Error parsing JSON: ', error);
+            return false;
         }
     })
-    .catch(error => console.error('Error: ', error));
+    .catch(error => {
+        console.error('Error: ', error)
+        return false;
+    });
 }
 
 function fetchAndUpdateTree() {
-    sendRequest('GET', 'api/get/next');
+    sendRequest('GET', 'api/get/next')
+    .then(success => {
+        if (success) {
+            setDisabled(['reset', 'back'], false);
+            setDisabled(['debug'], true);
+        }
+    });
 }
 
 function resetTree() {
-    setDisabled(['back'], true)
-    sendRequest('POST', 'api/post/reset');
+    sendRequest('POST', 'api/post/reset')
+    .then(success => {
+        if (success) {
+            document.getElementById('code-input').disabled = false;
+            setDisabled(['back'], true);
+            setDisabled(['debug', 'step'], false);
+        }
+    });
 }
 
 function back() {
-    sendRequest('POST', 'api/post/back');
+    sendRequest('POST', 'api/post/back')
 }
 
 function getInit() {
-    sendRequest('GET', 'api/get/init');
+    sendRequest('GET', 'api/get/init')
+    .then(success => {
+        if (success) {
+            setDisabled(['step', 'reset'], false);
+        }
+    });
 }
+
 
 function setDisabled(buttons, flag) {
     if (buttons.includes('debug')) { document.getElementById('debug-btn').disabled = flag };
@@ -206,9 +227,7 @@ function updateOverlay() {
 
 // Function to lock the code: disable the textarea and show the overlay
 function lockCode() {
-    console.log('clicked')
     getInit();
-    setDisabled(['reset', 'step'], false)
     const textarea = document.getElementById("code-input");
     const overlay = document.getElementById("highlight-overlay");
     
@@ -226,15 +245,57 @@ function lockCode() {
 }
 
 
-
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("debug-btn").addEventListener("click", lockCode);
     document.getElementById("back-btn").addEventListener("click", back)
     document.getElementById("reset-btn").addEventListener("click", resetTree);
     document.getElementById("step-btn").addEventListener("click", fetchAndUpdateTree);
+    const container = document.querySelector(".scroll-container");
+
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    function disableSelection() {
+        document.body.style.userSelect = "none"; 
+    }
+
+    function enableSelection() {
+        document.body.style.userSelect = "auto"; 
+    }
+
+    container.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        disableSelection();
+        container.style.cursor = "grabbing";
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+    });
+
+    container.addEventListener("mouseleave", () => {
+        isDragging = false;
+        enableSelection();
+        container.style.cursor = "grab";
+    });
+
+    container.addEventListener("mouseup", () => {
+        isDragging = false;
+        enableSelection();
+        container.style.cursor = "grab";
+    });
+
+    container.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        const walkX = (x - startX) * 1.5; 
+        const walkY = (y - startY) * 1.5;
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    });
 });
-
-
 
 // Initial render
 setDisabled(['reset', 'back', 'step'], true);
