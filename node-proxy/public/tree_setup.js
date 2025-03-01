@@ -5,43 +5,47 @@ function addColors(tree) {
     let children = tree.children
     switch (tree.name) {
         case "<-+":
-            children[0].color = "green";
+            if (tree.sub) break;
+            children[0].color = "orange";
             addColors(children[0]);
             break;
         case "+->":
-            children[1].color = "green";
+            if (tree.sub) break;
+            children[1].color = "orange";
             addColors(children[1]);
             break;
         case "Disjunction":
+            if (tree.sub) break;
             children[0].color = "#FFA500";
             addColors(children[0]);
             break;
         case "Conjunction":
-            children.forEach(c => 
-            {c.color = "#008080";
-                addColors(c)
-            })
+            if (tree.sub) break;
+            children[0].color = "blue";
+            addColors(children[0])
             break;
-        case  "Fresh":
+        case "Fresh":
+            if (tree.sub) break;
             children[0].color = "red";
             addColors(children[0]);
             break;
         case "Goal-Conj":
-            children.forEach(c => c.color = "#9370DB");
-            children.forEach(c => addColors(c));
+            if (tree.sub) break;
+            children[0].color = "purple";
+            addColors(children[0]);
             break;
         case "Goal-Disj":
-            children.forEach(c => {
-                c.color = "#1E90FF";
-                addColors(c)
-            })
+            if (tree.sub) break;
+            children[0].color = "#FF69B4";
+            addColors(children[0]);
             break;
         case "Answer":
-            children[0].color = "#32CD32";
+            children[0].color = "green";
             addColors(children[0]);
             break;
         case "Delay":
-            children[0].color = "#FFBF00";
+            if (tree.sub) break;
+            children[0].color = "black";
             addColors(children[0])
             break;
     }
