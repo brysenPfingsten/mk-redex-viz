@@ -1,4 +1,3 @@
-version: '3'
 services:
   racket-server:
     image: racket-server

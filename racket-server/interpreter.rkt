@@ -1,10 +1,27 @@
 #lang racket
-(require racket/struct)
+(require racket/struct
+         racket/generic
+         redex
+         "definitions.rkt")
 
 (provide parse-prog)
 
+(define-generics expr
+  (transpile expr))
+
+(struct test (val)
+  #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     "hello")])
+
 (struct prog (relations query)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (prog r q) this)
+     (term (prog ,(map transpile r) ,(transpile q))))]
+  
   #:methods  gen:custom-write
   [(define (write-proc pv op om)
      (match-define (prog r q) pv)
@@ -12,6 +29,11 @@
 
 (struct fresh (vars goal)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (fresh v g) this)
+     (term (term (∃ ,(map transpile v) ,(transpile g)))))]
+  
   #:methods gen:custom-write
   [(define (write-proc fv op om)
      (match-define (fresh v g) fv)
@@ -19,6 +41,11 @@
 
 (struct disj (g1 g2)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (disj g1 g2) this)
+     (term (,(transpile g1) ∨ ,(transpile g2))))]
+  
   #:methods gen:custom-write
   [(define (write-proc disj-val output-port output-mode)
      (match-define (disj g1 g2) disj-val)
@@ -26,6 +53,11 @@
 
 (struct conj (g1 g2)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (conj g1 g2) this)
+     (term (,(transpile g1) ∧ ,(transpile g2))))]
+  
   #:methods gen:custom-write
   [(define (write-proc conj-val output-port output-mode)
      (match-define (conj g1 g2) conj-val)
@@ -33,6 +65,11 @@
 
 (struct unify (t1 t2)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (unify t1 t2) this)
+     (term (,(transpile t1) =? ,(transpile t2))))]
+  
   #:methods gen:custom-write
   [(define (write-proc unify-val op om)
      (match-define (unify t1 t2) unify-val)
@@ -40,18 +77,31 @@
 
 (struct succeed ()
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (term ⊤))]
+  
   #:methods gen:custom-write
   [(define (write-proc sv op om)
      (fprintf op "⊤"))])
 
 (struct fail ()
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (term ⊥))]
+  
   #:methods gen:custom-write
   [(define (write-proc fv op om)
      (fprintf op "⊥"))])
 
 (struct relcall (name terms)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (relcall n t) this)
+     (term (,(transpile n) ,@(map transpile t))))]
+  
   #:methods gen:custom-write
   [(define (write-proc rcv op om)
      (match-define (relcall n t) rcv)
@@ -59,24 +109,43 @@
 
 (struct nil ()
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (term empty))]
+  
   #:methods gen:custom-write
   [(define (write-proc nv op om)
      (fprintf op "empty"))])
 
 (struct bool (b)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (bool b) this)
+     (term ,b))]
+  
   #:methods gen:custom-write
   [(define (write-proc bv op om)
      (fprintf op "~a" (bool-b bv)))])
 
 (struct konst (k)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (konst k) this)
+     (term ,k))]
+  
   #:methods gen:custom-write
   [(define (write-proc kv op om)
      (fprintf op "\"~a\"" (konst-k kv)))])
 
 (struct kons (a d)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (kons a d) this)
+     (term (,(transpile a) : ,(transpile d))))]
+  
   #:methods gen:custom-write
   [(define (write-proc kv op om)
      (match-define (kons a d) kv)
@@ -84,29 +153,51 @@
 
 (struct var (v)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (var v) this)
+     (term ,(string->symbol (string-append "x:" (symbol->string v)))))]
+  
   #:methods gen:custom-write
   [(define (write-proc vv op om)
      (fprintf op "x:~a" (var-v vv)))])
 
 (struct relname (name)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (relname name) this)
+     (term ,(string->symbol (string-append "r:" (symbol->string name)))))]
+  
   #:methods gen:custom-write
   [(define (write-proc rnv op om)
      (fprintf op "r:~a" (relname-name rnv)))])
 
 (struct defrel (name lop goal)
   #:transparent
-  #:methods gen:custom-write
-  [(define (write-proc dv op om)
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (defrel name lop goal) this)
+     (term (,(transpile name) ,(map transpile lop) ,(transpile goal))))]
+  
+  ;#:methods gen:custom-write
+  #;[(define (write-proc dv op om)
      (match-define (defrel dv-name dv-lop dv-goal) dv)
      (fprintf op "~a" `(,(relname dv-name) ,dv-lop ,dv-goal)))])
 
 (struct run (n q goal)
   #:transparent
+  #:methods gen:expr
+  [(define (transpile this)
+     (match-define (run n q goal) this)
+     (term ((∃ (,q) ,(transpile goal)) (state () 0))))]
+  
   #:methods gen:custom-write
   [(define (write-proc rv op om)
      (match-define (run n q goal) rv)
      (fprintf op "((∃ (~a) ~a) (state () 0))" q goal))])
+
+
 
 (define (parse-run r)
   (match r
@@ -119,7 +210,7 @@
 (define (parse-relation-def a-relation)
   (match a-relation
     [`(defrel (,r . ,params) ,g) (defrel
-                                   r
+                                   (relname r)
                                    (map var params)
                                    (parse-goal g))]))
 
@@ -264,5 +355,24 @@
                     (∃ x:car x:table-cdr
                        ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
+
+(transpile (parse-prog
+ '(defrel (appendo l s out)
+  (conde
+   [(== l '()) (== out s)]
+   [(fresh (a d res)
+      (== l `(,a . ,d))
+      (== out `(,a . ,res))
+      (appendo d s res))]))
+
+'(defrel (reverseo ls out)
+  (conde
+   [(== ls '()) (== out '())]
+   [(fresh (a d res)
+      (== ls `(,a . ,d))
+      (reverseo d res)
+      (appendo res `(,a) out))]))
+
+'(run* (q) (reverseo '(dog cat bear lion) q))))
 
     
