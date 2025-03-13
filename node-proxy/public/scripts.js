@@ -133,11 +133,18 @@ function addTooltips(nodeGroups) {
     .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
-function sendRequest(method, path) {
-    return fetch(path, {
+function sendRequest(method, path, msg="") {
+    const options = {
         method: method,
-        headers: {'Content-Type': 'application/json'}
-    })
+        headers: { 'Content-Type': 'application/json' }
+    };
+
+    // Only attach body if the method supports it
+    if (method !== "GET" && method !== "HEAD") {
+        options.body = JSON.stringify({ text: msg });
+    }
+
+    return fetch(path, options)
     .then(response => {
         if (!response.ok) {
             console.error(`HTTP error! Status: ${response.status}`);
@@ -194,7 +201,8 @@ function back() {
 }
 
 function getInit() {
-    sendRequest('GET', 'api/get/init')
+    const text = document.getElementById('code-input').value
+    sendRequest('POST', 'api/post/init', text)
     .then(success => {
         if (success) {
             setDisabled(['step', 'reset'], false);

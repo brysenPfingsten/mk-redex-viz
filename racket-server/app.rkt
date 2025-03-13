@@ -3,11 +3,13 @@
          web-server/http
          net/url-structs
          json
-         redex/reduction-semantics)
+         redex/reduction-semantics
+         web-server/http/bindings)
 
 (require "definitions.rkt"
          "reduction-relations.rkt"
-         "metafunctions.rkt")
+         "metafunctions.rkt"
+         "transpiler.rkt")
 
 (define-struct state (red-step json prog))
 
@@ -20,9 +22,9 @@
                                              ∧ (((x:a : x:res) =? x:out "g1100548")
                                                 ∧ (r:appendo x:d x:s x:res)))))))
                             ((∃ (x:q x:s x:l) (r:appendo
-                                       x:l
-                                       x:s
-                                       x:q))
+                                               x:l
+                                               x:s
+                                               x:q))
                              (state () 0 ())))))
 
 (define init-prog current-prog)
@@ -71,11 +73,32 @@
         (set! current (list-ref history index))
         (send-current-state))))
 
-;; _ -> response
+(define (read-all port)
+  (let ([expr (read port)])
+    (if (eof-object? expr)
+        '()  ;; Stop when EOF is reached
+        (cons expr (read-all port)))))
+
+;; request -> response
 ;; Purpose: To initialize the tree
 ;; Note: this will change once the interpreter pipeline is functional
-(define (init-tree)
-  (reset))
+(define (init-tree req)
+  (define json-data (request-post-data/raw req))
+  (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))
+  (define sexpr-prog (read-all (open-input-string raw-prog)))
+
+  (set! current-prog (parse-prog sexpr-prog))
+
+  (set! init-prog current-prog)
+  (set! init-state (state "Initialize program"
+                            (term (to-json (prog->tree ,current-prog)))
+                            init-prog))
+
+  (set! history '())
+  (set! current init-state)
+  (set! index 0)
+  
+  (send-current-state))
 
 
 ;; reset: _ -> response
@@ -94,8 +117,8 @@
   (let* ([red-step (state-red-step current)]
          [json-data (state-json current)]
          [response (string-append "{\"stepName\": \"" red-step "\", "
-                                 "\"step\": \"" (number->string index) "\", "
-                                 "\"program\": " json-data "}")])
+                                  "\"step\": \"" (number->string index) "\", "
+                                  "\"program\": " json-data "}")])
     (response/jsexpr response
                      #:mime-type #"application/json; charset=utf-8"
                      #:headers (list (make-header #"X-Is-Last" #"true")))))
@@ -120,10 +143,9 @@
 ;; dispatcher: request -> response
 ;; Purpose: Maps the input request to an output response
 (define (dispatcher req)
-  ; (display req)
   (case (get-path req)
     [("get/next") (step)]
-    [("get/init") (init-tree)]
+    [("post/init") (init-tree req)]
     [("post/reset") (reset)]
     [("post/back") (back)]))
 
