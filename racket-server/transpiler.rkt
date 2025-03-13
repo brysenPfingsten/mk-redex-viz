@@ -130,7 +130,7 @@
 ;; defrels run -> model program
 ;; Translate the relation definitions and run query of a minikanren
 ;; program into our redex syntax
-(define (parse-prog x . p)
+(define (parse-prog l)
   (define defrels '())
   (define run '())
 
@@ -141,7 +141,7 @@
        [`(run . ,d)    (set! run expr)]
        [`(run* . ,d)   (set! run expr)]
        [else (error "Not a defrel or run form")]))
-   (cons x p)) 
+   l) 
 
   (term (add-tags ,(transpile (prog (parse-relation-defs (reverse defrels)) (parse-run run)))))) ;; Reverse defrels to maintain same order
  
@@ -210,7 +210,7 @@
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
 (redex-match? L p (parse-prog
- '(defrel (appendo l s out)
+ '((defrel (appendo l s out)
   (conde
    [(== l '()) (== out s)]
    [(fresh (a d res)
@@ -218,7 +218,7 @@
       (== out `(,a . ,res))
       (appendo d s res))]))
 
-'(defrel (reverseo ls out)
+(defrel (reverseo ls out)
   (conde
    [(== ls '()) (== out '())]
    [(fresh (a d res)
@@ -226,6 +226,6 @@
       (reverseo d res)
       (appendo res `(,a) out))]))
 
-'(run* (q) (reverseo '(dog cat bear lion) q))))
+(run* (q) (reverseo '(dog cat bear lion) q)))))
 
     

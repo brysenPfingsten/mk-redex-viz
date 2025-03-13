@@ -17,6 +17,7 @@ COPY reduction-relations.rkt .
 COPY judgment-forms.rkt .
 COPY app.rkt .
 COPY reification.rkt .
+COPY transpiler.rkt .
  
 ENV PLTSTDERR=error
 ENV DISPLAY=:99
