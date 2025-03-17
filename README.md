@@ -21,3 +21,14 @@ docker-compose build
 docker-compose up
 ```
 Finally, visit [localhost:3000](http://localhost:3000).
+
+## **Configuration**
+
+The Docker images expect an amd64 platform. Users on Apple Silicon or other arm64 based architectures,
+will need to work around this, by either
+
+- Set the `DOCKER_DEFAULT_PLATFORM` environment variable (permanently
+  by adding `export DOCKER_DEFAULT_PLATFORM=linux/amd64` to your
+  `bashrc`) or
+- If you regularly use Docker for other purposes, you could add a
+  `platform` to the YAML file found in this directory
