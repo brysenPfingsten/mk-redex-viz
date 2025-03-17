@@ -24,6 +24,17 @@
 (struct defrel (name lop goal) #:transparent)
 (struct run (n q goal) #:transparent)
 
+(define GUIDS '())
+
+(define next-g-id
+  (let ([counter 0])
+    (λ ()
+      (define next-guid (string-append "g" (number->string counter)))
+      (set! counter (add1 counter))
+      (set! GUIDS (cons next-guid GUIDS))
+      next-guid
+      )))
+
 (define (transpile expr)
   (cond
     [(prog? expr)
@@ -37,16 +48,17 @@
     [(conde? expr)
      (let ([clauses (conde-clauses expr)])
        (foldr (λ (c a) (term (,(transpile c) ∨ ,a)))
-              (car clauses)
-              (cdr clauses)))]
+              (transpile (last clauses))
+              (remove-last clauses)))]
     [(conj? expr)
      (let ((g1 (conj-g1 expr))
            (g2 (conj-g2 expr)))
        (term (,(transpile g1) ∧ ,(transpile g2))))]
     [(unify? expr)
      (let ((t1 (unify-t1 expr))
-           (t2 (unify-t2 expr)))
-       (term (,(transpile t1) =? ,(transpile t2))))]
+           (t2 (unify-t2 expr))
+           (guid (next-g-id)))
+       (term (,(transpile t1) =? ,(transpile t2) ,guid)))]
     [(succeed? expr)
      (term ⊤)]
     [(fail? expr)
@@ -89,29 +101,38 @@
         '()
         (cons (car lst) (remove-last (cdr lst)))))
 
+(define (term->string t)
+  (match t
+    [(var v) #:when (var? t) (format ",~a" v)]
+    [else (add-guids t '())]))
+
 (define (kons->string l)
   (match l
-    [(kons a (kons ad nil)) #:when (nil? nil)
-     (format "~a . ~a"
-             (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))
-             (if (var? ad) (format ",~a" (var-v ad)) (add-guids ad '())))]
     [(kons a nil) #:when (nil? nil)
-      (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))]
+      (kons->string a)]
+    [(kons a ad) #:when (not (kons? ad))
+     (format "~a . ~a"
+             (kons->string a)
+             (kons->string ad))]
     [(kons a d)
-     (format "~a ~a "
-             (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))
-             (kons->string d))])) 
+     (format "~a ~a"
+             (kons->string a)
+             (kons->string d))]
+    [(var v) #:when (var? l)
+     (format ",~a" (var-v v))]
+    [(konst k) #:when (konst? l)
+               (format "~a" k)])) 
 
-(define (add-guids expr guids)
+(define (add-guids expr)
   (cond
     [(prog? expr)
      (let* ([rels (prog-relations expr)]
             [query (prog-query expr)]
             [rel-strings
-             (map (λ (rel) (add-guids rel guids))
+             (map (λ (rel) (add-guids rel))
                   rels)]
             [rels-joined (string-join rel-strings "\n\n")]
-            [query-string (add-guids query guids)])
+            [query-string (add-guids query)])
        (string-append rels-joined
                       "\n\n"
                       query-string))]
@@ -122,20 +143,20 @@
            [g    (fresh-goal expr)])
        (format "(fresh (~a) ~a)"
                ;; Recursively annotate each var’s name
-               (string-join (map (λ (v) (add-guids v guids))
+               (string-join (map (λ (v) (add-guids v))
                                  vars)
                             " ")
                ;; Recursively annotate the sub‐goal
-               (add-guids g guids)))]
+               (add-guids g)))]
 
     ;; A "disj" node: (disj g1 g2)
     [(conde? expr)
      (let ([clauses (conde-clauses expr)])
        (format "(conde\n~a)"
-       (foldl (λ (c a) (string-append "[" (add-guids c guids) "]"
+       (foldl (λ (c a) (string-append "[" (add-guids c) "]"
                                       "\n"
                                       a))
-              (add-guids (last clauses) guids)
+              (add-guids (last clauses))
               (remove-last clauses))))]
 
     ;; A "conj" node: (conj g1 g2)
@@ -143,20 +164,20 @@
      (let ([g1 (conj-g1 expr)]
            [g2 (conj-g2 expr)])
        (format "~a\n~a)"
-               (add-guids g1 guids)
-               (add-guids g2 guids)))]
+               (add-guids g1)
+               (add-guids g2)))]
 
-    ;; The big one: unify node => insert bracket tags. Then recursively call add-guids on t1/t2.
+    ;; unify => insert bracket tags. Then recursively call add-guids on t1/t2.
     [(unify? expr)
      (let* ([t1   (unify-t1 expr)]
             [t2   (unify-t2 expr)]
-            [guid (car guids)])
-       (set! guids (cdr guids))  ; consume one GUID
+            [guid (car GUIDS)])
+       (set! GUIDS (cdr GUIDS)) 
        ;; Insert bracket tags around the unify
        (format "[[~a]](== ~a ~a)[[/~a]]"
                guid
-               (add-guids t1 guids)   ; ensure sub‐terms are also processed
-               (add-guids t2 guids)
+               (add-guids t1)   
+               (add-guids t2)
                guid))]
 
     ;; Relation call, e.g. (relcall? expr)
@@ -164,8 +185,8 @@
      (let ([name  (relcall-name expr)]
            [terms (relcall-terms expr)])
        (format "(~a ~a)"
-               (add-guids name guids)
-               (string-join (map (λ (t) (add-guids t guids)) terms)
+               (add-guids name)
+               (string-join (map (λ (t) (add-guids t)) terms)
                             " ")))]
 
     ;; Nil => '()
@@ -182,7 +203,7 @@
 
     ;; Kons => produce (cons subA subD), or transform to backtick forms if you like
     [(kons? expr)
-     (kons->string expr)]
+     (format "`(~a)" (kons->string expr))]
 
     ;; A variable => output the symbol name
     [(var? expr)
@@ -198,11 +219,11 @@
            [lop   (defrel-lop expr)]
            [goal  (defrel-goal expr)])
        (format "(defrel (~a ~a)\n  ~a)"
-               (add-guids rname guids)
+               (add-guids rname)
                (string-join
-                (map (λ (v) (add-guids v guids)) lop)
+                (map (λ (v) (add-guids v)) lop)
                 " ")
-               (add-guids goal guids)))]
+               (add-guids goal)))]
 
     ;; A run => (run N (q) goal)
     [(run? expr)
@@ -211,8 +232,8 @@
            [goal (run-goal expr)])
        (format "(run~a (~a) ~a)"
                (if (= n +inf.0) "*" (format " ~a" n))
-               (add-guids q guids)
-               (add-guids goal guids)))]
+               (add-guids q)
+               (add-guids goal)))]
     [else
      (error "Unrecognized AST node in add-guids" expr)]))
 
@@ -258,6 +279,7 @@
     [(cons qta qtb) (kons (parse-term-within-quote qta)
                           (parse-term-within-quote qtb))]
     [s #:when (symbol? s) (konst (symbol->string s))]
+    [s #:when (string? s) (konst s)]
     [b #:when (boolean? b) (bool b)]
     ['() (nil)]))
 
@@ -292,6 +314,7 @@
 (define (parse-prog l)
   (define defrels '())
   (define run '())
+  (set! GUIDS '())
 
   (map
    (λ (expr)
@@ -302,8 +325,11 @@
        [else (error "Not a defrel or run form")]))
    l) 
 
-  #;(term (add-tags ,(transpile (prog (parse-relation-defs (reverse defrels)) (parse-run run)))))
-  (add-guids (prog (parse-relation-defs (reverse defrels)) (parse-run run)) '(g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g14))) ;; Reverse defrels to maintain same order
+  (define AST (prog (parse-relation-defs (reverse defrels)) (parse-run run)))
+  (define REDEX-PROG (transpile AST))
+  (set! GUIDS (reverse GUIDS))
+  (define GUID-PROG (add-guids AST))
+  `(,REDEX-PROG . ,GUID-PROG))
  
 #;(parse-relation-defs '( 
                          (defrel (assoco key table value)
@@ -369,7 +395,7 @@
                        ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
-(redex-match? L p (parse-prog
+(parse-prog
                    '((defrel (appendo l s out)
                        (conde
                         [(== l '()) (== out s)]
@@ -386,6 +412,6 @@
                            (reverseo d res)
                            (appendo res `(,a) out))]))
 
-                     (run* (q) (reverseo '(dog cat bear lion) q)))))
+                     (run* (q) (reverseo '(dog cat bear lion) q))))
 
     
