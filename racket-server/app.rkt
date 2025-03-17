@@ -81,7 +81,6 @@
 
 ;; request -> response
 ;; Purpose: To initialize the tree
-;; Note: this will change once the interpreter pipeline is functional
 (define (init-tree req)
   (define json-data (request-post-data/raw req))
   (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))

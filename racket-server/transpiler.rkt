@@ -8,6 +8,7 @@
 
 (struct prog (relations query) #:transparent)
 (struct fresh (vars goal) #:transparent)
+(struct conde (clauses) #:transparent)
 (struct disj (g1 g2) #:transparent)
 (struct conj (g1 g2) #:transparent)
 (struct unify (t1 t2) #:transparent)
@@ -25,31 +26,197 @@
 
 (define (transpile expr)
   (cond
-    [(prog? expr) (let ((r (prog-relations expr)) (q (prog-query expr)))
-                    (term (prog ,(map transpile r) ,(transpile q))))]
-    [(fresh? expr) (let ((vs (fresh-vars expr)) (g (fresh-goal expr)))
-                     (term (∃ ,(map transpile vs) ,(transpile g))))]
-    [(disj? expr) (let ((g1 (disj-g1 expr)) (g2 (disj-g2 expr)))
-                    (term (,(transpile g1) ∨ ,(transpile g2))))]
-    [(conj? expr) (let ((g1 (conj-g1 expr)) (g2 (conj-g2 expr)))
-                    (term (,(transpile g1) ∧ ,(transpile g2))))]
-    [(unify? expr) (let ((t1 (unify-t1 expr)) (t2 (unify-t2 expr)))
-                     (term (,(transpile t1) =? ,(transpile t2))))]
-    [(succeed? expr) (term ⊤)]
-    [(fail? expr) (term ⊥)]
-    [(relcall? expr) (let ((name (relcall-name expr)) (terms (relcall-terms expr)))
-                       (term (,(transpile name) ,@(map transpile terms))))]
-    [(nil? expr) (term empty)]
-    [(bool? expr) (let ((b (bool-b expr))) b)]
-    [(konst? expr) (let ((k (konst-k expr))) k)]
-    [(kons? expr) (let ((a (kons-a expr)) (d (kons-d expr)))
-                     (term (,(transpile a) : ,(transpile d))))]
-    [(var? expr) (let ((v (var-v expr))) (string->symbol (string-append "x:" (symbol->string v))))]
-    [(relname? expr) (let ((name (relname-name expr))) (string->symbol (string-append "r:" (symbol->string name))))]
-    [(defrel? expr) (let ((name (defrel-name expr)) (lop (defrel-lop expr)) (goal (defrel-goal expr)))
-                      (term (,(transpile name) ,(map transpile lop) ,(transpile goal))))]
-    [(run? expr) (let ((n (run-n expr)) (q (run-q expr)) (goal (run-goal expr)))
-                    (term ((∃ (,(transpile q)) ,(transpile goal)) (state () 0 ()))))]))
+    [(prog? expr)
+     (let [(r (prog-relations expr))
+           (q (prog-query expr))]
+       (term (prog ,(map transpile r) ,(transpile q))))]
+    [(fresh? expr)
+     (let ((vs (fresh-vars expr))
+           (g (fresh-goal expr)))
+       (term (∃ ,(map transpile vs) ,(transpile g))))]
+    [(conde? expr)
+     (let ([clauses (conde-clauses expr)])
+       (foldr (λ (c a) (term (,(transpile c) ∨ ,a)))
+              (car clauses)
+              (cdr clauses)))]
+    [(conj? expr)
+     (let ((g1 (conj-g1 expr))
+           (g2 (conj-g2 expr)))
+       (term (,(transpile g1) ∧ ,(transpile g2))))]
+    [(unify? expr)
+     (let ((t1 (unify-t1 expr))
+           (t2 (unify-t2 expr)))
+       (term (,(transpile t1) =? ,(transpile t2))))]
+    [(succeed? expr)
+     (term ⊤)]
+    [(fail? expr)
+     (term ⊥)]
+    [(relcall? expr)
+     (let ((name (relcall-name expr))
+           (terms (relcall-terms expr)))
+       (term (,(transpile name) ,@(map transpile terms))))]
+    [(nil? expr)
+     (term empty)]
+    [(bool? expr)
+     (let ((b (bool-b expr)))
+       b)]
+    [(konst? expr)
+     (let ((k (konst-k expr)))
+       k)]
+    [(kons? expr)
+     (let ((a (kons-a expr))
+           (d (kons-d expr)))
+       (term (,(transpile a) : ,(transpile d))))]
+    [(var? expr)
+     (let ((v (var-v expr)))
+       (string->symbol (string-append "x:" (symbol->string v))))]
+    [(relname? expr)
+     (let ((name (relname-name expr)))
+       (string->symbol (string-append "r:" (symbol->string name))))]
+    [(defrel? expr)
+     (let ((name (defrel-name expr))
+           (lop (defrel-lop expr))
+           (goal (defrel-goal expr)))
+       (term (,(transpile name) ,(map transpile lop) ,(transpile goal))))]
+    [(run? expr)
+     (let ((n (run-n expr))
+           (q (run-q expr))
+           (goal (run-goal expr)))
+       (term ((∃ (,(transpile q)) ,(transpile goal)) (state () 0 ()))))]))
+
+(define (remove-last lst)
+    (if (null? (cdr lst))
+        '()
+        (cons (car lst) (remove-last (cdr lst)))))
+
+(define (kons->string l)
+  (match l
+    [(kons a (kons ad nil)) #:when (nil? nil)
+     (format "~a . ~a"
+             (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))
+             (if (var? ad) (format ",~a" (var-v ad)) (add-guids ad '())))]
+    [(kons a nil) #:when (nil? nil)
+      (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))]
+    [(kons a d)
+     (format "~a ~a "
+             (if (var? a) (format ",~a" (var-v a)) (add-guids a '()))
+             (kons->string d))])) 
+
+(define (add-guids expr guids)
+  (cond
+    [(prog? expr)
+     (let* ([rels (prog-relations expr)]
+            [query (prog-query expr)]
+            [rel-strings
+             (map (λ (rel) (add-guids rel guids))
+                  rels)]
+            [rels-joined (string-join rel-strings "\n\n")]
+            [query-string (add-guids query guids)])
+       (string-append rels-joined
+                      "\n\n"
+                      query-string))]
+
+    ;; A "fresh" node:  (fresh (v1 v2 ...) goal)
+    [(fresh? expr)
+     (let ([vars (fresh-vars expr)]
+           [g    (fresh-goal expr)])
+       (format "(fresh (~a) ~a)"
+               ;; Recursively annotate each var’s name
+               (string-join (map (λ (v) (add-guids v guids))
+                                 vars)
+                            " ")
+               ;; Recursively annotate the sub‐goal
+               (add-guids g guids)))]
+
+    ;; A "disj" node: (disj g1 g2)
+    [(conde? expr)
+     (let ([clauses (conde-clauses expr)])
+       (format "(conde\n~a)"
+       (foldl (λ (c a) (string-append "[" (add-guids c guids) "]"
+                                      "\n"
+                                      a))
+              (add-guids (last clauses) guids)
+              (remove-last clauses))))]
+
+    ;; A "conj" node: (conj g1 g2)
+    [(conj? expr)
+     (let ([g1 (conj-g1 expr)]
+           [g2 (conj-g2 expr)])
+       (format "~a\n~a)"
+               (add-guids g1 guids)
+               (add-guids g2 guids)))]
+
+    ;; The big one: unify node => insert bracket tags. Then recursively call add-guids on t1/t2.
+    [(unify? expr)
+     (let* ([t1   (unify-t1 expr)]
+            [t2   (unify-t2 expr)]
+            [guid (car guids)])
+       (set! guids (cdr guids))  ; consume one GUID
+       ;; Insert bracket tags around the unify
+       (format "[[~a]](== ~a ~a)[[/~a]]"
+               guid
+               (add-guids t1 guids)   ; ensure sub‐terms are also processed
+               (add-guids t2 guids)
+               guid))]
+
+    ;; Relation call, e.g. (relcall? expr)
+    [(relcall? expr)
+     (let ([name  (relcall-name expr)]
+           [terms (relcall-terms expr)])
+       (format "(~a ~a)"
+               (add-guids name guids)
+               (string-join (map (λ (t) (add-guids t guids)) terms)
+                            " ")))]
+
+    ;; Nil => '()
+    [(nil? expr)
+     "'()"]
+
+    ;; Boolean => #t or #f
+    [(bool? expr)
+     (if (bool-b expr) "#t" "#f")]
+
+    ;; Konstant => just output its contents as a string, or `'abc`
+    [(konst? expr)
+     (konst-k expr)]
+
+    ;; Kons => produce (cons subA subD), or transform to backtick forms if you like
+    [(kons? expr)
+     (kons->string expr)]
+
+    ;; A variable => output the symbol name
+    [(var? expr)
+     (symbol->string (var-v expr))]
+
+    ;; A relation name => output the symbol name
+    [(relname? expr)
+     (symbol->string (relname-name expr))]
+
+    ;; A defrel => typical minikanren form (defrel (name var...) goal)
+    [(defrel? expr)
+     (let ([rname (defrel-name expr)]
+           [lop   (defrel-lop expr)]
+           [goal  (defrel-goal expr)])
+       (format "(defrel (~a ~a)\n  ~a)"
+               (add-guids rname guids)
+               (string-join
+                (map (λ (v) (add-guids v guids)) lop)
+                " ")
+               (add-guids goal guids)))]
+
+    ;; A run => (run N (q) goal)
+    [(run? expr)
+     (let ([n    (run-n expr)]
+           [q    (run-q expr)]
+           [goal (run-goal expr)])
+       (format "(run~a (~a) ~a)"
+               (if (= n +inf.0) "*" (format " ~a" n))
+               (add-guids q guids)
+               (add-guids goal guids)))]
+    [else
+     (error "Unrecognized AST node in add-guids" expr)]))
+
+
 
 
 (define (parse-run r)
@@ -71,7 +238,7 @@
 (define (parse-goal goal)
   (match goal
     [`(fresh ,vars . ,goals) (fresh (map var vars) (conj-goals (map parse-goal goals)))]
-    [`(conde . ,clauses) (disj-goals (map parse-clause clauses))]
+    [`(conde . ,clauses) (conde (map parse-clause clauses))]
     [`(== ,t1 ,t2) (unify (parse-term t1) (parse-term t2))]
     ['succeed (succeed)]
     ['fail (fail)]
@@ -81,18 +248,10 @@
   (conj-goals (map parse-goal goals)))
 
 (define (conj-goals goals)
-  (cond
-    [(empty? goals) (error "Need at least one goal in conj")]
-    ((= (length goals) 1) (first goals))
-    [(= (length goals) 2) (conj (first goals) (second goals))]
-    [else (conj (first goals) (conj-goals (rest goals)))]))
+  (foldr conj (last goals) (remove-last goals)))
 
 (define (disj-goals goals)
-  (cond
-    [(empty? goals) (error "Need at least one goal in disj")]
-    ((= (length goals) 1) (first goals))
-    [(= (length goals) 2) (disj (first goals) (second goals))]
-    [else (disj (first goals) (conj-goals (rest goals)))]))
+  (foldl disj (first goals) (rest goals)))
 
 (define (parse-term-within-quote t)
   (match t
@@ -143,49 +302,50 @@
        [else (error "Not a defrel or run form")]))
    l) 
 
-  (term (add-tags ,(transpile (prog (parse-relation-defs (reverse defrels)) (parse-run run)))))) ;; Reverse defrels to maintain same order
+  #;(term (add-tags ,(transpile (prog (parse-relation-defs (reverse defrels)) (parse-run run)))))
+  (add-guids (prog (parse-relation-defs (reverse defrels)) (parse-run run)) '(g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g14))) ;; Reverse defrels to maintain same order
  
 #;(parse-relation-defs '( 
                          (defrel (assoco key table value)
                            (fresh (car table-cdr)
-                                  (== table `(,car . ,table-cdr))
-                                  (conde ((== `(,key . ,value) car))
-                                         ((assoco key table-cdr value)))))
+                             (== table `(,car . ,table-cdr))
+                             (conde ((== `(,key . ,value) car))
+                                    ((assoco key table-cdr value)))))
                          (defrel (same-lengtho l1 l2)
                            (conde ((== l1 '()) (== l1 '()))
                                   ((fresh (car1 cdr1 car2 cdr2)
-                                          (== l1 `(,car1 . ,cdr1))
-                                          (== l2 `(,car2 . ,cdr2))
-                                          (same-lengtho cdr1 cdr2)))))
+                                     (== l1 `(,car1 . ,cdr1))
+                                     (== l2 `(,car2 . ,cdr2))
+                                     (same-lengtho cdr1 cdr2)))))
                          (defrel (make-assoc-tableo l1 l2 table)
                            (conde ((== l1 '()) (== l1 '()) (== table '()))
                                   ((fresh (car1 cdr1 car2 cdr2 cdr3)
-                                          (== l1 `(,car1 . ,cdr1))
-                                          (== l2 `(,car2 . ,cdr2))
-                                          (== table `((,car1 . ,car2) . ,cdr3))
-                                          (make-assoc-tableo cdr1 cdr2 cdr3)))))))
+                                     (== l1 `(,car1 . ,cdr1))
+                                     (== l2 `(,car2 . ,cdr2))
+                                     (== table `((,car1 . ,car2) . ,cdr3))
+                                     (make-assoc-tableo cdr1 cdr2 cdr3)))))))
 
 
 #;(parse-prog
- '(defrel (assoco key table value)
-    (fresh (car table-cdr)
-           (== table `(,car . ,table-cdr))
-           (conde ((== `(,key . ,value) car))
-                  ((assoco key table-cdr value)))))
- '(defrel (same-lengtho l1 l2)
-    (conde ((== l1 '()) (== l1 '()))
-           ((fresh (car1 cdr1 car2 cdr2)
-                   (== l1 `(,car1 . ,cdr1))
-                   (== l2 `(,car2 . ,cdr2))
-                   (same-lengtho cdr1 cdr2)))))
- '(defrel (make-assoc-tableo l1 l2 table)
-    (conde ((== l1 '()) (== l1 '()) (== table '()))
-           ((fresh (car1 cdr1 car2 cdr2 cdr3)
-                   (== l1 `(,car1 . ,cdr1))
-                   (== l2 `(,car2 . ,cdr2))
-                   (== table `((,car1 . ,car2) . ,cdr3))
-                   (make-assoc-tableo cdr1 cdr2 cdr3)))))
- '(run 5 (q) (same-lengtho '(abc def ghi) q)))
+   '(defrel (assoco key table value)
+      (fresh (car table-cdr)
+        (== table `(,car . ,table-cdr))
+        (conde ((== `(,key . ,value) car))
+               ((assoco key table-cdr value)))))
+   '(defrel (same-lengtho l1 l2)
+      (conde ((== l1 '()) (== l1 '()))
+             ((fresh (car1 cdr1 car2 cdr2)
+                (== l1 `(,car1 . ,cdr1))
+                (== l2 `(,car2 . ,cdr2))
+                (same-lengtho cdr1 cdr2)))))
+   '(defrel (make-assoc-tableo l1 l2 table)
+      (conde ((== l1 '()) (== l1 '()) (== table '()))
+             ((fresh (car1 cdr1 car2 cdr2 cdr3)
+                (== l1 `(,car1 . ,cdr1))
+                (== l2 `(,car2 . ,cdr2))
+                (== table `((,car1 . ,car2) . ,cdr3))
+                (make-assoc-tableo cdr1 cdr2 cdr3)))))
+   '(run 5 (q) (same-lengtho '(abc def ghi) q)))
 
 
 #;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table
@@ -210,22 +370,22 @@
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
 (redex-match? L p (parse-prog
- '((defrel (appendo l s out)
-  (conde
-   [(== l '()) (== out s)]
-   [(fresh (a d res)
-      (== l `(,a . ,d))
-      (== out `(,a . ,res))
-      (appendo d s res))]))
+                   '((defrel (appendo l s out)
+                       (conde
+                        [(== l '()) (== out s)]
+                        [(fresh (a d res)
+                           (== l `(,a . ,d))
+                           (== out `(,a . ,res))
+                           (appendo d s res))]))
 
-(defrel (reverseo ls out)
-  (conde
-   [(== ls '()) (== out '())]
-   [(fresh (a d res)
-      (== ls `(,a . ,d))
-      (reverseo d res)
-      (appendo res `(,a) out))]))
+                     (defrel (reverseo ls out)
+                       (conde
+                        [(== ls '()) (== out '())]
+                        [(fresh (a d res)
+                           (== ls `(,a . ,d))
+                           (reverseo d res)
+                           (appendo res `(,a) out))]))
 
-(run* (q) (reverseo '(dog cat bear lion) q)))))
+                     (run* (q) (reverseo '(dog cat bear lion) q)))))
 
     
