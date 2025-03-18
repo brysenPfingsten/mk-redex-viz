@@ -97,9 +97,9 @@
        (term ((∃ (,(transpile q)) ,(transpile goal)) (state () 0 ()))))]))
 
 (define (remove-last lst)
-    (if (null? (cdr lst))
-        '()
-        (cons (car lst) (remove-last (cdr lst)))))
+  (if (null? (cdr lst))
+      '()
+      (cons (car lst) (remove-last (cdr lst)))))
 
 (define (term->string t)
   (match t
@@ -109,17 +109,17 @@
 (define (kons->string l)
   (match l
     [(kons a nil) #:when (nil? nil)
-      (kons->string a)]
+                  (kons->string a)]
     [(kons a ad) #:when (not (kons? ad))
-     (format "~a . ~a"
-             (kons->string a)
-             (kons->string ad))]
+                 (format "~a . ~a"
+                         (kons->string a)
+                         (kons->string ad))]
     [(kons a d)
      (format "~a ~a"
              (kons->string a)
              (kons->string d))]
     [(var v) #:when (var? l)
-     (format ",~a" (var-v v))]
+             (format ",~a" (var-v v))]
     [(konst k) #:when (konst? l)
                (format "~a" k)])) 
 
@@ -141,7 +141,7 @@
     [(fresh? expr)
      (let ([vars (fresh-vars expr)]
            [g    (fresh-goal expr)])
-       (format "(fresh (~a) ~a)"
+       (format "(fresh (~a)\n ~a)"
                ;; Recursively annotate each var’s name
                (string-join (map (λ (v) (add-guids v))
                                  vars)
@@ -153,11 +153,11 @@
     [(conde? expr)
      (let ([clauses (conde-clauses expr)])
        (format "(conde\n~a)"
-       (foldl (λ (c a) (string-append "[" (add-guids c) "]"
-                                      "\n"
-                                      a))
-              (add-guids (last clauses))
-              (remove-last clauses))))]
+               (foldl (λ (c a) (string-append "[" (add-guids c) "]"
+                                              "\n"
+                                              a))
+                      (add-guids (last clauses))
+                      (remove-last clauses))))]
 
     ;; A "conj" node: (conj g1 g2)
     [(conj? expr)
@@ -396,22 +396,22 @@
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
 (parse-prog
-                   '((defrel (appendo l s out)
-                       (conde
-                        [(== l '()) (== out s)]
-                        [(fresh (a d res)
-                           (== l `(,a . ,d))
-                           (== out `(,a . ,res))
-                           (appendo d s res))]))
+ '((defrel (appendo l s out)
+     (conde
+      [(== l '()) (== out s)]
+      [(fresh (a d res)
+         (== l `(,a . ,d))
+         (== out `(,a . ,res))
+         (appendo d s res))]))
 
-                     (defrel (reverseo ls out)
-                       (conde
-                        [(== ls '()) (== out '())]
-                        [(fresh (a d res)
-                           (== ls `(,a . ,d))
-                           (reverseo d res)
-                           (appendo res `(,a) out))]))
+   (defrel (reverseo ls out)
+     (conde
+      [(== ls '()) (== out '())]
+      [(fresh (a d res)
+         (== ls `(,a . ,d))
+         (reverseo d res)
+         (appendo res `(,a) out))]))
 
-                     (run* (q) (reverseo '(dog cat bear lion) q))))
+   (run* (q) (reverseo '(dog cat bear lion) q))))
 
     

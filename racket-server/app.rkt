@@ -38,9 +38,9 @@
 ;; create-response: string json -> response
 ;; Purpose: Create a reponse structure from the given reduction step and JSON data
 (define (create-response red-step json-data)
-  (let [(response (string-append "{\"stepName\": \"" red-step "\", "
-                                 "\"step\": \"" (number->string index) "\", "
-                                 "\"program\": " json-data "}"))]
+  (let [(response (hasheq 'stepName red-step
+                          'step (number->string index)
+                          'program json-data))]
     (response/jsexpr response
                      #:mime-type #"application/json; charset=utf-8")))
 
@@ -79,25 +79,34 @@
         '()  ;; Stop when EOF is reached
         (cons expr (read-all port)))))
 
+(define (send-tree-and-html tree html)
+  (let ([response (hasheq 'stepName "Intialize program"
+                          'step 0
+                          'program tree
+                          'htmlGuids html)])
+    (response/jsexpr response
+                     #:mime-type #"application/json; charset=utf-8")))
+
 ;; request -> response
 ;; Purpose: To initialize the tree
 (define (init-tree req)
   (define json-data (request-post-data/raw req))
   (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))
   (define sexpr-prog (read-all (open-input-string raw-prog)))
-
-  (set! current-prog (parse-prog sexpr-prog))
+  (define parsed (parse-prog sexpr-prog))
+  (set! current-prog (car parsed))
+  (define html-prog (cdr parsed))
 
   (set! init-prog current-prog)
   (set! init-state (state "Initialize program"
-                            (term (to-json (prog->tree ,current-prog)))
-                            init-prog))
+                          (term (to-json (prog->tree ,current-prog)))
+                          init-prog))
 
   (set! history '())
   (set! current init-state)
   (set! index 0)
   
-  (send-current-state))
+  (send-tree-and-html (state-json current) html-prog))
 
 
 ;; reset: _ -> response
@@ -115,9 +124,9 @@
   (set! current (first history))
   (let* ([red-step (state-red-step current)]
          [json-data (state-json current)]
-         [response (string-append "{\"stepName\": \"" red-step "\", "
-                                  "\"step\": \"" (number->string index) "\", "
-                                  "\"program\": " json-data "}")])
+         [response (hasheq 'stepName red-step
+                           'step (number->string index)
+                           'program json-data)])
     (response/jsexpr response
                      #:mime-type #"application/json; charset=utf-8"
                      #:headers (list (make-header #"X-Is-Last" #"true")))))
