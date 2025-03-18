@@ -94,6 +94,11 @@ function drawLinks(svg, links) {
     .style("stroke-width", 4);
 }
 
+function clearHighlights() {
+    document.querySelectorAll('.hidden-tag.highlight').forEach(el => {
+        el.classList.remove('highlight');
+    });
+}
 
 function highlightIDs(ids) {
     // First, clear any existing highlights.
@@ -128,7 +133,8 @@ function addTooltips(nodeGroups) {
         .style("top", `${event.pageY + 10}px`)
         .style("visibility", "visible");
         let ids = d.data.trail.map(trail => trail.id)
-        highlightIDs(ids)
+        clearHighlights();
+        highlightIDs(ids);
     })
     .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
@@ -157,10 +163,14 @@ function sendRequest(method, path, msg="") {
     })
     .then(text => {
         try {
-            const data = JSON.parse(JSON.parse(text));
+            const data = JSON.parse(text);
             const redStep = data.stepName;
             const stepNum = data.step;
-            const tree = data.program
+            const tree = JSON.parse(data.program);
+            if (data.htmlGuids) {
+                updateOverlay(data.htmlGuids);
+                lockCode();
+            }
             document.getElementById('step-info').innerHTML = `Step: ${stepNum}<br>Reduction Step: ${redStep}`;
             redrawTree(tree);
             return true;
@@ -179,6 +189,7 @@ function fetchAndUpdateTree() {
     sendRequest('GET', 'api/get/next')
     .then(success => {
         if (success) {
+            clearHighlights();
             setDisabled(['reset', 'back'], false);
             setDisabled(['debug'], true);
         }
@@ -200,7 +211,7 @@ function back() {
     sendRequest('POST', 'api/post/back')
 }
 
-function getInit() {
+function init() {
     const text = document.getElementById('code-input').value
     sendRequest('POST', 'api/post/init', text)
     .then(success => {
@@ -219,10 +230,8 @@ function setDisabled(buttons, flag) {
 }
 
 // Function to update the overlay by processing marker syntax (e.g., [[tag]]...[[/tag]])
-function updateOverlay() {
-    const codeInput = document.getElementById("code-input");
+function updateOverlay(code) {
     const overlay = document.getElementById("highlight-overlay");
-    let code = codeInput.value;
 
     // Replace opening markers with a span tag
     code = code.replace(/\[\[([a-zA-Z0-9_-]+)\]\]/g, (match, p1) => {
@@ -236,15 +245,11 @@ function updateOverlay() {
 
 // Function to lock the code: disable the textarea and show the overlay
 function lockCode() {
-    getInit();
     const textarea = document.getElementById("code-input");
     const overlay = document.getElementById("highlight-overlay");
     
     // Disable editing
     textarea.disabled = true;
-    
-    // Process the content to update the overlay
-    updateOverlay();
     
     // Change the textarea style so its text becomes transparent
     textarea.classList.add("locked");
@@ -255,7 +260,7 @@ function lockCode() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("debug-btn").addEventListener("click", lockCode);
+    document.getElementById("debug-btn").addEventListener("click", init);
     document.getElementById("back-btn").addEventListener("click", back)
     document.getElementById("reset-btn").addEventListener("click", resetTree);
     document.getElementById("step-btn").addEventListener("click", fetchAndUpdateTree);
