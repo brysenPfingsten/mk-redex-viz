@@ -133,6 +133,7 @@ function addTooltips(nodeGroups) {
         .style("top", `${event.pageY + 10}px`)
         .style("visibility", "visible");
         let ids = d.data.trail.map(trail => trail.id)
+        if (d.data.id) { ids.push(d.data.id); }
         clearHighlights();
         highlightIDs(ids);
     })

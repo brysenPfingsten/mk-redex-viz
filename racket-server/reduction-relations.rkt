@@ -49,7 +49,7 @@
                            (in-hole Ex s)
                            "prune right failure disjuncts"]
                       
-                      [--> (in-hole Ex ((∃ (x ...) g) (state sub c trail)))
+                      [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail)))
                            (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
                            "fresh-n subst"]
 
