@@ -1,5 +1,6 @@
 #lang racket
-(require redex)
+(require redex
+         json)
 (require (prefix-in mk: minikanren)) 
 
 (require "definitions.rkt" "reification.rkt")
@@ -114,11 +115,12 @@
        "\"children\": [" left-json ", "
        right-json "]}"))]
 
-  [(goal->json (∃ d g))
-   ,(let* ([var-name  (term (list->json d))]
+  [(goal->json (∃ d g o))
+   ,(let* ([var-name (term (list->json d))]
            [goal-json (term (goal->json g))])
       (string-append
        "{\"name\": \"Fresh\", "
+       "\"id\": \"" (term o) "\", "
        "\"vars\": [" var-name "], "
        "\"children\": [" goal-json "]}"))])
 
@@ -178,18 +180,3 @@
       (string-append
        "{\"name\": \"Delay\", "
        "\"children\": [" tree-json "]}"))])
-
-
-
-(define p (term (prog ((r:appendo«597» (x:l«598» x:s«599» x:out«600»)
-                                       (((x:l«598» =? empty g14056) ∧ (x:s«599» =? x:out«600» g14057))
-                                        ∨
-                                        (∃ (x:a«41» x:d«42» x:res«43»)
-                                           (((x:a«41» : x:d«42») =? x:l«598» g14058)
-                                            ∧ (((x:a«41» : x:res«43») =? x:out«600» g14059)
-                                               ∧ (r:appendo«597» x:d«42» x:s«599» x:res«43»)))))))
-                      (((⊤ (state ((1 empty)) 3 ((1 =? empty "g14056")))) × (2 =? 0 "g14057"))
-                       <-+ ((∃ (x:a«333» x:d«334» x:res«335») (((x:a«333» : x:d«334») =? 1 "g14058")
-                                                               ∧ (((x:a«333» : x:res«335») =? 0 "g14059")
-                                                                  ∧ (r:appendo«597» x:d«334» 2 x:res«335»))))
-                            (state () 3 ()))))))

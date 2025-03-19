@@ -13,19 +13,7 @@
 
 (define-struct state (red-step json prog))
 
-(define current-prog (term (prog 
-                            ((r:appendo (x:l x:s x:out)
-                                        (((x:l =? empty "g1100545") ∧ (x:s =? x:out "g1100546"))
-                                         ∨
-                                         (∃ (x:a x:d x:res)
-                                            (((x:a : x:d) =? x:l "g1100547")
-                                             ∧ (((x:a : x:res) =? x:out "g1100548")
-                                                ∧ (r:appendo x:d x:s x:res)))))))
-                            ((∃ (x:q x:s x:l) (r:appendo
-                                               x:l
-                                               x:s
-                                               x:q))
-                             (state () 0 ())))))
+(define current-prog (term (prog () ())))
 
 (define init-prog current-prog)
 (define init-state (state "Initialize program"

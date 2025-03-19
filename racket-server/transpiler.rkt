@@ -28,8 +28,8 @@
 
 (define next-g-id
   (let ([counter 0])
-    (λ ()
-      (define next-guid (string-append "g" (number->string counter)))
+    (λ (s)
+      (define next-guid (string-append s (number->string counter)))
       (set! counter (add1 counter))
       (set! GUIDS (cons next-guid GUIDS))
       next-guid
@@ -43,8 +43,9 @@
        (term (prog ,(map transpile r) ,(transpile q))))]
     [(fresh? expr)
      (let ((vs (fresh-vars expr))
-           (g (fresh-goal expr)))
-       (term (∃ ,(map transpile vs) ,(transpile g))))]
+           (g (fresh-goal expr))
+           (id (next-g-id "f")))
+       (term (∃ ,(map transpile vs) ,(transpile g) ,id)))]
     [(conde? expr)
      (let ([clauses (conde-clauses expr)])
        (foldr (λ (c a) (term (,(transpile c) ∨ ,a)))
@@ -57,8 +58,8 @@
     [(unify? expr)
      (let ((t1 (unify-t1 expr))
            (t2 (unify-t2 expr))
-           (guid (next-g-id)))
-       (term (,(transpile t1) =? ,(transpile t2) ,guid)))]
+           (id (next-g-id "u")))
+       (term (,(transpile t1) =? ,(transpile t2) ,id)))]
     [(succeed? expr)
      (term ⊤)]
     [(fail? expr)
@@ -93,18 +94,14 @@
     [(run? expr)
      (let ((n (run-n expr))
            (q (run-q expr))
-           (goal (run-goal expr)))
-       (term ((∃ (,(transpile q)) ,(transpile goal)) (state () 0 ()))))]))
+           (goal (run-goal expr))
+           (id (next-g-id "f")))
+       (term ((∃ (,(transpile q)) ,(transpile goal) ,id) (state () 0 ()))))]))
 
 (define (remove-last lst)
   (if (null? (cdr lst))
       '()
       (cons (car lst) (remove-last (cdr lst)))))
-
-(define (term->string t)
-  (match t
-    [(var v) #:when (var? t) (format ",~a" v)]
-    [else (add-guids t '())]))
 
 (define (kons->string l)
   (match l
@@ -140,14 +137,14 @@
     ;; A "fresh" node:  (fresh (v1 v2 ...) goal)
     [(fresh? expr)
      (let ([vars (fresh-vars expr)]
-           [g    (fresh-goal expr)])
-       (format "(fresh (~a)\n ~a)"
-               ;; Recursively annotate each var’s name
-               (string-join (map (λ (v) (add-guids v))
-                                 vars)
-                            " ")
-               ;; Recursively annotate the sub‐goal
-               (add-guids g)))]
+           [g    (fresh-goal expr)]
+           [id   (car GUIDS)])
+       (set! GUIDS (cdr GUIDS))
+       (format "[[~a]](fresh (~a)\n ~a)[[/~a]]"
+               id
+               (string-join (map add-guids vars) " ")
+               (add-guids g)
+               id))]
 
     ;; A "disj" node: (disj g1 g2)
     [(conde? expr)
@@ -171,14 +168,14 @@
     [(unify? expr)
      (let* ([t1   (unify-t1 expr)]
             [t2   (unify-t2 expr)]
-            [guid (car GUIDS)])
+            [id (car GUIDS)])
        (set! GUIDS (cdr GUIDS)) 
        ;; Insert bracket tags around the unify
        (format "[[~a]](== ~a ~a)[[/~a]]"
-               guid
+               id
                (add-guids t1)   
                (add-guids t2)
-               guid))]
+               id))]
 
     ;; Relation call, e.g. (relcall? expr)
     [(relcall? expr)
@@ -229,11 +226,15 @@
     [(run? expr)
      (let ([n    (run-n expr)]
            [q    (run-q expr)]
-           [goal (run-goal expr)])
-       (format "(run~a (~a) ~a)"
+           [goal (run-goal expr)]
+           [id (car GUIDS)])
+       (set! GUIDS (cdr GUIDS))
+       (format "[[~a]](run~a (~a) ~a)[[/~a]]"
+               id
                (if (= n +inf.0) "*" (format " ~a" n))
                (add-guids q)
-               (add-guids goal)))]
+               (add-guids goal)
+               id))]
     [else
      (error "Unrecognized AST node in add-guids" expr)]))
 
@@ -271,6 +272,7 @@
 (define (conj-goals goals)
   (foldr conj (last goals) (remove-last goals)))
 
+;; Deprecated
 (define (disj-goals goals)
   (foldl disj (first goals) (rest goals)))
 
