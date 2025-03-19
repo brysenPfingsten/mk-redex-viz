@@ -83,35 +83,39 @@
   [(goal->json ⊤)
    "{\"name\": \"Succeed\"}"]
 
-  [(goal->json (t_1 =? t_2 _))
+  [(goal->json (t_1 =? t_2 o))
    ,(let* ([left-json (term (term->json  t_1))]
            [right-json (term (term->json t_2))])
       (string-append
        "{\"name\": \"Unify\", "
+       "\"id\": \"" (term o) "\", "
        "\"left\": " left-json ", "
        "\"right\": " right-json "}"))]
 
-  [(goal->json (r t ...))
+  [(goal->json (r t ... o))
    ,(let* ([rel-name (extract-name (symbol->string (term r)))]
            [args-json (term (list->json (t ...)))])
       (string-append
        "{\"name\": \"Rel-Call\", "
+       "\"id\": \"" (term o) "\", "
        "\"rel\": \"" rel-name "\", "
        "\"args\": [" args-json "]}"))]
 
-  [(goal->json (g_1 ∨ g_2))
+  [(goal->json (g_1 ∨ g_2 o))
    ,(let* ([left-json (term (goal->json g_1))]
            [right-json (term (goal->json g_2))])
       (string-append
        "{\"name\": \"Goal-Disj\", "
+       "\"id\": \"" (term o) "\", "  
        "\"children\": [" left-json ", "
        right-json "]}"))]
 
-  [(goal->json (g_1 ∧ g_2))
+  [(goal->json (g_1 ∧ g_2 o))
    ,(let* ([left-json (term (goal->json g_1))]
            [right-json (term (goal->json g_2))])
       (string-append
        "{\"name\": \"Goal-Conj\", "
+        "\"id\": \"" (term o) "\", "
        "\"children\": [" left-json ", "
        right-json "]}"))]
 
