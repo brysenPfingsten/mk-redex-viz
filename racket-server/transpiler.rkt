@@ -47,14 +47,16 @@
            (id (next-g-id "f")))
        (term (∃ ,(map transpile vs) ,(transpile g) ,id)))]
     [(conde? expr)
-     (let ([clauses (conde-clauses expr)])
-       (foldr (λ (c a) (term (,(transpile c) ∨ ,a)))
+     (let ([clauses (conde-clauses expr)]
+           [id (next-g-id "d")])
+       (foldr (λ (c a) (term (,(transpile c) ∨ ,a ,id)))
               (transpile (last clauses))
               (remove-last clauses)))]
     [(conj? expr)
      (let ((g1 (conj-g1 expr))
-           (g2 (conj-g2 expr)))
-       (term (,(transpile g1) ∧ ,(transpile g2))))]
+           (g2 (conj-g2 expr))
+           (id (next-g-id "c")))
+       (term (,(transpile g1) ∧ ,(transpile g2) ,id)))]
     [(unify? expr)
      (let ((t1 (unify-t1 expr))
            (t2 (unify-t2 expr))
@@ -66,8 +68,9 @@
      (term ⊥)]
     [(relcall? expr)
      (let ((name (relcall-name expr))
-           (terms (relcall-terms expr)))
-       (term (,(transpile name) ,@(map transpile terms))))]
+           (terms (relcall-terms expr))
+           (id (next-g-id "r")))
+       (term (,(transpile name) ,@(map transpile terms) ,id)))]
     [(nil? expr)
      (term empty)]
     [(bool? expr)
@@ -148,21 +151,30 @@
 
     ;; A "disj" node: (disj g1 g2)
     [(conde? expr)
-     (let ([clauses (conde-clauses expr)])
-       (format "(conde\n~a)"
+     (let ([clauses (conde-clauses expr)]
+           [id (car GUIDS)])
+       (set! GUIDS (cdr GUIDS))
+       (format "[[~a]](conde\n~a)[[/~a]]"
+               id
                (foldl (λ (c a) (string-append "[" (add-guids c) "]"
                                               "\n"
                                               a))
                       (add-guids (last clauses))
-                      (remove-last clauses))))]
+                      (remove-last clauses))
+
+               id))]
 
     ;; A "conj" node: (conj g1 g2)
     [(conj? expr)
      (let ([g1 (conj-g1 expr)]
-           [g2 (conj-g2 expr)])
-       (format "~a\n~a)"
+           [g2 (conj-g2 expr)]
+           [id (car GUIDS)])
+       (set! GUIDS (cdr GUIDS))
+       (format "[[~a]]~a\n~a[[/~a]])"
+               id
                (add-guids g1)
-               (add-guids g2)))]
+               (add-guids g2)
+               id))]
 
     ;; unify => insert bracket tags. Then recursively call add-guids on t1/t2.
     [(unify? expr)
@@ -180,11 +192,15 @@
     ;; Relation call, e.g. (relcall? expr)
     [(relcall? expr)
      (let ([name  (relcall-name expr)]
-           [terms (relcall-terms expr)])
-       (format "(~a ~a)"
+           [terms (relcall-terms expr)]
+           [id (car GUIDS)])
+       (set! GUIDS (cdr GUIDS))
+       (format "[[~a]](~a ~a)[[/~a]]"
+               id
                (add-guids name)
                (string-join (map (λ (t) (add-guids t)) terms)
-                            " ")))]
+                            " ")
+               id))]
 
     ;; Nil => '()
     [(nil? expr)
@@ -415,5 +431,3 @@
          (appendo res `(,a) out))]))
 
    (run* (q) (reverseo '(dog cat bear lion) q))))
-
-    

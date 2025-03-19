@@ -145,6 +145,24 @@
     [("post/reset") (reset)]
     [("post/back") (back)]))
 
+(apply-reduction-relation* red (car (parse-prog
+ '((defrel (appendo l s out)
+     (conde
+      [(== l '()) (== out s)]
+      [(fresh (a d res)
+         (== l `(,a . ,d))
+         (== out `(,a . ,res))
+         (appendo d s res))]))
+
+   (defrel (reverseo ls out)
+     (conde
+      [(== ls '()) (== out '())]
+      [(fresh (a d res)
+         (== ls `(,a . ,d))
+         (reverseo d res)
+         (appendo res `(,a) out))]))
+
+   (run* (q) (reverseo '(dog cat bear lion) q))))))
 
 ;; Start the server on port 5000
 (serve/servlet dispatcher
