@@ -126,13 +126,13 @@ function addTooltips(nodeGroups) {
     .style("padding", "5px")
     .style("visibility", "hidden");
     
-    nodeGroups.filter(d => d.data.sub || d.data.trail || d.data.reified)
+    nodeGroups.filter(d => d.data.sub || d.data.trail || d.data.reified || d.data.id)
     .on("click", (event, d) => {
         tooltip.html(toString(d.data.sub, d.data.trail, d.data.reified).replace(/\n/g, "<br>"))
         .style("left", `${event.pageX + 10}px`)
         .style("top", `${event.pageY + 10}px`)
         .style("visibility", "visible");
-        let ids = d.data.trail.map(trail => trail.id)
+        let ids = []; // [d.data.trail.map(trail => trail.id)]
         if (d.data.id) { ids.push(d.data.id); }
         clearHighlights();
         highlightIDs(ids);

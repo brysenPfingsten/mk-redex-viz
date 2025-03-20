@@ -121,124 +121,129 @@
     [(var v) #:when (var? l)
              (format ",~a" (var-v v))]
     [(konst k) #:when (konst? l)
-               (format "~a" k)])) 
+               (format "~a" k)]))
 
-(define (add-guids expr)
+#;(define (conde->string c s)
+    )
+
+(define (add2 n) (+ n 2))
+
+(define (add-guids expr s)
   (cond
     [(prog? expr)
      (let* ([rels (prog-relations expr)]
             [query (prog-query expr)]
             [rel-strings
-             (map (λ (rel) (add-guids rel))
+             (map (λ (rel) (add-guids rel 0))
                   rels)]
             [rels-joined (string-join rel-strings "\n\n")]
-            [query-string (add-guids query)])
+            [query-string (add-guids query 0)])
        (string-append rels-joined
                       "\n\n"
                       query-string))]
 
-    ;; A "fresh" node:  (fresh (v1 v2 ...) goal)
     [(fresh? expr)
      (let ([vars (fresh-vars expr)]
            [g    (fresh-goal expr)]
            [id   (car GUIDS)])
        (set! GUIDS (cdr GUIDS))
-       (format "[[~a]](fresh (~a)\n ~a)[[/~a]]"
+       (format "~a[[~a]](fresh (~a)\n ~a)[[/~a]]"
+               (make-string s #\space)
                id
-               (string-join (map add-guids vars) " ")
-               (add-guids g)
+               (string-join (map (λ (v) (add-guids v 0)) vars) " ")
+               (add-guids g (add2 s))
                id))]
 
-    ;; A "disj" node: (disj g1 g2)
     [(conde? expr)
-     (let ([clauses (conde-clauses expr)]
+     (let ([clauses (reverse (conde-clauses expr))]
            [id (car GUIDS)])
        (set! GUIDS (cdr GUIDS))
-       (format "[[~a]](conde\n~a)[[/~a]]"
+       (format "~a[[~a]](conde\n~a)[[/~a]]"
+               (make-string s #\space)
                id
-               (foldl (λ (c a) (string-append "[" (add-guids c) "]"
+               (foldl (λ (c a) (string-append (make-string (add2 s) #\space)
+                                              "[" (string-trim (add-guids c (+ s 3))
+                                                               #:left? #t
+                                                               #:right? #f)
+                                              "]"
                                               "\n"
                                               a))
-                      (add-guids (last clauses))
-                      (remove-last clauses))
+                      (string-append (make-string (add2 s) #\space)
+                                     "[" (string-trim (add-guids (first clauses) (+ s 3))
+                                                      #:left? #t
+                                                      #:right? #f)
+                                     "]"
+                                     "\n")
+                      (rest clauses))
 
                id))]
 
-    ;; A "conj" node: (conj g1 g2)
     [(conj? expr)
      (let ([g1 (conj-g1 expr)]
            [g2 (conj-g2 expr)]
            [id (car GUIDS)])
        (set! GUIDS (cdr GUIDS))
-       (format "[[~a]]~a\n~a[[/~a]])"
+       (format "~a[[~a]]~a\n~a[[/~a]])"
+               (make-string s #\space)
                id
-               (add-guids g1)
-               (add-guids g2)
+               (add-guids g1 0)
+               (add-guids g2 s)
                id))]
-
-    ;; unify => insert bracket tags. Then recursively call add-guids on t1/t2.
+    
     [(unify? expr)
      (let* ([t1   (unify-t1 expr)]
             [t2   (unify-t2 expr)]
             [id (car GUIDS)])
        (set! GUIDS (cdr GUIDS)) 
-       ;; Insert bracket tags around the unify
-       (format "[[~a]](== ~a ~a)[[/~a]]"
+       (format "~a[[~a]](== ~a ~a)[[/~a]]"
+               (make-string s #\space)
                id
-               (add-guids t1)   
-               (add-guids t2)
+               (add-guids t1 0)   
+               (add-guids t2 0)
                id))]
 
-    ;; Relation call, e.g. (relcall? expr)
     [(relcall? expr)
      (let ([name  (relcall-name expr)]
            [terms (relcall-terms expr)]
            [id (car GUIDS)])
        (set! GUIDS (cdr GUIDS))
-       (format "[[~a]](~a ~a)[[/~a]]"
+       (format "~a[[~a]](~a ~a)[[/~a]]"
+               (make-string s #\space)
                id
-               (add-guids name)
-               (string-join (map (λ (t) (add-guids t)) terms)
+               (add-guids name 0)
+               (string-join (map (λ (t) (add-guids t 0)) terms)
                             " ")
                id))]
 
-    ;; Nil => '()
     [(nil? expr)
      "'()"]
 
-    ;; Boolean => #t or #f
     [(bool? expr)
      (if (bool-b expr) "#t" "#f")]
 
-    ;; Konstant => just output its contents as a string, or `'abc`
     [(konst? expr)
-     (konst-k expr)]
+     (konst-k (format "\"~a\"" expr))]
 
-    ;; Kons => produce (cons subA subD), or transform to backtick forms if you like
     [(kons? expr)
      (format "`(~a)" (kons->string expr))]
 
-    ;; A variable => output the symbol name
     [(var? expr)
      (symbol->string (var-v expr))]
 
-    ;; A relation name => output the symbol name
     [(relname? expr)
      (symbol->string (relname-name expr))]
 
-    ;; A defrel => typical minikanren form (defrel (name var...) goal)
     [(defrel? expr)
      (let ([rname (defrel-name expr)]
            [lop   (defrel-lop expr)]
            [goal  (defrel-goal expr)])
-       (format "(defrel (~a ~a)\n  ~a)"
-               (add-guids rname)
+       (format "(defrel (~a ~a)\n~a)"
+               (add-guids rname 0)
                (string-join
-                (map (λ (v) (add-guids v)) lop)
+                (map (λ (v) (add-guids v 0)) lop)
                 " ")
-               (add-guids goal)))]
+               (add-guids goal 2)))]
 
-    ;; A run => (run N (q) goal)
     [(run? expr)
      (let ([n    (run-n expr)]
            [q    (run-q expr)]
@@ -248,8 +253,8 @@
        (format "[[~a]](run~a (~a) ~a)[[/~a]]"
                id
                (if (= n +inf.0) "*" (format " ~a" n))
-               (add-guids q)
-               (add-guids goal)
+               (add-guids q 0)
+               (add-guids goal 0)
                id))]
     [else
      (error "Unrecognized AST node in add-guids" expr)]))
@@ -346,7 +351,7 @@
   (define AST (prog (parse-relation-defs (reverse defrels)) (parse-run run)))
   (define REDEX-PROG (transpile AST))
   (set! GUIDS (reverse GUIDS))
-  (define GUID-PROG (add-guids AST))
+  (define GUID-PROG (add-guids AST 0))
   `(,REDEX-PROG . ,GUID-PROG))
  
 #;(parse-prog
@@ -392,7 +397,7 @@
                        ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
-#;(parse-prog
+(displayln (cdr (parse-prog
  '((defrel (appendo l s out)
      (conde
       [(== l '()) (== out s)]
@@ -409,4 +414,4 @@
          (reverseo d res)
          (appendo res `(,a) out))]))
 
-   (run* (q) (reverseo '(dog cat bear lion) q))))
+   (run* (q) (reverseo '(dog cat bear lion) q))))))
