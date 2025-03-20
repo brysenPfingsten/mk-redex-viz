@@ -349,27 +349,6 @@
   (define GUID-PROG (add-guids AST))
   `(,REDEX-PROG . ,GUID-PROG))
  
-#;(parse-relation-defs '( 
-                         (defrel (assoco key table value)
-                           (fresh (car table-cdr)
-                             (== table `(,car . ,table-cdr))
-                             (conde ((== `(,key . ,value) car))
-                                    ((assoco key table-cdr value)))))
-                         (defrel (same-lengtho l1 l2)
-                           (conde ((== l1 '()) (== l1 '()))
-                                  ((fresh (car1 cdr1 car2 cdr2)
-                                     (== l1 `(,car1 . ,cdr1))
-                                     (== l2 `(,car2 . ,cdr2))
-                                     (same-lengtho cdr1 cdr2)))))
-                         (defrel (make-assoc-tableo l1 l2 table)
-                           (conde ((== l1 '()) (== l1 '()) (== table '()))
-                                  ((fresh (car1 cdr1 car2 cdr2 cdr3)
-                                     (== l1 `(,car1 . ,cdr1))
-                                     (== l2 `(,car2 . ,cdr2))
-                                     (== table `((,car1 . ,car2) . ,cdr3))
-                                     (make-assoc-tableo cdr1 cdr2 cdr3)))))))
-
-
 #;(parse-prog
    '(defrel (assoco key table value)
       (fresh (car table-cdr)
@@ -413,7 +392,7 @@
                        ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
-(parse-prog
+#;(parse-prog
  '((defrel (appendo l s out)
      (conde
       [(== l '()) (== out s)]

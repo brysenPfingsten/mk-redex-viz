@@ -14,10 +14,10 @@
 (define-struct state (red-step json prog))
 
 (define current-prog (term (prog () ())))
-
 (define init-prog current-prog)
+
 (define init-state (state "Initialize program"
-                          (term (to-json (prog->tree ,current-prog)))
+                          (to-json current-prog)
                           init-prog))
 (define history '())
 (define current init-state)
@@ -51,8 +51,7 @@
         (let* [(next-step (car (apply-reduction-relation/tag-with-names red (term ,current-prog)))) ; Step once
                (red-step (car next-step))                                                           ; Get the name of the reduction step
                (new-program (cadr next-step))                                                       ; Get the new program
-               (tree (term (prog->tree ,new-program)))                                              ; Get the search tree
-               (json-data (term (to-json ,tree)))                                                   ; Convert tree to JSON
+               (json-data (to-json new-program))                                                    ; Convert tree to JSON
                (response (create-response red-step json-data))]                                     ; Prepare response
           (set! current-prog new-program)                                                           ; Update the program
           (set! current (state red-step json-data current-prog))                                    ; Update the current variable
@@ -87,7 +86,7 @@
 
   (set! init-prog current-prog)
   (set! init-state (state "Initialize program"
-                          (term (to-json (prog->tree ,current-prog)))
+                          (to-json current-prog)
                           init-prog))
 
   (set! history '())
@@ -144,25 +143,6 @@
     [("post/init") (init-tree req)]
     [("post/reset") (reset)]
     [("post/back") (back)]))
-
-(apply-reduction-relation* red (car (parse-prog
- '((defrel (appendo l s out)
-     (conde
-      [(== l '()) (== out s)]
-      [(fresh (a d res)
-         (== l `(,a . ,d))
-         (== out `(,a . ,res))
-         (appendo d s res))]))
-
-   (defrel (reverseo ls out)
-     (conde
-      [(== ls '()) (== out '())]
-      [(fresh (a d res)
-         (== ls `(,a . ,d))
-         (reverseo d res)
-         (appendo res `(,a) out))]))
-
-   (run* (q) (reverseo '(dog cat bear lion) q))))))
 
 ;; Start the server on port 5000
 (serve/servlet dispatcher
