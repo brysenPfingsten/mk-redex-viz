@@ -17,6 +17,7 @@ Open a terminal and run:
 ```sh
 git clone https://github.com/brysenPfingsten/Modeling-miniKanren-in-Redex.git
 cd Modeling-miniKanren-in-Redex
+docker login
 docker-compose build
 docker-compose up
 ```
