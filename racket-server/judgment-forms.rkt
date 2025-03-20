@@ -11,78 +11,6 @@
 
 (define-judgment-form
   L
-  #:contract (closed-goal? g (r ...) (x ...) c)
-  #:mode (closed-goal? I I I I)
-
-  [
-   ------------------ "trivial success closed"
-   (closed-goal? ⊤ (r ...) (x ...) c)]
-
-  [
-   ----------------- "trivial failure closed"
-   (closed-goal? ⊥ (r ...) (x ...) c)]
-  
-  [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
-   ------------------- "fresh-closed"
-   (closed-goal? (∃ (x_1 ...) g) (r ...) (x_2 ...) c)]
-  
-  [(closed-goal? g_1 (r ...) (x ...) c)
-   (closed-goal? g_2 (r ...) (x ...) c)
-   ---------- "conj-closed"
-   (closed-goal? (g_1 ∧ g_2) (r ...) (x ...) c)]
-  
-  [(closed-goal? g_1 (r ...) (x ...) c)
-   (closed-goal? g_2 (r ...) (x ...) c)
-   ---------- "disj-closed"
-   (closed-goal? (g_1 ∨ g_2) (r ...) (x ...) c)]
-
-  [(closed-term? t_1 (x ...) c)
-   (closed-term? t_2 (x ...) c)
-   ---------- "==-closed"
-   (closed-goal? (t_1 =? t_2) (r ...) (x ...) c)]
-  
-  ;; member of rs
-  [(closed-term? t (x ...) c) ...
-   ---------- "relcall-closed"
-   (closed-goal? (r_1 t ...) (r_2 ... r_1 r_3 ...) (x ...) c)]
-  )
-
-(define-judgment-form
-  L
-  #:contract (closed-tree? s (r ...))
-  #:mode (closed-tree? I I)
-
-  [
-   -------------------"empty tree is closed"
-   (closed-tree? () (r ...))]
-
-  [
-   ------------------"trivial success is closed"
-   (closed-tree? ⊤ (r ...))]
-
-  [(closed-goal? g (r ...) () c)
-   #;(side-condition ,(andmap (λ (pair) (< (first pair) (term c))) (term sub)))
-   (side-condition ,(<= (length (term sub)) (term c)))
-   (closed-sub? sub c)
-   -------------------"goal w/ sub closed"
-   (closed-tree? (g (state sub c)) (r ...))]
-
-  [(closed-tree? s_1 (r ...))
-   (closed-tree? s_2 (r ...))
-   -------------------"disj closed"
-   (closed-tree? (s_1 + s_2) (r ...))]
-
-  [(closed-tree? s (r ...))
-   (closed-goal? g (r ...) () 0)
-   -------------------"conj closed"
-   (closed-tree? (s × g) (r ...))]
-
-  [(closed-tree? s (r ...))
-   -------------------"delay closed"
-   (closed-tree? (delay s) (r ...))])
-  
-(define-judgment-form
-  L
   #:contract (closed-term? t (x ...) c)
   #:mode (closed-term? I I I)
 
@@ -109,6 +37,22 @@
 
 (define-judgment-form
   L
+  #:contract (closed-trail? trail c)
+  #:mode (closed-trail? I I)
+
+  [
+   ------------------ "empty sub is closed"
+   (closed-trail? () c)]
+
+  [(closed-term? t_1 () c)
+   (closed-term? t_2 () c)
+   (closed-trail? (t_3 =? t_4) c) ...
+   ------------------ "trail is closed"
+  (closed-trail? ((t_1 =? t_2 _) (t_3 =? t_4 _)...) c)])
+
+  
+(define-judgment-form
+  L
   #:contract (closed-sub? sub c)
   #:mode (closed-sub? I I)
   [
@@ -120,6 +64,75 @@
    (closed-sub? ((c_2 t_2)) c_3) ...
    ------------------"sub is closed"
    (closed-sub? ((c_1 t_1) (c_2 t_2) ...) c_3)])
+
+(define-judgment-form
+  L
+  #:contract (closed-goal? g (r ...) (x ...) c)
+  #:mode (closed-goal? I I I I)
+
+  [
+   ------------------ "trivial success closed"
+   (closed-goal? ⊤ (r ...) (x ...) c)]
+
+  [(closed-goal? g (r ...) (x_1 ... x_2 ...) ,(+ (length (term (x_1 ...))) (term c)))
+   ------------------- "fresh-closed"
+   (closed-goal? (∃ (x_1 ...) g _) (r ...) (x_2 ...) c)]
+  
+  [(closed-goal? g_1 (r ...) (x ...) c)
+   (closed-goal? g_2 (r ...) (x ...) c)
+   ---------- "conj-closed"
+   (closed-goal? (g_1 ∧ g_2 _) (r ...) (x ...) c)]
+  
+  [(closed-goal? g_1 (r ...) (x ...) c)
+   (closed-goal? g_2 (r ...) (x ...) c)
+   ---------- "disj-closed"
+   (closed-goal? (g_1 ∨ g_2 _) (r ...) (x ...) c)]
+
+  [(closed-term? t_1 (x ...) c)
+   (closed-term? t_2 (x ...) c)
+   ---------- "==-closed"
+   (closed-goal? (t_1 =? t_2 _) (r ...) (x ...) c)]
+  
+  [(closed-term? t (x ...) c) ...
+   ---------- "relcall-closed"
+   (closed-goal? (r_1 t ... _) (r_2 ... r_1 r_3 ...) (x ...) c)]
+  )
+
+(define-judgment-form
+  L
+  #:contract (closed-tree? s (r ...))
+  #:mode (closed-tree? I I)
+
+  [
+   -------------------"empty tree is closed"
+   (closed-tree? () (r ...))]
+
+  [
+   ------------------"trivial success is closed"
+   (closed-tree? ⊤ (r ...))]
+
+  [(closed-goal? g (r ...) () c)
+   (side-condition ,(andmap (λ (pair) (< (first pair) (term c))) (term sub)))
+   (side-condition ,(<= (length (term sub)) (term c)))
+   (closed-sub? sub c)
+   (closed-trail? trail c)
+   -------------------"goal w/ sub closed"
+   (closed-tree? (g (state sub c trail)) (r ...))]
+
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
+   -------------------"disj closed"
+   (closed-tree? (s_1 + s_2) (r ...))]
+
+  [(closed-tree? s (r ...))
+   (closed-goal? g (r ...) () 0)
+   -------------------"conj closed"
+   (closed-tree? (s × g) (r ...))]
+
+  [(closed-tree? s (r ...))
+   -------------------"delay closed"
+   (closed-tree? (delay s) (r ...))])
+
 
 (define-judgment-form
   L
