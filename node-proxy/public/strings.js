@@ -12,7 +12,7 @@ function arrayToString(arr) {
 }
 
 export function termToString(term) {
-    if (typeof term === "object" && term !== null && "var" in term) {
+    if (typeof term === "object" && term !== null && term.var) {
         return `,${term.var}`;
     }    
     if (Array.isArray(term)) { return arrayToString(term); }
