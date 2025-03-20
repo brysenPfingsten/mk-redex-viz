@@ -222,7 +222,7 @@
      (if (bool-b expr) "#t" "#f")]
 
     [(konst? expr)
-     (konst-k (format "\"~a\"" expr))]
+     (format "\"~a\"" (konst-k expr))]
 
     [(kons? expr)
      (format "`(~a)" (kons->string expr))]
@@ -415,3 +415,25 @@
          (appendo res `(,a) out))]))
 
    (run* (q) (reverseo '(dog cat bear lion) q))))))
+
+
+(module+ test
+  (require rackunit)
+
+  (check-equal?
+  (car (parse-prog
+                '((run* (q) (fresh () (== 'dog1 'cat) (== 'bear1 lion) (== 'dog 'cat) (== 'bear 'lion))))))
+'(prog
+  ()
+  ((∃
+    (x:q)
+    (∃
+     ()
+     (("dog1" =? "cat" "u34")
+      ∧
+      (("bear1" =? x:lion "u36") ∧ (("dog" =? "cat" "u38") ∧ ("bear" =? "lion" "u39") "c37") "c35")
+      "c33")
+     "f32")
+    "f31")
+   (state () 0 ()))))
+  )
