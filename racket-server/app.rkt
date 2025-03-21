@@ -67,7 +67,7 @@
         (cons expr (read-all port)))))
 
 (define (send-tree-and-html tree html)
-  (let ([response (hasheq 'stepName "Intialize program"
+  (let ([response (hasheq 'stepName "Initialize program"
                           'step 0
                           'program tree
                           'htmlGuids html)])
