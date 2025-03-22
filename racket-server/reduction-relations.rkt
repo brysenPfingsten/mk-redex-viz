@@ -32,7 +32,6 @@
                            (in-hole Ex ((⊤ σ) + (s <-+ s_2)))
                            "reassociate left disj"]
 
-
                       [--> (in-hole Ex ((⊤ σ) × g))
                            (in-hole Ex (g σ))
                            "bring subst to 2nd conjunct"]
