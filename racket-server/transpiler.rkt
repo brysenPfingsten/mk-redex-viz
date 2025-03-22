@@ -292,7 +292,7 @@
   (conj-goals (map parse-goal goals)))
 
 (define (conj-goals goals)
-  (foldr (λ (c a) (conj a c)) (car goals) (cdr goals)))
+  (foldl (λ (c a) (conj a c)) (car goals) (cdr goals)))
 
 ;; Deprecated
 (define (disj-goals goals)
