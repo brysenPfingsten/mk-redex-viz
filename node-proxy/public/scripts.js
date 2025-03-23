@@ -1,7 +1,6 @@
 import { drawTree } from './drawing.js';
 import { addColors, flattenGoalConj } from './tree_setup.js';
-import { toString } from './strings.js';
-import { checkOverflow } from './drag_to_scroll.js';
+import { toString } from './strings.js'; 
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
 const treeData = { 
@@ -159,6 +158,7 @@ function sendRequest(method, path, msg="") {
         }
 
         if (response.headers.get('X-Is-Last') === 'true' ) { setDisabled(['back'], true); }
+        if (response.headers.get('X-Done') === 'true' ) { setDisabled(['step'], true); }
 
         return response.text();  
     })
@@ -210,6 +210,11 @@ function resetTree() {
 
 function back() {
     sendRequest('POST', 'api/post/back')
+    .then(success => {
+        if (success) {
+            setDisabled(['step'], false);
+        }
+    });
 }
 
 function init() {
