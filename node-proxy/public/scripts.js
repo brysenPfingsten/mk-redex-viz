@@ -201,7 +201,7 @@ function resetTree() {
     sendRequest('POST', 'api/post/reset')
     .then(success => {
         if (success) {
-            document.getElementById('code-input').disabled = false;
+            unlockCode();
             setDisabled(['back'], true);
             setDisabled(['debug', 'step'], false);
         }
@@ -263,6 +263,21 @@ function lockCode() {
     // Show the overlay
     overlay.style.display = "block";
 }
+
+function unlockCode() {
+    const textarea = document.getElementById("code-input");
+    const overlay = document.getElementById("highlight-overlay");
+  
+    // Enable editing
+    textarea.disabled = false;
+  
+    // Remove the class that makes text transparent
+    textarea.classList.remove("locked");
+  
+    // Hide the overlay
+    overlay.style.display = "none";
+  }
+  
 
 
 document.addEventListener("DOMContentLoaded", () => {
