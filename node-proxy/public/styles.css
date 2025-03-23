@@ -72,10 +72,6 @@ body {
     opacity: 0.6; 
 }
 
-#highlight-overlay {
-    display: none;
-}
-
 textarea.locked {
     color: transparent;
     caret-color: transparent;
@@ -99,6 +95,8 @@ textarea {
 }
 
 #highlight-overlay {
+    display: none; 
+    pointer-events: auto; /* Allow clicks to be detected */
     position: absolute;
     top: 0;
     left: 0;
@@ -110,8 +108,14 @@ textarea {
     font-size: 14px;
     white-space: pre-wrap;
     word-wrap: break-word;
-    pointer-events: none;
+    z-index: 10; /* Ensure it's above the textarea */
 }
+
+.hidden-tag {
+    pointer-events: auto;
+    display: inline;
+}
+
 
 .node rect {
     fill: lightgray;
