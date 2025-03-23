@@ -16,12 +16,12 @@ function redrawTree(treeData) {
     
     // First pass: measure node sizes
     const tempSvg = d3.select("body").append("svg")
-        .style("position", "absolute")
-        .style("left", "-9999px");
+    .style("position", "absolute")
+    .style("left", "-9999px");
     const tempNodes = tempSvg.selectAll(".temp-node")
-        .data(root.descendants())
-        .join("g")
-        .attr("class", "temp-node");
+    .data(root.descendants())
+    .join("g")
+    .attr("class", "temp-node");
     
     // Draw the temp nodes
     drawTree(tempNodes); 
@@ -33,19 +33,19 @@ function redrawTree(treeData) {
         d.data.measuredHeight = bbox.height;
     });
     tempSvg.remove();
-
+    
     // Configure tree layout with dynamic spacing
     const treeLayout = d3.tree()
-        .nodeSize([1, 100]) // Base horizontal unit, vertical spacing
-        .separation((a, b) => {
-            const padding = 20; // Adjust based on your needs
-            if (a.parent === b.parent) return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding;
-            else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;s
-        });
-
+    .nodeSize([1, 100]) // Base horizontal unit, vertical spacing
+    .separation((a, b) => {
+        const padding = 20; 
+        if (a.parent === b.parent) return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding;
+        else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;s
+    });
+    
     // Compute the layout with adjusted spacing
     treeLayout(root);
-
+    
     // Calculate dimensions and update SVG
     const nodes = root.descendants();
     const links = root.links();
@@ -61,11 +61,11 @@ function redrawTree(treeData) {
     const treeHeight = maxY - minY + padding * 2;
     
     d3.select("svg")
-        .attr("width", treeWidth)
-        .attr("height", treeHeight)
-        .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
-        .attr("preserveAspectRatio", "xMidYMid meet");
-
+    .attr("width", treeWidth)
+    .attr("height", treeHeight)
+    .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+    
     // Draw elements
     drawLinks(svg, links);
     drawNodes(svg, nodes);
@@ -73,10 +73,10 @@ function redrawTree(treeData) {
 
 function drawNodes(svg, nodes) {
     const nodeGroups = svg.selectAll(".node")
-        .data(nodes)
-        .join("g")
-        .attr("class", "node")
-        .attr("transform", d => `translate(${d.x},${d.y})`);
+    .data(nodes)
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.x},${d.y})`);
     
     addTooltips(nodeGroups);
     drawTree(nodeGroups); 
@@ -96,24 +96,45 @@ function drawLinks(svg, links) {
 function clearHighlights() {
     document.querySelectorAll('.hidden-tag.highlight').forEach(el => {
         el.classList.remove('highlight');
+        el.style.backgroundColor = '';
+    });
+
+    d3.select("svg")
+      .selectAll('g.node')
+      .selectAll('circle, rect, polygon')
+      .style('stroke', function(d) {
+          return d.data.sub ? 'yellow' : 'black';
+      })
+      .style('stroke-width', function(d) {
+          return d.data.sub ? '6px' : '2px';
+      });
+}
+
+function highlightText(id, color='yellow') {
+    clearHighlights();
+    
+    // Add the highlight class to its corresponding elements.
+    const elements = document.querySelectorAll(`.hidden-tag[data-id="${id}"]`);
+    elements.forEach(el => {
+        el.style.backgroundColor = color;
+        el.classList.add('highlight');
     });
 }
 
-function highlightIDs(ids) {
-    // First, clear any existing highlights.
-    document.querySelectorAll('.hidden-tag.highlight').forEach(el => {
-        el.classList.remove('highlight');
-    });
+function highlightNodesById(id) {
+    const color = 'lightblue';
     
-    // For each ID in the array, add the highlight class to its corresponding elements.
-    ids.forEach(id => {
-        console.log(id)
-        const elements = document.querySelectorAll(`.hidden-tag[data-id="${id}"]`);
-        elements.forEach(el => {
-            el.classList.add('highlight');
-        });
-    });
-}
+    // Highlight the program
+    highlightText(id, color)
+
+    // Highlight the nodes
+    d3.select("svg")
+    .selectAll('g.node')
+    .filter(d => d.data.id === id)
+    .select('circle, rect, polygon')
+    .style('stroke', color)
+    .style('stroke-width', 3);
+} 
 
 
 function addTooltips(nodeGroups) {
@@ -134,7 +155,7 @@ function addTooltips(nodeGroups) {
         let ids = []; // [d.data.trail.map(trail => trail.id)]
         if (d.data.id) { ids.push(d.data.id); }
         clearHighlights();
-        highlightIDs(ids);
+        highlightText(ids);
     })
     .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
@@ -144,22 +165,22 @@ function sendRequest(method, path, msg="") {
         method: method,
         headers: { 'Content-Type': 'application/json' }
     };
-
+    
     // Only attach body if the method supports it
-    if (method !== "GET" && method !== "HEAD") {
+    if (msg && method !== "GET" && method !== "HEAD") {
         options.body = JSON.stringify({ text: msg });
     }
-
+    
     return fetch(path, options)
     .then(response => {
         if (!response.ok) {
             console.error(`HTTP error! Status: ${response.status}`);
             return false;
         }
-
+        
         if (response.headers.get('X-Is-Last') === 'true' ) { setDisabled(['back'], true); }
         if (response.headers.get('X-Done') === 'true' ) { setDisabled(['step'], true); }
-
+        
         return response.text();  
     })
     .then(text => {
@@ -238,7 +259,7 @@ function setDisabled(buttons, flag) {
 // Function to update the overlay by processing marker syntax (e.g., [[tag]]...[[/tag]])
 function updateOverlay(code) {
     const overlay = document.getElementById("highlight-overlay");
-
+    
     // Replace opening markers with a span tag
     code = code.replace(/\[\[([a-zA-Z0-9_-]+)\]\]/g, (match, p1) => {
         return `<span class="hidden-tag" data-id="${p1}">`;
@@ -267,17 +288,17 @@ function lockCode() {
 function unlockCode() {
     const textarea = document.getElementById("code-input");
     const overlay = document.getElementById("highlight-overlay");
-  
+    
     // Enable editing
     textarea.disabled = false;
-  
+    
     // Remove the class that makes text transparent
     textarea.classList.remove("locked");
-  
+    
     // Hide the overlay
     overlay.style.display = "none";
-  }
-  
+}
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -286,18 +307,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("reset-btn").addEventListener("click", resetTree);
     document.getElementById("step-btn").addEventListener("click", fetchAndUpdateTree);
     const container = document.querySelector(".scroll-container");
-
+    
     let isDragging = false;
     let startX, startY, scrollLeft, scrollTop;
-
+    
     function disableSelection() {
         document.body.style.userSelect = "none"; 
     }
-
+    
     function enableSelection() {
         document.body.style.userSelect = "auto"; 
     }
-
+    
     container.addEventListener("mousedown", (e) => {
         isDragging = true;
         disableSelection();
@@ -307,19 +328,19 @@ document.addEventListener("DOMContentLoaded", () => {
         scrollLeft = container.scrollLeft;
         scrollTop = container.scrollTop;
     });
-
+    
     container.addEventListener("mouseleave", () => {
         isDragging = false;
         enableSelection();
         container.style.cursor = "grab";
     });
-
+    
     container.addEventListener("mouseup", () => {
         isDragging = false;
         enableSelection();
         container.style.cursor = "grab";
     });
-
+    
     container.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
         e.preventDefault();
@@ -330,6 +351,20 @@ document.addEventListener("DOMContentLoaded", () => {
         container.scrollLeft = scrollLeft - walkX;
         container.scrollTop = scrollTop - walkY;
     });
+    
+    const overlay = document.getElementById("highlight-overlay");
+    
+    overlay.addEventListener("click", (event) => {
+        // Look for the nearest ancestor with the class "hidden-tag"
+        const clickedTag = event.target.closest('.hidden-tag');
+        
+        if (clickedTag && overlay.contains(clickedTag)) {
+            highlightNodesById(clickedTag.dataset.id);
+        } else {
+            clearHighlights();
+        }
+    });
+    
 });
 
 // Initial render
