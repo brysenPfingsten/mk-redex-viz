@@ -32,8 +32,7 @@ function trailToString(trail) {
 
 function reificationToString(reification) {
     if (!reification) { return ''; }
-    if (reification.length === 1) { return reification[0] }
-    return arrayToString(reification)
+    return termToString(reification)
 }
 
 export function toString(sub, trail, reification) {

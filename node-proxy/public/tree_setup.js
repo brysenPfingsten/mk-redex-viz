@@ -2,55 +2,51 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 export { addColors, flattenGoalConj }
 
 function addColors(tree) {
-    let children = tree.children
+    if (tree.sub) return tree;
+
+    let children = tree.children;
+
     switch (tree.name) {
         case "<-+":
-            if (tree.sub) break;
             children[0].color = "orange";
             addColors(children[0]);
             break;
         case "+->":
-            if (tree.sub) break;
             children[1].color = "orange";
             addColors(children[1]);
             break;
         case "Disjunction":
-            if (tree.sub) break;
             children[0].color = "#FFA500";
             addColors(children[0]);
             break;
         case "Conjunction":
-            if (tree.sub) break;
             children[0].color = "blue";
-            addColors(children[0])
+            addColors(children[0]);
             break;
         case "Fresh":
-            if (tree.sub) break;
             children[0].color = "red";
             addColors(children[0]);
             break;
         case "Goal-Conj":
-            if (tree.sub) break;
             children[0].color = "purple";
             addColors(children[0]);
             break;
         case "Goal-Disj":
-            if (tree.sub) break;
             children[0].color = "#FF69B4";
             addColors(children[0]);
             break;
-        case "Answer":
-            children[0].color = "green";
+        case "Delay":
+            children[0].color = "black";
             addColors(children[0]);
             break;
-        case "Delay":
-            if (tree.sub) break;
-            children[0].color = "black";
-            addColors(children[0])
+        case "Answer":
+            // Do nothing
             break;
     }
+
     return tree;
 }
+
 
 function flattenGoalConj(tree) {
     // Helper function to recursively flatten `Goal-Conj`

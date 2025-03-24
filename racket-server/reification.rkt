@@ -2,7 +2,7 @@
 (require redex)
 
 (require "definitions.rkt")
-(provide reify term->mk)
+(provide reify)
 
 (define-metafunction L
   term->mk : t -> any
@@ -18,41 +18,38 @@
   (if matches (second matches) input-str))
 
 (define-metafunction L
+  list->list : any -> any
+  [(list->list empty) ()]
+  [(list->list (t_1 : t_2))
+   ,(cons (term (term->json t_1))
+          (term (list->list t_2)))]
+  [(list->list (t)) ,(cons (term (term->json t)) '())]
+  [(list->list t) ,(cons (term (term->json t)) '())])
+
+(define-metafunction L
   term->json : t -> any
-  [(term->json c) ,(number->string (term c))]
-  [(term->json #t) "\"#t\""]
-  [(term->json #f) "\"#f\""]
-  [(term->json string) ,(string-append "\"" (term string) "\"")]
-  [(term->json x) ,(string-append "\"" (extract-name (symbol->string (term x))) "\"")]
-  [(term->json empty) "\"empty\""]
-  [(term->json (t_1 : t_2))
-   ,(string-append
-     "["
-     (term (list->json (t_1 : t_2)))
-     "]")])
+  [(term->json x) ,(hasheq 'var (extract-name (symbol->string (term x))))]
+  [(term->json empty) "empty"]
+  [(term->json (t_1 : t_2)) (list->list (t_1 : t_2))]
+  [(term->json t) t])
 
-(define (list-answer->json la)
-  (if (null? (cdr la))
-      (answer->json (car la))
-      (string-append (answer->json (car la)) ", " (answer->json (cdr la)))))
-
-(define (answer->json a)
+(define (deep-symbol->string x)
   (cond
-    [(symbol? a) (term (term->json ,(symbol->string a)))]
-    [(pair? a) (list-answer->json a)]
-    [else (term (term->json ,a))]))
+    [(symbol? x) (symbol->string x)]
+    [(pair? x) (cons (deep-symbol->string (car x))
+                     (cons (deep-symbol->string (cdr x)) '()))]
+    [(list? x) (map deep-symbol->string x)]
+    [else x]))
   
 (define (reify sub c)
   (if (empty? sub)
-      "[]"
+      #f
       (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
-             [freshen (map (λ (i) (string->symbol (string-append "_" (number->string i)))) (range 0 c))]
+             [freshen (map (λ (i) (string->symbol (string-append "_" (number->string i)))) (range 1 c))]
              [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p))) 
                                 ,(term (term->mk ,(second p)))))]
              [ns (make-base-namespace)] ; Create a new namespace
              [_ (parameterize ([current-namespace ns]) (eval '(require minikanren)))] 
              [result (parameterize ([current-namespace ns])  ; Run eval inside this namespace
                        (car (eval `(run* (q) (fresh ,freshen ,@(map unify sub))))))]) ;; evil eval
-        (string-append "["
-                       (answer->json result)
-                       "]"))))
+        (deep-symbol->string result))))
