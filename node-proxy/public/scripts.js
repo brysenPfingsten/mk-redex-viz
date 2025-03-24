@@ -189,6 +189,7 @@ function sendRequest(method, path, msg="") {
             const redStep = data.stepName;
             const stepNum = data.step;
             const tree = JSON.parse(data.program);
+            console.log(tree)
             if (data.htmlGuids) {
                 updateOverlay(data.htmlGuids);
                 lockCode();

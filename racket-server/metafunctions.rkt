@@ -100,7 +100,7 @@
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c))])
+           [reified (reify (term sub) (add1 (term c)))])
       (hash-union goal-json
                   (hasheq
                    'sub sub-json
@@ -124,6 +124,7 @@
            [rest-json (term (tree->json s))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (term c))])
+      (displayln reified) (displayln (term sub)) (newline) (newline) (flush-output)
       (hasheq 'name "Answer"
               'sub sub-json
               'trail trail-json

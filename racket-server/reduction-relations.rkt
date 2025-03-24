@@ -1,16 +1,18 @@
 #lang racket
-(require redex)
-(require redex/reduction-semantics)
-(require rackunit)
+(require redex
+         redex/reduction-semantics
+         rackunit
+         redex-etc
+         redex/pict)
 (check-redundancy #t)
-(require redex-etc)
+
 
 (provide red)
 (require "definitions.rkt" "judgment-forms.rkt")
 
 (define red
   (reduction-relation L
-                      #:domain p #;(side-condition p (judgment-holds (closed-program? (term p))))
+                      #:domain p #;(side-condition p (where (judgment-holds (closed-program? p))))
 
                       [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))
                            (in-hole Ex ((g_1 σ) <-+ (g_2 σ)))
