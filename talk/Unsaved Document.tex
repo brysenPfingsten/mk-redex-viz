@@ -1,0 +1,13 @@
+\documentclass{article}
+
+\usepackage{simplebnf}
+
+\begin{document}
+
+\begin{bnf*}
+<expr> ::= <expr> + <term> \quad \textit{: addition} \\
+        | <term> \quad \textit{: base case} \\
+<term> ::= \texttt{num} \quad \textit{: a number}
+\end{bnf*}
+
+\end{document}

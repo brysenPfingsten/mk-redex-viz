@@ -1,0 +1,238 @@
+%----------------------------------------------------------------------------------------
+%    PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+
+\documentclass[aspectratio=169,xcolor=dvipsnames]{beamer}
+\usetheme{SimpleDarkBlue}
+
+\usepackage{hyperref}
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+\usepackage{syntax}
+\usepackage{simplebnf}
+\usepackage{mathtools} % for \mathpunct
+\usepackage{textcomp}
+
+%----------------------------------------------------------------------------------------
+%    TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{A Formal Model and Interactive Visualization of miniKanren Search Semantics}
+
+\author{Jason Hemann, Brysen Pfingsten}
+
+\institute
+{
+    Seton Hall University, South Orange, NJ, USA \\	
+    \texttt{hemannja@shu.edu, pfingsbr@shu.edu}
+}
+\date{March 25, 2025} % Date, can be changed to a custom date
+
+%----------------------------------------------------------------------------------------
+%    PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{Overview}
+    \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+\section{Motivation}
+%------------------------------------------------
+
+%------------------------------------------------
+\section{Grammar}
+%------------------------------------------------
+
+%------------------------------------------------
+\section{Metafunctions and Reification}
+%------------------------------------------------
+
+%------------------------------------------------
+\section{Reduction Relation and Railway Model}
+%------------------------------------------------
+
+%------------------------------------------------
+\section{Visualizer Demo}
+%------------------------------------------------
+
+\begin{frame}{Grammar:Terms and States}
+
+\begin{bnf}
+$c$ ::=
+| \texttt{natural} : Numbers
+;;
+$o$ ::=
+| \texttt{boolean} : Booleans
+| \texttt{string} :  Strings
+;;
+$x$ ::=
+| (variable-prefix x) : Logic Variables 
+;;
+$t$ ::=
+| $c$ : 
+| $o$ : 
+| $x$ :
+| \texttt{empty} : Empty List
+| \texttt{($t$ \colon $t$)} : Non-Empty List
+;;
+$e$ ::=
+| $x$ : variable
+| $n$ : numeral
+| \texttt{$e$ + $e$} : addition
+| \texttt{$e$ * $e$} : multiplication
+| \texttt{$e$ \textasciicircum{} $e$} : concatenation
+| \texttt{len($e$)} : length
+| \texttt{let $x$ = $e_1$ in $e_2$} : definition
+\end{bnf}
+
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Blocks of Highlighted Text}
+    In this slide, some important text will be \alert{highlighted} because it's important. Please, don't abuse it.
+
+    \begin{block}{Block}
+        Sample text
+    \end{block}
+
+    \begin{alertblock}{Alertblock}
+        Sample text in red box
+    \end{alertblock}
+
+    \begin{examples}
+        Sample text in green box. The title of the block is ``Examples".
+    \end{examples}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Multiple Columns}
+    \begin{columns}[c] % The "c" option specifies centered vertical alignment while the "t" option is used for top vertical alignment
+
+        \column{.45\textwidth} % Left column and width
+        \textbf{Heading}
+        \begin{enumerate}
+            \item Statement
+            \item Explanation
+            \item Example
+        \end{enumerate}
+
+        \column{.45\textwidth} % Right column and width
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer lectus nisl, ultricies in feugiat rutrum, porttitor sit amet augue. Aliquam ut tortor mauris. Sed volutpat ante purus, quis accumsan dolor.
+
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Table}
+    \begin{table}
+        \begin{tabular}{l l l}
+            \toprule
+            \textbf{Treatments} & \textbf{Response 1} & \textbf{Response 2} \\
+            \midrule
+            Treatment 1         & 0.0003262           & 0.562               \\
+            Treatment 2         & 0.0015681           & 0.910               \\
+            Treatment 3         & 0.0009271           & 0.296               \\
+            \bottomrule
+        \end{tabular}
+        \caption{Table caption}
+    \end{table}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Theorem}
+    \begin{theorem}[Mass--energy equivalence]
+        $E = mc^2$
+    \end{theorem}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Figure}
+    Uncomment the code on this slide to include your own image from the same directory as the template .TeX file.
+    %\begin{figure}
+    %\includegraphics[width=0.8\linewidth]{test}
+    %\end{figure}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}[fragile] % Need to use the fragile option when verbatim is used in the slide
+    \frametitle{Citation}
+    An example of the \verb|\cite| command to cite within the presentation:\\~
+
+    This statement requires citation \cite{p1}.
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{References}
+    \footnotesize
+    \bibliography{reference.bib}
+    \bibliographystyle{apalike}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
+    \Huge{\centerline{\textbf{The End}}}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
+
+About
+
+    About us
+    Our values
+    Careers
+    Press & awards
+    Blog
+
+Learn
+
+    LaTeX in 30 minutes
+    Templates
+    Webinars
+    Tutorials
+    How to insert images
+    How to create tables
+
+Plans & pricing
+
+    Premium features
+    For individuals & groups
+    For business
+    For universities
+    For students
+    For government
+
+Get involved
+
+    Become an Overleaf advisor
+    Let us know what you think
+
+Help
+
+    Why LaTeX?
+    Documentation
+    Contact us
+    Website status
+
+© 2025 Overleaf
+Privacy and Terms
+Compliance
+
+Overleaf on X
+Overleaf on Facebook
+Overleaf on LinkedIn
+We only use cookies for essential purposes and to improve your experience on our site. You can find out more in our cookie policy.
