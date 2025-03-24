@@ -2,7 +2,7 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 export { addColors, flattenGoalConj }
 
 function addColors(tree) {
-    if (tree.sub) return tree;
+    if (tree.sub && tree.name != 'Answer') return tree;
 
     let children = tree.children;
 
@@ -40,7 +40,8 @@ function addColors(tree) {
             addColors(children[0]);
             break;
         case "Answer":
-            // Do nothing
+            children[0].color = "green";
+            addColors(children[0]);
             break;
     }
 
