@@ -98,16 +98,21 @@ function clearHighlights() {
         el.classList.remove('highlight');
         el.style.backgroundColor = '';
     });
-
+    
     d3.select("svg")
-      .selectAll('g.node')
-      .selectAll('circle, rect, polygon')
-      .style('stroke', function(d) {
-          return d.data.sub ? 'yellow' : 'black';
-      })
-      .style('stroke-width', function(d) {
-          return d.data.sub ? '6px' : '2px';
-      });
+    .selectAll('g.node')
+    .selectAll('circle, rect, polygon')
+    .style('stroke', function(d) {
+        let outline;
+        if (d.data.name === "Proceed")  {  outline = "green"; } 
+        else if (d.data.sub) { outline = "yellow"; } 
+        else {outline = "black"; }
+        
+        return outline
+    })
+    .style('stroke-width', function(d) {
+        return d.data.sub ? '6px' : '2px';
+    });
 }
 
 function highlightText(id, color='yellow') {
@@ -126,7 +131,7 @@ function highlightNodesById(id) {
     
     // Highlight the program
     highlightText(id, color)
-
+    
     // Highlight the nodes
     d3.select("svg")
     .selectAll('g.node')
