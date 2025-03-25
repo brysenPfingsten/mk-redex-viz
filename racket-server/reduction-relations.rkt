@@ -66,9 +66,13 @@
                            (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
                            "fresh-n subst"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((r_1 t ... o) σ))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (delay ((r_1 t ... o) σ)))))
+                      [--> (in-hole Ex ((r_1 t ... o) σ))
+                           (in-hole Ex (delay (unfold-me ((r_1 t ... o) σ))))
                            "relcall and add delay"]
+
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (unfold-me ((r_1 t ... o) σ)))))
+						   (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
+                           "substitute in for relation body and proceed through it"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
                            (in-hole Ex (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))))
@@ -92,8 +96,8 @@
                            (in-hole Ex (delay (s_2 <-+ s_1)))
                            "propagate right delay through disj, and flip"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (delay ((r_1 t ..._1 _) σ)))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (delay s)))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev s))
                            "invoke delay"]
 
                       [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))
