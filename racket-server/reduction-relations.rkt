@@ -22,17 +22,29 @@
                            (in-hole Ex ((g_1 σ) × g_2))
                            "distribute subst over conj"]
 
-                      [--> (in-hole Ex (((⊤ σ_1) + s) × g))
+                      [--> (in-hole Ex (((⊤ σ_1) <-+ s) × g))
                            (in-hole Ex (((⊤ σ_1) × g) <-+ (s × g)))
-                           "distribute disj ans over conj"]
+                           "distribute left disj ans over conj"]
 
-                      [--> (in-hole Ex (s_2 +-> ((⊤ σ) + s)))
-                           (in-hole Ex ((⊤ σ) + (s_2 +-> s)))
-                           "reassociate right disj"]
+                      [--> (in-hole Ex ((s +-> (⊤ σ)) × g))
+                           (in-hole Ex ((s × g) +-> ((⊤ σ) × g)))
+                           "distribute right disj ans over conj"]
 
-                      [--> (in-hole Ex (((⊤ σ) + s) <-+ s_2))
-                           (in-hole Ex ((⊤ σ) + (s <-+ s_2)))
-                           "reassociate left disj"]
+                      [--> (in-hole Ex (s_2 +-> ((⊤ σ) <-+ s)))
+                           (in-hole Ex ((⊤ σ) <-+ (s_2 +-> s)))
+                           "reassociate right left disj"]
+
+                      [--> (in-hole Ex (s_2 +-> (s +-> (⊤ σ))))
+                           (in-hole Ex ((s_2 +-> s) +-> (⊤ σ)))
+                           "reassociate right right disj"]
+
+                      [--> (in-hole Ex (((⊤ σ) <-+ s) <-+ s_2))
+                           (in-hole Ex ((⊤ σ) <-+ (s <-+ s_2)))
+                           "reassociate left left disj"]
+
+                      [--> (in-hole Ex ((s +-> (⊤ σ)) <-+ s_2))
+                           (in-hole Ex ((s <-+ s_2) +-> (⊤ σ)))
+                           "reassociate left right disj"]
 
                       [--> (in-hole Ex ((⊤ σ) × g))
                            (in-hole Ex (g σ))
@@ -84,11 +96,11 @@
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
                            "invoke delay"]
 
-                      [--> (in-hole Ex ((⊤ σ) <-+ s))
-                           (in-hole Ex ((⊤ σ) + s))
+                      [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))
+                           (prog Γ (in-hole Ev ((⊤ σ) + s)))
                            "promote left answer"]
 
-                      [--> (in-hole Ex (s +-> (⊤ σ)))
-                           (in-hole Ex ((⊤ σ) + s))
+                      [--> (prog Γ (in-hole Ev (s +-> (⊤ σ))))
+                           (prog Γ (in-hole Ev ((⊤ σ) + s)))
                            "promote right answer"]
                       ))
