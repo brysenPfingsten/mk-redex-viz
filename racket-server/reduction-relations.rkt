@@ -67,11 +67,11 @@
                            "fresh-n subst"]
 
                       [--> (in-hole Ex ((r_1 t ... o) σ))
-                           (in-hole Ex (delay (unfold-me ((r_1 t ... o) σ))))
+                           (in-hole Ex (delay (proceed ((r_1 t ... o) σ))))
                            "relcall and add delay"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (unfold-me ((r_1 t ... o) σ)))))
-						   (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
                            "substitute in for relation body and proceed through it"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))

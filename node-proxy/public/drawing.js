@@ -49,7 +49,7 @@ function drawSucceedNode(group, d)  { drawCircle(group, "green", d.sub); }
 function drawAnswerNode(group, d)   { drawCircle(group, "green", d.sub, "Answer", undefined, "10px") }
 function drawEmptyNode(group, d)    { drawCircle(group, "white", d.sub) }
 
-function drawTextNode(group, textContent, hasSub, padding = 10) {
+function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
     const textElement = group.append("text")
         .text(textContent)
         .attr("text-anchor", "middle")
@@ -58,16 +58,25 @@ function drawTextNode(group, textContent, hasSub, padding = 10) {
 
     const textWidth = textElement.node().getBBox().width;
 
+    if (!outline && hasSub) { outline = "yellow"; }
+    else if (outline != "green") { outline = "black"; }
+
     group.append("rect")
         .attr("x", -textWidth / 2 - padding)
         .attr("y", -15)
         .attr("width", textWidth + 2 * padding)
         .attr("height", 30) 
-        .style("fill", "white")
-        .style("stroke", hasSub ? "yellow" : "black")
+        .style("fill", "lightgray")
+        .style("stroke", outline)
         .style("stroke-width", hasSub ? "6px" : "2px");
 
     textElement.raise();
+}
+
+function drawProceedNode(group, data) {
+    const argsText = data.goal.args ? data.goal.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
+    const textContent = `(${data.goal.rel} ${argsText})`;
+    drawTextNode(group, textContent, data.sub, 10, "green");
 }
 
 function drawUnifyNode(group, data) {
@@ -130,6 +139,7 @@ const nodeDrawFunctions = {
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,
     "Rel-Call": drawRelCallNode,
+    "Proceed": drawProceedNode,
     "Goal-Conj": drawGoalConjNode,
     "Goal-Disj": drawGoalDisjNode,
     "Empty": drawEmptyNode

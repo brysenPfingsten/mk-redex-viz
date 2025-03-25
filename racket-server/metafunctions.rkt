@@ -107,6 +107,18 @@
                    'trail trail-json
                    'reified reified)))]
 
+  [(tree->json (proceed ((r t ... o) (_ sub c trail))))
+   ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
+           [sub-json (sub->json (term sub))]
+           [trail-json (trail->json (term trail) (term sub))]
+           [reified (reify (term sub) (add1 (term c)))])
+      (hasheq 'name "Proceed"
+              'id (term o)
+              'goal goal-json
+              'sub sub-json
+              'trail trail-json
+              'refied reified))]
+
   [(tree->json (s_1 +-> s_2))
    ,(let* ([left-json (term (tree->json s_1))]
            [right-json (term (tree->json s_2))])
