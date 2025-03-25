@@ -33,3 +33,32 @@ will need to work around this, by either
   `bashrc`) or
 - If you regularly use Docker for other purposes, you could add a
   `platform` to the YAML file found in this directory
+
+
+## **Issues**
+
+### `Error reading from ~a`
+
+When building with Docker on an Apple Silicon machine, some users encounter an error like the following:
+
+```
+Error: error reading from ~a
+("petite")
+Aborted
+```
+
+
+Here is a minimal test that should produce the same error:
+
+```
+$ docker run -it --platform linux/amd64 racket/racket:latest sh -c "uname -m; racket"
+x86_64
+Error: error reading from ~a
+("petite")
+Aborted
+```
+
+To resolve this, open Docker.app and under Settings > General >
+Virtual Machine Options, make sure you have un-checked `Use Rosetta
+for x86_64/amd64 emulation on Apple Silicon`
+
