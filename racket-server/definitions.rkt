@@ -22,95 +22,69 @@
 ;; I could also think about this as though the query is instead the
 ;; one and only call to an initial, implicitly define defrel called
 ;; "main".
-
-
-;                                                                                        
-;                                                                                        
-;                                                                                        
-;                                                                                        
-;      ;;;;;;   ;;;;;;;        ;      ;;;       ;;;  ;;;       ;;;      ;      ;;;;;;;   
-;    ;;     ;    ;     ;       ;       ;;       ;;    ;;       ;;       ;       ;     ;  
-;    ;      ;    ;     ;      ; ;      ; ;     ; ;    ; ;     ; ;      ; ;      ;     ;  
-;   ;            ;     ;      ; ;      ; ;     ; ;    ; ;     ; ;      ; ;      ;     ;  
-;   ;            ;    ;      ;   ;     ; ;     ; ;    ; ;     ; ;     ;   ;     ;    ;   
-;   ;            ;;;;;       ;   ;     ;  ;   ;  ;    ;  ;   ;  ;     ;   ;     ;;;;;    
-;   ;     ;;;;   ;   ;       ;   ;     ;  ;   ;  ;    ;  ;   ;  ;     ;   ;     ;   ;    
-;   ;       ;    ;    ;     ;;;;;;;    ;   ; ;   ;    ;   ; ;   ;    ;;;;;;;    ;    ;   
-;    ;      ;    ;    ;     ;     ;    ;   ; ;   ;    ;   ; ;   ;    ;     ;    ;    ;   
-;    ;;     ;    ;     ;    ;     ;    ;    ;    ;    ;    ;    ;    ;     ;    ;     ;  
-;      ;;;;;    ;;;    ;;;;;;;   ;;;; ;;;   ;   ;;;  ;;;   ;   ;;; ;;;;   ;;;; ;;;    ;;;
-;                                                                                        
-;                                                                                        
-;                                                                                        
-
-
+                                                                                   
 (define-language L
-  [p (prog Γ e)]   ; Programs, Relation Environments, and Relations
-  [Γ ((r_!_ d g) ...)] ; Ensure that 'ri's are distinct
-  [d (x_!_ ...)] ; Distinct variable declarations
-  ;------------------------------------
-  ; Expressions
-  [e ()
-     (⊤ σ)
-     s
-     (done-delay e)
-     ((⊤ σ) + e)]
+  ;--------------------Top Level-------------------------
+  [p (prog Γ e)]        ; Program
+  [Γ ((r_!_ d g) ...)]  ; Relation Environment w/ distinct relation names
+  [d (x_!_ ...)]        ; Distinct variable declarations
+  
+  ;--------------------Expressions-------------------------
+  [e ()               ; Empty Tree / Failure
+     (⊤ σ)            ; Singleton Answer
+     s                ; Search Tree
+     ((⊤ σ) + e)]     ; Answer Stream
 
-  ; Search Trees
-  [s ()
-     (g σ)
-     (s +-> s)
-     (s <-+ s)
-     ((⊤ σ) + s)
-     (s × g)
-     (proceed ((r t ... o) σ))
-     (delay s)]
+  ;-------------------Search Trees------------------------
+  [s ()                         ; Empty Tree / Failure
+     (g σ)                      ; Goal-State
+     (s +-> s)                  ; Right Disjunciton
+     (s <-+ s)                  ; Left Disjunction
+     ((⊤ σ) + s)                ; Answer Stream
+     (s × g)                    ; Conjunction
+     (proceed ((r t ... o) σ))  ; Proceed
+     (delay s)]                 ; Delay
 
-  ; Goals
+  ;----------------------Goals----------------------------
   [g ⊤
-     done
-     (t =? t)    ; Syntactic equality
-     (t =? t o)  ; Syntactic equality w/ tag
-     (r t ...)   ; Relation call
-     (r t ... o) ; Relation call w/ tag
-     (g ∨ g)     ; Disjunction
-     (g ∨ g o)   ; Disjunction w/ tag
-     (g ∧ g)     ; Conjuction
+     (t =? t o)    ; Syntactic equality w/ tag
+     (r t ... o)   ; Relation call w/ tag
+     (g ∨ g o)     ; Disjunction w/ tag
      (g ∧ g o)     ; Conjunction w/ tag
-     (∃ d g)     ; Variable introduction
      (∃ d g o)]    ; Variable introduction w/ tag
 
-  ;Terms
-  [t c
-     o  ;; for "other", change to make c constant and n natural
-     x
-     empty
-     (t : t)]
+  ;----------------------Terms---------------------------
+  [t c        ; Logic variables
+     o        ; Symbols, naturals, booleans, strings
+     x        ; Parameters
+     empty    ; Empty list
+     (t : t)] ; Non-empty list
 
 
-  ;Other
+  ;----------------------Other---------------------------
   [r (variable-prefix r:)] ; to account for arbitrary relation names
   [x (variable-prefix x:)] ; to account for arbitrary parameter names
-  [c natural]
-  [o ;; symbol ; Why isn't this working
-   boolean
-   string]
-  [σ (state sub c trail)]
-  [sub ((natural t) ...)]
+  [c natural]              ; Logic variables
+  [o (sym string)          ; Tagged string  = symbol
+     (nat natural)         ; Tagged natural = natural (not logic variable)
+     boolean
+     string]
+  [σ (state sub c trail)] ; State
+  [sub ((natural t) ...)] ; Substitution
   [maybe-sub sub #f]
   [trail ((t =? t o) ...)]
 
-  ;-------------------------------------
-  ; Values
+
+  ;----------------------Values--------------------------
   [v ()           ; Empty Node
      (⊤ σ)        ; Singleton Node
-     ((⊤ σ) + v)] ; Answer Disjunct (yuck the letter v and logical or look the same
+     ((⊤ σ) + v)] ; Answer Disjunct
 
   [prog-val (prog Γ v)]
 
-  ;-------------------------------------
-  
-  ; Evaluation Contexts
+
+  ;-----------------Evaluation Contexts------------------
+  ; Program
   [EΓ (prog Γ hole)]
 
   ; Answer Stream
@@ -123,14 +97,11 @@
       (s +-> Es)
       (Es × g)]
 
-  ;; Prog To Goal in Search Tree
+  ;; Prog to first tree w/o sub-tree
   [Ex (in-hole EΓ (in-hole Ev (in-hole Es hole)))]
 
-  ; Goal
-  [Eg hole
-      (Eg ∧ g)
-      (Eg ∨ g)]
   
+  ;---------------------Binding Forms--------------------
   #:binding-forms
   (∃ (x ...) g #:refers-to (shadow x ...))
   (prog ((r (x ...) g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
