@@ -8,6 +8,7 @@
 
 (provide parse-prog)
 
+;-----------------Structures-------------------
 (struct prog (relations query) #:transparent)
 (struct fresh (vars goal) #:transparent)
 (struct conde (clauses) #:transparent)
@@ -25,83 +26,167 @@
 (struct relname (name) #:transparent)
 (struct defrel (name lop goal) #:transparent)
 (struct run (n q goal) #:transparent)
+;-----------------------------------------------
 
-(define GUIDS '())
+;; map/fold: (T A -> (values R A)) (listof T) A -> (values (listof R) A)
+;; Purpose: Like map, but threads an accumulator state through each call.
+;;          The function f takes an element of the list and a state,
+;;          and returns a result and an updated state.
+;;
+;; Example:
+;;   (map/fold (λ (x s) (values (+ x s) (* s 2))) '(1 2 3) 1)
+;;    => values '(2 4 7), 8
+(define (map/fold f lst init-state)
+  (let loop ([lst lst] [acc '()] [state init-state])
+    (if (null? lst)
+        (values (reverse acc) state)
+        (let-values ([(v s1) (f (car lst) state)])
+          (loop (cdr lst) (cons v acc) s1)))))
 
-(define next-g-id
-  (let ([counter 0])
-    (λ (s)
-      (define next-guid (string-append s (number->string counter)))
-      (set! counter (add1 counter))
-      (set! GUIDS (cons next-guid GUIDS))
-      next-guid
-      )))
+;; map/fold-with-guids: (T Nat -> (values R Nat (listof String))) (listof T) Nat
+;;                      -> (values (listof R) Nat (listof String))
+;;
+;; Purpose: Like map/fold, but threads an integer counter through each call and
+;;          accumulates a list of generated GUIDs. The function f takes
+;;          an element of the list and a counter, and returns a result, an updated
+;;          counter, and a list of GUIDs associated with that element.
+;;
+;; Example:
+;;   (map/fold-with-guids
+;;    (λ (x n) (values (* x 2) (+ n 1) (list (format "g~a" n))))
+;;    '(1 2 3) 0)
+;;   => values '(2 4 6), 3, '("g0" "g1" "g2")
+(define (map/fold-with-guids f lst init-counter)
+  (let loop ([lst lst] [acc '()] [count init-counter] [guids '()])
+    (if (null? lst)
+        (values (reverse acc) count guids)
+        (let-values ([(v c2 g2) (f (car lst) count)])
+          (loop (cdr lst)
+                (cons v acc)
+                c2
+                (append guids g2))))))
 
-(define (transpile expr)
-  (cond
-    [(prog? expr)
-     (let [(r (prog-relations expr))
-           (q (prog-query expr))]
-       (term (prog ,(map transpile r) ,(transpile q))))]
-    [(fresh? expr)
-     (let ((vs (fresh-vars expr))
-           (g (fresh-goal expr))
-           (id (next-g-id "f")))
-       (term (∃ ,(map transpile vs) ,(transpile g) ,id)))]
-    [(conde? expr)
-     (let ([clauses (reverse (conde-clauses expr))]
-           [id (next-g-id "d")])
-       (foldl (λ (c a) (term (,(transpile c) ∨ ,a ,id)))
-              (transpile (car clauses))
-              (cdr clauses)))]
-    [(conj? expr)
-     (let ((g1 (conj-g1 expr))
-           (g2 (conj-g2 expr))
-           (id (next-g-id "c")))
-       (term (,(transpile g1) ∧ ,(transpile g2) ,id)))]
-    [(unify? expr)
-     (let ((t1 (unify-t1 expr))
-           (t2 (unify-t2 expr))
-           (id (next-g-id "u")))
-       (term (,(transpile t1) =? ,(transpile t2) ,id)))]
-    [(succeed? expr)
-     (term ⊤)]
-    [(fail? expr)
-     (term ⊥)]
-    [(relcall? expr)
-     (let ((name (relcall-name expr))
-           (terms (relcall-terms expr))
-           (id (next-g-id "r")))
-       (term (,(transpile name) ,@(map transpile terms) ,id)))]
-    [(nil? expr)
-     (term empty)]
-    [(bool? expr)
-     (let ((b (bool-b expr)))
-       b)]
-    [(konst? expr)
-     (let ((k (konst-k expr)))
-       k)]
-    [(kons? expr)
-     (let ((a (kons-a expr))
-           (d (kons-d expr)))
-       (term (,(transpile a) : ,(transpile d))))]
-    [(var? expr)
-     (let ((v (var-v expr)))
-       (string->symbol (string-append "x:" (symbol->string v))))]
-    [(relname? expr)
-     (let ((name (relname-name expr)))
-       (string->symbol (string-append "r:" (symbol->string name))))]
-    [(defrel? expr)
-     (let ((name (defrel-name expr))
-           (lop (defrel-lop expr))
-           (goal (defrel-goal expr)))
-       (term (,(transpile name) ,(map transpile lop) ,(transpile goal))))]
-    [(run? expr)
-     (let ((n (run-n expr))
-           (q (run-q expr))
-           (goal (run-goal expr))
-           (id (next-g-id "f")))
-       (term ((∃ (,(transpile q)) ,(transpile goal) ,id) (state () 0 ()))))]))
+
+;; next-g-id: String Number -> (values String Number)
+;; Purpose: Creates a GUID based on the given prefix and counter and returns
+;;          the GUID and the next count
+(define (next-g-id prefix counter)
+  (values (string-append prefix (number->string counter)) (add1 counter)))
+
+;; transpile: struct Nat -> (values model-term Nat (listof String))
+;; Purpose: To compile the nested structures into the language of our model
+(define (transpile expr count)
+  (match expr
+
+    [(prog rels q)
+     #:when (prog? expr)
+     (define-values (trs count1 guids1)
+       (map/fold-with-guids transpile rels count))
+     (define-values (tq count2 guids2)
+       (transpile q count1))
+     (values `(prog ,trs ,tq) count2 (append guids1 guids2))]
+
+    [(fresh vars goal)
+     #:when (fresh? expr)
+     (define-values (id count1) (next-g-id "f" count))
+     (define-values (tvars count2 guids1)
+       (map/fold-with-guids transpile vars count1))
+     (define-values (tgoal count3 guids2)
+       (transpile goal count2))
+     (values `(∃ ,tvars ,tgoal ,id) count3 (cons id (append guids1 guids2)))]
+
+
+    [(conde clauses)
+     #:when (conde? expr)
+     (define-values (id count1) (next-g-id "d" count))
+     (struct acc (expr count guids))
+     (define final-acc
+       (foldl
+        (λ (clause accum)
+          (define-values (t-clause new-count new-guids)
+            (transpile clause (acc-count accum)))
+          (acc (if (null? (acc-expr accum))
+                   t-clause
+                   `(,(acc-expr accum) ∨ ,t-clause ,id))
+               new-count
+               (append (acc-guids accum) new-guids)))
+        (acc '() count1 '())
+        clauses))
+     (define final-expr (acc-expr final-acc))
+     (define final-count (acc-count final-acc))
+     (define final-guids (acc-guids final-acc))
+     (values final-expr final-count  (cons id final-guids))]
+
+    [(conj g1 g2)
+     #:when (conj? expr)
+     (define-values (id count1) (next-g-id "c" count))
+     (define-values (tg1 count2 guids1) (transpile g1 count1))
+     (define-values (tg2 count3 guids2) (transpile g2 count2))
+     (values `(,tg1 ∧ ,tg2 ,id) count3 (cons id (append guids1 guids2)))]
+
+    [(unify t1 t2)
+     #:when (unify? expr)
+     (define-values (id count1) (next-g-id "u" count))
+     (define-values (tt1 count2 guids1) (transpile t1 count1))
+     (define-values (tt2 count3 guids2) (transpile t2 count2))
+     (values `(,tt1 =? ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
+
+    [(succeed) #:when (succeed? expr) (values (term ⊤) count '())]
+    [(fail)    #:when (fail? expr)    (values (term ⊥) count '())]
+
+    [(relcall name terms)
+     #:when (relcall? expr)
+     (define-values (id count1) (next-g-id "r" count))
+     (define-values (tname count2 guids1) (transpile name count1))
+     (define-values (tterms count3 guids2)
+       (map/fold-with-guids transpile terms count2))
+     (values `(,tname ,@tterms ,id) count3 (cons id (append guids1 guids2)))]
+
+    [(nil) #:when (nil? expr) (values (term empty) count '())]
+
+    [(bool b) #:when (bool? expr) (values b count '())]
+
+    [(konst k) #:when (konst? expr) (values k count '())]
+
+    [(kons a d)
+     #:when (kons? expr)
+     (define-values (ta count1 guids1) (transpile a count))
+     (define-values (td count2 guids2) (transpile d count1))
+     (values `(,ta : ,td) count2 (append guids1 guids2))]
+
+    [(var v)
+     #:when (var? expr)
+     (values (string->symbol (string-append "x:" (symbol->string (var-v v))))
+             count
+             '())]
+
+    [(relname name)
+     #:when (relname? expr)
+     (values (string->symbol (string-append "r:" (symbol->string name)))
+             count
+             '())]
+
+    [(defrel name lop goal)
+     #:when (defrel? expr)
+     (define-values (tname count1 guids1) (transpile name count))
+     (define-values (tlop count2 guids2)
+       (map/fold-with-guids transpile lop count1))
+     (define-values (tgoal count3 guids3) (transpile goal count2))
+     (values `(,tname ,tlop ,tgoal)
+             count3
+             (append guids1 guids2 guids3))]
+
+    [(run n q goal)
+     #:when (run? expr)
+     (define-values (id count1) (next-g-id "f" count))
+     (define-values (tq count2 guids1) (transpile q count1))
+     (define-values (tg count3 guids2) (transpile goal count2))
+     (values `((∃ (,tq) ,tg ,id) (state () 0 ()))
+             count3
+             (cons id (append guids1 guids2)))]))
+
+
+    
 
 (define (remove-last lst)
   (if (null? (cdr lst))
@@ -131,137 +216,141 @@
   (regexp-replace #px"\\]\\]\\s+" str "]]"))
 
 
-(define (add-guids expr s)
-  (cond
-    [(prog? expr)
-     (let* ([rels (prog-relations expr)]
-            [query (prog-query expr)]
-            [rel-strings
-             (map (λ (rel) (add-guids rel 0))
-                  rels)]
-            [rels-joined (string-join rel-strings "\n\n")]
-            [query-string (add-guids query 0)])
-       (string-append rels-joined
-                      "\n\n"
-                      query-string))]
+(define (add-guids expr s guids)
+  (match expr
+    [(prog rels query)
+     #:when (prog? expr)
+     (define-values (rel-strings guids1)
+       (map/fold (λ (r g) (add-guids r 0 g)) rels guids))
+     (define-values (query-str guids2)
+       (add-guids query 0 guids1))
+     (values (string-append (string-join rel-strings "\n\n")
+                            "\n\n"
+                            query-str)
+             guids2)]
 
-    [(fresh? expr)
-     (let ([vars (fresh-vars expr)]
-           [g    (fresh-goal expr)]
-           [id   (car GUIDS)])
-       (set! GUIDS (cdr GUIDS))
-       (format "~a[[~a]](fresh (~a)\n~a)[[/~a]]"
-               (make-string s #\space)
-               id
-               (string-join (map (λ (v) (add-guids v 0)) vars) " ")
-               (add-guids g (add2 s))
-               id))]
+    [(fresh vars goal)
+     #:when (fresh? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (vars-str rest1)
+       (map/fold (λ (v gs) (add-guids v 0 gs)) vars rest))
+     (define-values (goal-str rest2)
+       (add-guids goal (add2 s) rest1))
+     (values (format "~a[[~a]](fresh (~a)\n~a)[[/~a]]"
+                     (make-string s #\space)
+                     id
+                     (string-join vars-str " ")
+                     goal-str
+                     id)
+             rest2)]
 
-    [(conde? expr)
-     (let* ([clauses (reverse (conde-clauses expr))]
-            [first-clause (first clauses)]
-            [rest-clauses (rest clauses)]
-            [id (car GUIDS)])
-       (set! GUIDS (cdr GUIDS))
-       (define (indent n) (make-string n #\space))
-       (define (format-clause clause indent-size)
-         (string-append "\n" (indent indent-size)
-                        "["
-                        (remove-tag-spaces (string-trim (add-guids clause (add2 s))))
-                        "]"))
-       (format "~a[[~a]](conde~a)[[/~a]]"
-               (indent s)
-               id
-               (foldl (λ (clause acc)
-                        (string-append (format-clause clause (add2 s)) acc))
-                      (format-clause first-clause (add2 s))
-                      rest-clauses)
-               id))]
+    [(conde clauses)
+     #:when (conde? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define (indent n) (make-string n #\space))
 
+ 
+     (define-values (clause-strs remaining-guids)
+       (map/fold
+        (λ (clause g)
+          (define-values (clause-str new-g) (add-guids clause (+ s 2) g))
+          (values (format "~a[~a]"
+                          (indent (+ s 2))
+                          (remove-tag-spaces (string-trim clause-str)))
+                  new-g))
+        clauses
+        rest))
 
-    [(conj? expr)
-     (let ([g1 (conj-g1 expr)]
-           [g2 (conj-g2 expr)]
-           [id (car GUIDS)])
-       (set! GUIDS (cdr GUIDS))
-       (format "~a[[~a]]~a\n~a[[/~a]]"
-               (make-string s #\space)
-               id
-               (remove-tag-spaces (add-guids g1 s))
-               (add-guids g2 s)
-               id))]
-    
-    [(unify? expr)
-     (let* ([t1   (unify-t1 expr)]
-            [t2   (unify-t2 expr)]
-            [id (car GUIDS)])
-       (set! GUIDS (cdr GUIDS)) 
-       (format "~a[[~a]](== ~a ~a)[[/~a]]"
-               (make-string s #\space)
-               id
-               (add-guids t1 0)   
-               (add-guids t2 0)
-               id))]
+     (define body (string-join clause-strs "\n"))
 
-    [(relcall? expr)
-     (let ([name  (relcall-name expr)]
-           [terms (relcall-terms expr)]
-           [id (car GUIDS)])
-       (set! GUIDS (cdr GUIDS))
-       (format "~a[[~a]](~a ~a)[[/~a]]"
-               (make-string s #\space)
-               id
-               (add-guids name 0)
-               (string-join (map (λ (t) (add-guids t 0)) terms)
-                            " ")
-               id))]
-
-    [(nil? expr)
-     "'()"]
-
-    [(bool? expr)
-     (if (bool-b expr) "#t" "#f")]
-
-    [(konst? expr)
-     (format "\"~a\"" (konst-k expr))]
-
-    [(kons? expr)
-     (format "`(~a)" (kons->string expr))]
-
-    [(var? expr)
-     (symbol->string (var-v expr))]
-
-    [(relname? expr)
-     (symbol->string (relname-name expr))]
-
-    [(defrel? expr)
-     (let ([rname (defrel-name expr)]
-           [lop   (defrel-lop expr)]
-           [goal  (defrel-goal expr)])
-       (format "(defrel (~a ~a)\n~a)"
-               (add-guids rname 0)
-               (string-join
-                (map (λ (v) (add-guids v 0)) lop)
-                " ")
-               (add-guids goal 2)))]
-
-    [(run? expr)
-     (let ([n    (run-n expr)]
-           [q    (run-q expr)]
-           [goal (run-goal expr)]
-           [id (car GUIDS)])
-       (set! GUIDS (cdr GUIDS))
-       (format "[[~a]](run~a (~a) ~a)[[/~a]]"
-               id
-               (if (= n +inf.0) "*" (format " ~a" n))
-               (add-guids q 0)
-               (add-guids goal 0)
-               id))]
-    [else
-     (error "Unrecognized AST node in add-guids" expr)]))
+     (values (format "~a[[~a]](conde\n~a\n~a)[[/~a]]"
+                     (indent s)
+                     id
+                     body
+                     (indent s)
+                     id)
+             remaining-guids)]
 
 
+    [(conj g1 g2)
+     #:when (conj? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (tg1 rest1) (add-guids g1 s rest))
+     (define-values (tg2 rest2) (add-guids g2 s rest1))
+     (values (format "~a[[~a]]~a\n~a[[/~a]]"
+                     (make-string s #\space)
+                     id
+                     (remove-tag-spaces tg1)
+                     tg2
+                     id)
+             rest2)]
 
+    [(unify t1 t2)
+     #:when (unify? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (tt1 rest1) (add-guids t1 0 rest))
+     (define-values (tt2 rest2) (add-guids t2 0 rest1))
+     (values (format "~a[[~a]](== ~a ~a)[[/~a]]"
+                     (make-string s #\space)
+                     id
+                     tt1
+                     tt2
+                     id)
+             rest2)]
+
+    [(relcall name terms)
+     #:when (relcall? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (tname rest1) (add-guids name 0 rest))
+     (define-values (tterms rest2)
+       (map/fold (λ (t g) (add-guids t 0 g)) terms rest1))
+     (values (format "~a[[~a]](~a ~a)[[/~a]]"
+                     (make-string s #\space)
+                     id
+                     tname
+                     (string-join tterms " ")
+                     id)
+             rest2)]
+
+    [(nil)          #:when (nil? expr)     (values "'()" guids)]
+    [(bool b)       #:when (bool? expr)    (values (if (bool-b b) "#t" "#f") guids)]
+    [(konst k)      #:when (konst? expr)   (values (format "\"~a\"" k) guids)]
+    [(kons _ _)     #:when (kons? expr)    (values (format "`(~a)" (kons->string expr)) guids)]
+    [(var v)        #:when (var? expr)     (values (symbol->string (var-v v)) guids)]
+    [(relname name) #:when (relname? expr) (values (symbol->string name) guids)]
+
+    [(defrel rname lop goal)
+     #:when (defrel? expr)
+     (define-values (trname g1) (add-guids rname 0 guids))
+     (define-values (tlop g2)
+       (map/fold (λ (v g) (add-guids v 0 g)) lop g1))
+     (define-values (tgoal g3) (add-guids goal 2 g2))
+     (values (format "(defrel (~a ~a)\n~a)"
+                     trname
+                     (string-join tlop " ")
+                     tgoal)
+             g3)]
+
+    [(run n q goal)
+     #:when (run? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (tq r1) (add-guids q 0 rest))
+     (define-values (tg r2) (add-guids goal 0 r1))
+     (values (format "[[~a]](run~a (~a) ~a)[[/~a]]"
+                     id
+                     (if (= n +inf.0) "*" (format " ~a" n))
+                     tq
+                     tg
+                     id)
+             r2)]
+
+    [_ (error "Unrecognized AST node in add-guids" expr)]))
 
 (define (parse-run r)
   (match r
@@ -335,45 +424,57 @@
 ;; defrels run -> model program
 ;; Translate the relation definitions and run query of a minikanren
 ;; program into our redex syntax
-(define (parse-prog l)
-  (define defrels '())
-  (define run '())
-  (set! GUIDS '())
+(define (parse-prog lst)
+  (define-values (defrels run)
+    (let ([result
+           (foldl
+            (λ (expr acc)
+              (match acc
+                [(cons defs run-expr)
+                 (match expr
+                   [`(defrel . ,_) (cons (cons expr defs) run-expr)]
+                   [`(run . ,_)    (cons defs expr)]
+                   [`(run* . ,_)   (cons defs expr)]
+                   [else (error "Not a defrel or run form" expr)])]))
+            (cons '() #f)
+            lst)])
+      (values (reverse (car result)) (cdr result))))
 
-  (map
-   (λ (expr)
-     (match expr
-       [`(defrel . ,d) (set! defrels (cons expr defrels))]
-       [`(run . ,d)    (set! run expr)]
-       [`(run* . ,d)   (set! run expr)]
-       [else (error "Not a defrel or run form")]))
-   l) 
+  ;; Parse AST
+  (define AST
+    (prog (parse-relation-defs defrels)
+          (parse-run run)))
 
-  (define AST (prog (parse-relation-defs (reverse defrels)) (parse-run run)))
-  (define REDEX-PROG (transpile AST))
-  (set! GUIDS (reverse GUIDS))
-  (define GUID-PROG (add-guids AST 0))
-  `(,REDEX-PROG . ,GUID-PROG))
+  ;; Transpile AST to redex program and collect generated GUIDs
+  (define-values (REDEX-PROG counter guid-list)
+    (transpile AST 0))
+
+  ;; Tag AST with guids
+  (define-values (GUID-PROG _) (add-guids AST 0 guid-list))
+
+  ;; Return both programs
+  (values REDEX-PROG GUID-PROG))
+
  
 #;(parse-prog
    '(defrel (assoco key table value)
       (fresh (car table-cdr)
-        (== table `(,car . ,table-cdr))
-        (conde ((== `(,key . ,value) car))
-               ((assoco key table-cdr value)))))
+             (== table `(,car . ,table-cdr))
+             (conde ((== `(,key . ,value) car))
+                    ((assoco key table-cdr value)))))
    '(defrel (same-lengtho l1 l2)
       (conde ((== l1 '()) (== l1 '()))
              ((fresh (car1 cdr1 car2 cdr2)
-                (== l1 `(,car1 . ,cdr1))
-                (== l2 `(,car2 . ,cdr2))
-                (same-lengtho cdr1 cdr2)))))
+                     (== l1 `(,car1 . ,cdr1))
+                     (== l2 `(,car2 . ,cdr2))
+                     (same-lengtho cdr1 cdr2)))))
    '(defrel (make-assoc-tableo l1 l2 table)
       (conde ((== l1 '()) (== l1 '()) (== table '()))
              ((fresh (car1 cdr1 car2 cdr2 cdr3)
-                (== l1 `(,car1 . ,cdr1))
-                (== l2 `(,car2 . ,cdr2))
-                (== table `((,car1 . ,car2) . ,cdr3))
-                (make-assoc-tableo cdr1 cdr2 cdr3)))))
+                     (== l1 `(,car1 . ,cdr1))
+                     (== l2 `(,car2 . ,cdr2))
+                     (== table `((,car1 . ,car2) . ,cdr3))
+                     (make-assoc-tableo cdr1 cdr2 cdr3)))))
    '(run 5 (q) (same-lengtho '(abc def ghi) q)))
 
 
@@ -403,17 +504,17 @@
      (conde
       [(== l '()) (== out s)]
       [(fresh (a d res)
-         (== l `(,a . ,d))
-         (== out `(,a . ,res))
-         (appendo d s res))]))
+              (== l `(,a . ,d))
+              (== out `(,a . ,res))
+              (appendo d s res))]))
 
    (defrel (reverseo ls out)
      (conde
       [(== ls '()) (== out '())]
       [(fresh (a d res)
-         (== ls `(,a . ,d))
-         (reverseo d res)
-         (appendo res `(,a) out))]))
+              (== ls `(,a . ,d))
+              (reverseo d res)
+              (appendo res `(,a) out))]))
 
    (run* (q) (reverseo '(dog cat bear lion) q))))
 
@@ -421,20 +522,21 @@
 (module+ test
   (require rackunit)
 
-  #;(check-equal?
-     (car (parse-prog
-           '((run* (q) (fresh () (== 'dog1 'cat) (== 'bear1 lion) (== 'dog 'cat) (== 'bear 'lion))))))
-     '(prog
-       ()
-       ((∃
-         (x:q)
-         (∃
-          ()
-          (("dog1" =? "cat" "u34")
-           ∧
-           (("bear1" =? x:lion "u36") ∧ (("dog" =? "cat" "u38") ∧ ("bear" =? "lion" "u39") "c37") "c35")
-           "c33")
-          "f32")
-         "f31")
-        (state () 0 ()))))
+  (define-values (model-prog html-prog)
+    (parse-prog '((run* (q) (fresh () (== 'dog1 'cat) (== 'bear1 lion) (== 'dog 'cat) (== 'bear 'lion))))))
+
+  (check-equal?
+   model-prog
+   '(prog () ((∃ (x:q)
+                 (∃ () (((("dog1" =? "cat" "u5")
+                          ∧ ("bear1" =? x:lion "u6") "c4")
+                         ∧ ("dog" =? "cat" "u7") "c3")
+                        ∧ ("bear" =? "lion" "u8") "c2") "f1") "f0")
+              (state () 0 ()))))
+
+  (check-equal?
+   html-prog
+   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== \"dog1\" \"cat\")[[/u5]]\n  [[u6]](== \"bear1\" lion)[[/u6]][[/c4]]\n  [[u7]](== \"dog\" \"cat\")[[/u7]][[/c3]]\n  [[u8]](== \"bear\" \"lion\")[[/u8]][[/c2]])[[/f1]])[[/f0]]"
+   )
+
   )
