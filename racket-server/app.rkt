@@ -103,9 +103,8 @@
     (define json-data (request-post-data/raw req))                    ;; Get the JSON data from the request
     (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))      ;; Get the program from that JSON
     (define sexpr-prog (read-all (open-input-string raw-prog)))       ;; Read the program into sexpressions
-    (define parsed (parse-prog sexpr-prog))                           ;; Parse the sexpressions
-    (initialize-all! (car parsed))                                    ;; Initialize all state variables with the model program
-    (define html-prog (cdr parsed))                                   ;; Get the HTML embedded program
+    (define-values (model-prog html-prog) (parse-prog sexpr-prog))    ;; Parse the sexpressions
+    (initialize-all! model-prog)                                      ;; Initialize all state variables with the model program
     (send-tree-and-html (state-json current) html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
 
 
