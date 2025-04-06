@@ -19,7 +19,6 @@
 (struct fail () #:transparent)
 (struct relcall (name terms) #:transparent)
 (struct nil () #:transparent)
-(struct bool (b) #:transparent)
 (struct konst (k) #:transparent)
 (struct kons (a d) #:transparent)
 (struct var (v) #:transparent)
@@ -72,6 +71,15 @@
 ;;          the GUID and the next count
 (define (next-g-id prefix counter)
   (values (string-append prefix (number->string counter)) (add1 counter)))
+
+;; konst->term: konst -> term
+;; Purpose: Convert a konst structure to a term
+(define (konst->term const)
+  (match const
+    [(konst s) #:when (symbol? s) `(sym ,(symbol->string s))]
+    [(konst s) #:when (string? s) s]
+    [(konst b) #:when (boolean? b) b]
+    [(konst n) #:when (number? n) `(nat ,n)]))
 
 ;; transpile: struct Nat -> (values model-term Nat (listof String))
 ;; Purpose: To compile the nested structures into the language of our model
@@ -143,11 +151,9 @@
      (values `(,tname ,@tterms ,id) count3 (cons id (append guids1 guids2)))]
 
     [(nil) #:when (nil? expr) (values (term empty) count '())]
-
-    [(bool b) #:when (bool? expr) (values b count '())]
-
-    [(konst k) #:when (konst? expr) (values k count '())]
-
+    
+    [(konst k) #:when (konst? expr) (values (konst->term expr) count '())]
+    
     [(kons a d)
      #:when (kons? expr)
      (define-values (ta count1 guids1) (transpile a count))
@@ -193,6 +199,17 @@
       '()
       (cons (car lst) (remove-last (cdr lst)))))
 
+;; konst->string: konst -> string
+;; Purpose: Convert a konst structure to a string
+(define (konst->string const)
+  (match const
+    [(konst s) #:when (symbol? s) (symbol->string s)]
+    [(konst s) #:when (string? s) (format "\"~s\"" s)]
+    [(konst b) #:when (boolean? b) (if b "#t" "#f")]
+    [(konst n) #:when (number? n) (number->string n)]))
+
+;; kons->string: kons -> string
+;; Purpose: Convert a kons structure to a string
 (define (kons->string l)
   (match l
     [(kons a nil) #:when (nil? nil)
@@ -208,7 +225,7 @@
     [(var v) #:when (var? l)
              (format ",~a" (var-v v))]
     [(konst k) #:when (konst? l)
-               (format "~a" k)]))
+               (konst->string l)]))
 
 (define (add2 n) (+ n 2))
 
@@ -318,8 +335,7 @@
              rest2)]
 
     [(nil)          #:when (nil? expr)     (values "'()" guids)]
-    [(bool b)       #:when (bool? expr)    (values (if (bool-b b) "#t" "#f") guids)]
-    [(konst k)      #:when (konst? expr)   (values (format "\"~a\"" k) guids)]
+    [(konst k)      #:when (konst? expr)   (values (konst->string expr) guids)]
     [(kons _ _)     #:when (kons? expr)    (values (format "`(~a)" (kons->string expr)) guids)]
     [(var v)        #:when (var? expr)     (values (symbol->string (var-v v)) guids)]
     [(relname name) #:when (relname? expr) (values (symbol->string name) guids)]
@@ -383,31 +399,31 @@
 (define (conj-goals goals)
   (foldl (λ (c a) (conj a c)) (car goals) (cdr goals)))
 
-;; Deprecated
-(define (disj-goals goals)
-  (foldl disj (first goals) (rest goals)))
+;; primitive-value?: any -> bool
+;; True if the given value is a symbol, string, boolean, or number. False otherwise.
+(define (primitive-value? v)
+  (or (symbol? v)
+      (string? v)
+      (boolean? v)
+      (number? v)))
+
 
 (define (parse-term-within-quote t)
   (match t
     [(cons qta qtb) (kons (parse-term-within-quote qta)
                           (parse-term-within-quote qtb))]
-    [s #:when (symbol? s) (konst (symbol->string s))]
-    [s #:when (string? s) (konst s)]
-    [b #:when (boolean? b) (bool b)]
+    [k #:when (primitive-value? k) (konst k)]
     ['() (nil)]))
 
 (define (kons*-terms lot)
   (foldr kons (nil) lot))
-
 
 (define (parse-term-within-qquote t)
   (match t
     [(list 'unquote expr) (parse-term expr)]
     [(cons qta qtb) (kons (parse-term-within-qquote qta)
                           (parse-term-within-qquote qtb))]
-    [s #:when (symbol? s) (konst (symbol->string s))]
-    [b #:when (boolean? b) (bool b)]
-    [str #:when (string? str) (konst str)]
+    [k #:when (primitive-value? k) (konst k)]
     ['() (nil)]))
 
 
@@ -418,8 +434,7 @@
     [`(cons ,ta ,td) (kons (parse-term ta) (parse-term td))]
     [`(list . ,args) (kons*-terms (map parse-term args))]
     [sym #:when (symbol? sym) (var sym)]
-    [boo #:when (boolean? boo) (bool boo)]
-    [str #:when (string? str) (konst str)]))
+    [k #:when (primitive-value? k) (konst k)]))
 
 ;; defrels run -> model program
 ;; Translate the relation definitions and run query of a minikanren
@@ -499,7 +514,7 @@
                        ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
          ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
 
-(parse-prog
+#;(parse-prog
  '((defrel (appendo l s out)
      (conde
       [(== l '()) (== out s)]
@@ -527,16 +542,18 @@
 
   (check-equal?
    model-prog
-   '(prog () ((∃ (x:q)
-                 (∃ () (((("dog1" =? "cat" "u5")
-                          ∧ ("bear1" =? x:lion "u6") "c4")
-                         ∧ ("dog" =? "cat" "u7") "c3")
-                        ∧ ("bear" =? "lion" "u8") "c2") "f1") "f0")
-              (state () 0 ()))))
+   '(prog ()
+          ((∃ (x:q)
+              (∃ ()
+                 (((((sym "dog1") =? (sym "cat") "u5")
+                    ∧ ((sym "bear1") =? x:lion "u6") "c4")
+                   ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
+                  ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
+           (state () 0 ()))))
 
   (check-equal?
    html-prog
-   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== \"dog1\" \"cat\")[[/u5]]\n  [[u6]](== \"bear1\" lion)[[/u6]][[/c4]]\n  [[u7]](== \"dog\" \"cat\")[[/u7]][[/c3]]\n  [[u8]](== \"bear\" \"lion\")[[/u8]][[/c2]])[[/f1]])[[/f0]]"
+   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== dog1 cat)[[/u5]]\n  [[u6]](== bear1 lion)[[/u6]][[/c4]]\n  [[u7]](== dog cat)[[/u7]][[/c3]]\n  [[u8]](== bear lion)[[/u8]][[/c2]])[[/f1]])[[/f0]]"
    )
 
   )
