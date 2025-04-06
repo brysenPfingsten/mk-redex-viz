@@ -6,9 +6,11 @@
 
 (define-metafunction L
   term->mk : t -> any
-  [(term->mk (t_1 : t_2)) (cons (term->mk t_1) (term->mk t_2))] ; ugh
-  [(term->mk empty) '()]
+  [(term->mk (t_1 : t_2)) (append (list (term->mk t_1)) (list (term->mk t_2)))] ; ugh these terms need to be quoted b/c they will be 
+  [(term->mk empty) '()]                                        ; going through eval
   [(term->mk c) ,(string->symbol (string-append "_" (number->string (term c))))]
+  [(term->mk (sym string)) (string->symbol ,(term string))]
+  [(term->mk (nat natural)) natural]
   [(term->mk x) (term->json x)]
   [(term->mk t) t])
 
@@ -23,22 +25,23 @@
   [(list->list (t_1 : t_2))
    ,(cons (term (term->json t_1))
           (term (list->list t_2)))]
-  [(list->list (t)) ,(cons (term (term->json t)) '())]
   [(list->list t) ,(cons (term (term->json t)) '())])
 
 (define-metafunction L
   term->json : t -> any
   [(term->json x) ,(hasheq 'var (extract-name (symbol->string (term x))))]
-  [(term->json empty) "empty"]
+  [(term->json empty) ()]
+  [(term->json (sym string)) ,(hasheq 'sym (term string))]
+  [(term->json (nat natural)) ,(hasheq 'num (term natural))]
   [(term->json (t_1 : t_2)) (list->list (t_1 : t_2))]
   [(term->json t) t])
 
 (define (deep-symbol->string x)
   (cond
     [(symbol? x) (symbol->string x)]
-    [(pair? x) (cons (deep-symbol->string (car x))
-                     (cons (deep-symbol->string (cdr x)) '()))]
     [(list? x) (map deep-symbol->string x)]
+    [(pair? x) (cons (deep-symbol->string (car x))
+                     (deep-symbol->string (cdr x)))]
     [else x]))
   
 (define (reify sub c)
@@ -47,7 +50,7 @@
       (let* ([underscore (λ (n) (string->symbol (string-append "_" (number->string n))))]
              [freshen (map (λ (i) (string->symbol (string-append "_" (number->string i)))) (range 1 c))]
              [unify (λ (p) `(== ,(if (= (car p) 0) 'q (underscore (car p))) 
-                                ,(term (term->mk ,(second p)))))]
+                                ,(term (term->mk ,(cadr p)))))]
              [ns (make-base-namespace)] ; Create a new namespace
              [_ (parameterize ([current-namespace ns]) (eval '(require minikanren)))] 
              [result (parameterize ([current-namespace ns])  ; Run eval inside this namespace

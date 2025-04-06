@@ -24,7 +24,9 @@
 (define-metafunction L
   term->json : t -> any
   [(term->json x) ,(hasheq 'var (extract-name (symbol->string (term x))))]
-  [(term->json empty) "empty"]
+  [(term->json empty) ()]
+  [(term->json (sym string)) ,(hasheq 'sym (term string))]
+  [(term->json (nat natural)) ,(hasheq 'num (term natural))]
   [(term->json (t_1 : t_2)) (list->list (t_1 : t_2))]
   [(term->json t) t])
 

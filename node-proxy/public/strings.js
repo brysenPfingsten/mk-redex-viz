@@ -1,6 +1,10 @@
 function arrayToString(arr) {
     if (!Array.isArray(arr) || arr.length === 0) return "'()";
 
+    const terms = arr.map(t => termToString(t)).join(' ');
+    return `(cons ${terms})`
+
+    /** 
     if (arr.length === 1) return `(${termToString(arr[0])})`;
 
     const allButLast = arr.slice(0, -1).map(item =>
@@ -9,16 +13,18 @@ function arrayToString(arr) {
     const last = termToString(arr[arr.length - 1]);
 
     return `\`(${allButLast} . ${last})`;
+    */
+    
 }
 
 export function termToString(term) {
-    if (typeof term === "object" && term !== null && term.var) {
-        return `,${term.var}`;
-    }    
+    if (term.var) { return `${term.var}`; }   
+    if (term.sym) { return `'${term.sym}`; } 
+    if (term.num) { return `${term.num}`; }
     if (Array.isArray(term)) { return arrayToString(term); }
     if (term === 'empty') { return "'()"}
     if (typeof term === "string" && !term.includes('_.')) { return `"${term}"`}
-    if (typeof term === "number") { return `${term}`}
+    if (typeof term === "number") { return `#(${term})`}
     return term
 }
 
