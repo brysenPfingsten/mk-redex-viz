@@ -16,95 +16,95 @@
 
                       [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))
                            (in-hole Ex ((g_1 σ) <-+ (g_2 σ)))
-                           "distribute subst in disj"]
+                           "Distribute State Over Disjunction"]
 
                       [--> (in-hole Ex ((g_1 ∧ g_2 _) σ))
                            (in-hole Ex ((g_1 σ) × g_2))
-                           "distribute subst over conj"]
+                           "Distribute State Over Conjunction"]
 
                       [--> (in-hole Ex (((⊤ σ_1) <-+ s) × g))
                            (in-hole Ex (((⊤ σ_1) × g) <-+ (s × g)))
-                           "distribute left disj ans over conj"]
+                           "Distribute Left Disjunction Answer Over Conjunction"]
 
                       [--> (in-hole Ex ((s +-> (⊤ σ)) × g))
                            (in-hole Ex ((s × g) +-> ((⊤ σ) × g)))
-                           "distribute right disj ans over conj"]
+                           "Distribute Right Disjunction Answer Over Conjunction"]
 
                       [--> (in-hole Ex (s_2 +-> ((⊤ σ) <-+ s)))
                            (in-hole Ex ((⊤ σ) <-+ (s_2 +-> s)))
-                           "reassociate right left disj"]
+                           "Reassociate Right-Left Disjunction"]
 
                       [--> (in-hole Ex (s_2 +-> (s +-> (⊤ σ))))
                            (in-hole Ex ((s_2 +-> s) +-> (⊤ σ)))
-                           "reassociate right right disj"]
+                           "Reassociate Right-Right Disjunction"]
 
                       [--> (in-hole Ex (((⊤ σ) <-+ s) <-+ s_2))
                            (in-hole Ex ((⊤ σ) <-+ (s <-+ s_2)))
-                           "reassociate left left disj"]
+                           "Reassociate Left-Left Disjunction"]
 
                       [--> (in-hole Ex ((s +-> (⊤ σ)) <-+ s_2))
                            (in-hole Ex ((s <-+ s_2) +-> (⊤ σ)))
-                           "reassociate left right disj"]
+                           "Reassociate Left-Right Disjunction"]
 
                       [--> (in-hole Ex ((⊤ σ) × g))
                            (in-hole Ex (g σ))
-                           "bring subst to 2nd conjunct"]
+                           "Bring Success State To Second Conjunct"]
 
                       [--> (in-hole Ex (() × g))
                            (in-hole Ex ())
-                           "prune failure conjuncts"]
+                           "Prune Failed Conjuncts"]
 
                       [--> (in-hole Ex (() <-+ s))
                            (in-hole Ex s)
-                           "prune left failure disjuncts"]
+                           "Prune Left Disjunction Failure"]
                       
                       [--> (in-hole Ex (s +-> ()))
                            (in-hole Ex s)
-                           "prune right failure disjuncts"]
+                           "Prune Right Disjunction Failure"]
                       
                       [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail)))
                            (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
-                           "fresh-n subst"]
+                           "Substitute Fresh Variables"]
 
                       [--> (in-hole Ex ((r_1 t ... o) σ))
                            (in-hole Ex (delay (proceed ((r_1 t ... o) σ))))
-                           "relcall and add delay"]
+                           "Relation Call And Add Delay"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
-                           "substitute in for relation body and proceed through it"]
+                           "Substitute Relation Body And Proceed"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
                            (in-hole Ex (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))))
                            (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "unify succeed"]
+                           "Unification Succeeds"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c trail)))
                            (in-hole Ex ())
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "unify fails"]
+                           "Unification Fails"]
 
                       [--> (in-hole Ex ((delay s) × g))
                            (in-hole Ex (delay (s × g)))
-                           "propagate delay through conj"]
+                           "Propagate Delay Through Conjunction"]
 
                       [--> (in-hole Ex ((delay s_1) <-+ s_2))
                            (in-hole Ex (delay (s_1 +-> s_2)))
-                           "propagate left delay through disj, and flip"]
+                           "Propagate Delay Through Left Disjunction And Flip"]
                       
                       [--> (in-hole Ex (s_2 +-> (delay s_1)))
                            (in-hole Ex (delay (s_2 <-+ s_1)))
-                           "propagate right delay through disj, and flip"]
+                           "Propagate Delay Through Right Disjunction and Flip"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (delay s)))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev s))
-                           "invoke delay"]
+                           "Invoke Delay"]
 
                       [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))
                            (prog Γ (in-hole Ev ((⊤ σ) + s)))
-                           "promote left answer"]
+                           "Promote Left Answer"]
 
                       [--> (prog Γ (in-hole Ev (s +-> (⊤ σ))))
                            (prog Γ (in-hole Ev ((⊤ σ) + s)))
-                           "promote right answer"]
+                           "Promote Right Answer"]
                       ))
