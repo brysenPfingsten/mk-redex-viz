@@ -12,7 +12,6 @@
 
 (define-struct state (red-step prog) #:transparent)
 
-(define init-state 'uninitialized)
 (define future-cache 'uninitialized)
 (define trace 'uninitialized)
 (define index 'uninitialized)
@@ -21,7 +20,7 @@
 ;; initialize-all!: program -> void
 ;; Purpose: Initializes all of the state variables
 (define (initialize-all! prog)
-  (set! init-state (state "Initialize Program" prog))
+  (define init-state (state "Initialize Program" prog))
   (set! trace (list init-state))
   (set! future-cache '())
   (set! index 1))
@@ -119,7 +118,7 @@
   (define-values (current-downto-second listof-initial-state) (split-at-right trace 1))
   (set! future-cache (append (reverse current-downto-second) future-cache))
   (set! trace listof-initial-state)
-  (set! index 0)
+  (set! index 1)
   (state+idx->response (first trace) index))
 
 
@@ -160,46 +159,115 @@
   )
 
 (module+ test
-  (require rackunit
-		   redex/reduction-semantics)
+  (require rackunit)
 
-  (define test-step! (make-stepper (lambda (_) (term fishsticks))))
+  (define sample-tree
+	'(prog
+	  ()
+	  ((∃
+		(x:q)
+		((sym "tree1") =? (sym "horse") "u5")
+		"f0")
+	   (state () 0 ()))))
+
+  (define step!/const-tree-output
+	(make-stepper (lambda (_) (list (list "foo" sample-tree)))))
 
   (define test-program
 	'(prog ()
-			  ((∃ (x:q)
-				  (∃ ()
-					 (((((sym "dog1") =? (sym "cat") "u5")
-						∧ ((sym "bear1") =? x:lion "u6") "c4")
-					   ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
-					  ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
-			   (state () 0 ()))))
+	   ((∃ (x:q)
+		   (∃ ()
+			  (((((sym "dog1") =? (sym "cat") "u5")
+				 ∧ ((sym "bear1") =? x:lion "u6") "c4")
+				∧ ((sym "dog") =? (sym "cat") "u7") "c3")
+			   ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
+		(state () 0 ()))))
 
-  (test-suite
-   "Check that step! correctly-advances state"
-   #:before (lambda () (initialize-all! test-program))
+   (test-case "back! from init is no-op"
+	 (initialize-all! test-program)
+	 (back!)
+	 (check-equal? (state-prog (first trace)) test-program)
+     (check-equal? future-cache '())
+	 (check-equal? index 1))
 
-   (test-case "stepping works"
-			  (check-equal?
-				(begin
-				  (test-step!)
-				  (state-prog (first trace)))
-				'fishsticks))
+   (test-case "step! works"
+	 (initialize-all! test-program)
+	 (check-equal? (state-prog (first trace)) test-program)
+	 (check-equal? index 1)
+	 (step!/const-tree-output)
+	 (check-equal? (state-prog (first trace)) sample-tree)
+	 (check-equal? (state-prog (second trace)) test-program)
+	 (check-equal? index 2))
 
-   )
+   (test-case "step!,back!,step! works"
+	 (initialize-all! test-program)
+	 (step!/const-tree-output)
+	 (check-equal? (state-prog (first trace)) sample-tree)
+	 (check-equal? index 2)
+	 (back!)
+	 (check-equal? (state-prog (first future-cache)) sample-tree)
+	 (check-equal? index 1)
+	 (step!/const-tree-output)
+	 (check-equal? (state-prog (first trace)) sample-tree)
+	 (check-equal? index 2))
 
-  (test-suite
-   "Check that step! correctly-advances state"
-   #:before (lambda () (initialize-all! test-program))
+   (test-case "reset! produces same index and trace as init"
+	 (initialize-all! test-program)
+	 (define init-idx index)
+	 (step!/const-tree-output)
+	 (check-equal? (state-prog (first trace)) sample-tree)
+	 (check-equal? index 2)
+	 (reset!)
+	 (check-equal? (state-prog (first trace)) test-program)
+     (check-equal? (length trace) 1)
+	 (check-equal? index init-idx))
 
-   (test-case "stepping works"
-			  (check-equal?
-				(begin
-				(test-step!)
-				(state-prog (first trace)))
-				'fishsticks))
+  ;; Assumes input is empty ans stream and search tree is just (goal state)
+  (define step!/only-inc-state
+	(make-stepper
+	  (lambda (tr)
+        (match-let* ([(list 'prog rels (list g st)) tr]
+					 [(list 'state σ count fvs) st])
+		  (let* ([new-st (list 'state σ (add1 count) fvs)]
+			 	 [new-tr (list 'prog rels (list g new-st))])
+			(list (list "incr-state" new-tr)))))))
 
-   )
+  ;; Assumes input is empty ans stream and search tree is just (goal state)
+  (define (query-program->state-ct prog)
+	(match prog
+	  [`(prog ,_ (,_ (state ,_ ,n ,_))) n]))
+
+   (test-case "step! 2x, back 2x reasonable"
+	 (initialize-all! sample-tree)
+	 (step!/only-inc-state)
+	 (check-equal? (query-program->state-ct (state-prog (first trace))) 1)
+	 (check-equal? index 2)
+	 (step!/only-inc-state)
+	 (check-equal? (query-program->state-ct (state-prog (first trace))) 2)
+	 (check-equal? index 3)
+	 (back!)
+	 (check-equal? (query-program->state-ct (state-prog (first trace))) 1)
+	 (check-equal? index 2)
+	 (back!)
+	 (check-equal? (query-program->state-ct (state-prog (first trace))) 0)
+	 (check-equal? index 1))
+
+
+  (define sample-req
+	(make-request
+   #"POST"
+   (make-url #f #f #f #f #t
+             (list (make-path/param "post" empty)
+                   (make-path/param "init" empty))
+             empty
+             #f)
+   (list (make-header #"content-type" #"application/json"))
+   (delay '())
+   (string->bytes/utf-8 "{\"text\":\"(run* (q) (== 'a 'a))\"}")
+   "127.0.0.1"
+   5000
+   "127.0.0.1"))
+
 
 
   )
