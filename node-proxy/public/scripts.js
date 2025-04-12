@@ -254,6 +254,7 @@ function init() {
     });
 }
 
+window.init = init;
 
 function setDisabled(buttons, flag) {
     if (buttons.includes('debug')) { document.getElementById('debug-btn').disabled = flag };
