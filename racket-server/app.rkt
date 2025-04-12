@@ -3,7 +3,6 @@
          web-server/http
          net/url-structs
          json
-         redex/reduction-semantics
          web-server/http/bindings)
 
 (require "definitions.rkt"
@@ -11,43 +10,56 @@
          "metafunctions.rkt"
          "transpiler.rkt")
 
-(define-struct state (red-step json prog) #:transparent)
+(define-struct state (red-step prog) #:transparent)
 
-(define current-prog 'uninitialized)
-(define init-prog 'uninitialized)
 (define init-state 'uninitialized)
-(define current 'uninitialized)
-(define history 'uninitialized)
+(define future-cache 'uninitialized)
+(define trace 'uninitialized)
 (define index 'uninitialized)
+
 
 ;; initialize-all!: program -> void
 ;; Purpose: Initializes all of the state variables
 (define (initialize-all! prog)
-  (set! current-prog prog)
-  (set! init-prog prog)
-  (set! init-state (state "Initialize Program"
-                          (to-json prog)
-                          prog))
-  (set! current init-state)
-  (set! history (list init-state))
-  (set! index 0))
-
-;; create-response: string nat json -> response
-;; Purpose: Create a reponse structure from the given reduction step and JSON data
-(define (create-response red-step step-num json-data)
-  (let [(response (hasheq 'stepName red-step
-                          'step step-num
-                          'program json-data))]
-    (response/jsexpr response
-                     #:mime-type #"application/json; charset=utf-8")))
+  (set! init-state (state "Initialize Program" prog))
+  (set! trace (list init-state))
+  (set! future-cache '())
+  (set! index 1))
 
 
-;; send-current-state: -> response
+;; state+idx->response: state nat -> response
 ;; Purpose: Creates a response with the current state of the program
-(define (send-current-state)
-  (let* ([red-step (state-red-step current)]
-         [json-data (state-json current)])
-    (create-response red-step index json-data)))
+(define (state+idx->response a-state idx)
+  (match-let ([(state red-step prog) a-state])
+	(let ([response (hasheq 'stepName red-step
+							'step idx
+							'program (to-json prog))])
+	  (response/jsexpr response #:mime-type #"application/json; charset=utf-8"))))
+
+
+;; send-tree/initial!: -> response
+;; Purpose: Sends the last tree in the history (init-state) with a header indicating it is the initial one
+(define (send-tree/initial! a-state idx)
+  (match-let ([(state red-step prog) a-state])
+	(let ([response (hasheq 'stepName red-step
+							'step idx
+							'program (to-json prog))])
+	  (response/jsexpr response
+					   #:mime-type #"application/json; charset=utf-8"
+					   #:headers (list (make-header #"X-Is-Last" #"true"))))))
+
+
+;; send-tree-and-html: json string
+;; Purpose: Send the initial tree and the html embedded program
+(define (state+idx/html->response a-state idx html)
+  (match-let ([(state red-step prog) a-state])
+	(let ([response (hasheq 'stepName red-step
+							'step idx
+							'program (to-json prog)
+							'htmlGuids html)])
+	  (response/jsexpr response
+					   #:mime-type #"application/json; charset=utf-8"))))
+
 
 ;; send-end-state: -> response
 ;; Purpose: Send a response with a header indicating the program can no longer step
@@ -57,107 +69,137 @@
                    #:headers (list (make-header #"X-Done" #"true"))))
 
 
-;; step: -> response
+;; [Term -> [Listof [List String Term]]] ->	Response
+(define (make-stepper step-term)
+  (lambda ()
+	(match future-cache
+	  [`(,a-state . ,future-cache^)
+	   (set! future-cache future-cache^)
+	   (set! trace (cons a-state trace))
+	   (set! index (add1 index))
+	   (state+idx->response a-state index)]
+	  ['()
+	   (match (step-term (state-prog (first trace)))
+		 ['() (send-end-state)]
+		 [(cons (list red-step new-program) _)
+		  (define new-state (state red-step new-program)) ;; form the new state
+		  (set! trace (cons new-state trace))             ;; add to the trace
+		  (set! index (add1 index))
+		  (state+idx->response new-state index)])])))   ;; send response
+
+
+;; step!: -> response
 ;; Purpose: Applies one reduction step and sends the new JSON data of that tree
-(define (step!)
-  (set! index (add1 index))
-  (if (< index (length history))
-      (begin
-        (set! current (list-ref history index))
-        (send-current-state))
-      (let ([stepped (apply-reduction-relation/tag-with-names red (term ,current-prog))])
-        (if (empty? stepped)
-            (begin (set! index (sub1 index)) (send-end-state))
-            (let* ([next-step   (car stepped)]         ; Get the program and reduction step
-                   [red-step    (car next-step)]       ; Get the name of the reduction step
-                   [new-program (cadr next-step)]       ; Get the new program
-                   [json-data   (to-json new-program)]  ; Convert tree to JSON
-                   [response    (create-response red-step index json-data)]) ; Prepare response
-              (set! current-prog new-program)         ; Update the program
-              (set! current (state red-step json-data current-prog)) ; Update the current variable
-              (set! history (append history (list current))) ; Update the history
-              response)))))
+(define step! (make-stepper step-once))
 
 
-  ;; read-all: port -> ListOf sexpression
-  ;; Purpose: To read the string program into sexpressions
-  (define (read-all port)
-    (let ([expr (read port)])
-      (if (eof-object? expr)
-          '()  ;; Stop when EOF is reached
-          (cons expr (read-all port)))))
-
-  ;; send-tree-and-html: json string
-  ;; Purpose: Send the initial tree and the html embedded program
-  (define (send-tree-and-html tree html)
-    (let ([response (hasheq 'stepName "Initialize program"
-                            'step 0
-                            'program tree
-                            'htmlGuids html)])
-      (response/jsexpr response
-                       #:mime-type #"application/json; charset=utf-8")))
-
-  ;; init-tree!: request -> response
-  ;; Purpose: To initialize the tree
-  (define (init-tree! req)
-    (define json-data (request-post-data/raw req))                    ;; Get the JSON data from the request
-    (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))      ;; Get the program from that JSON
-    (define sexpr-prog (read-all (open-input-string raw-prog)))       ;; Read the program into sexpressions
-    (define-values (model-prog html-prog) (parse-prog sexpr-prog))    ;; Parse the sexpressions
-    (initialize-all! model-prog)                                      ;; Initialize all state variables with the model program
-    (send-tree-and-html (state-json current) html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
+;; read-all: port -> ListOf sexpression
+;; Purpose: To read the string program into sexpressions
+(define (read-all port)
+  (let ([expr (read port)])
+	(if (eof-object? expr)
+		'()  ;; Stop when EOF is reached
+		(cons expr (read-all port)))))
 
 
-  ;; reset!: -> response
-  ;; Purpose: Resets the state of the program to the initial state
-  (define (reset!)
-    (initialize-all! init-prog)
-    (send-current-state))
-
-  ;; send-last-tree!: -> response
-  ;; Purpose: Sends the last tree in the history (init-state) with a header indicating it is the last
-  (define (send-last-tree!)
-    (set! current (first history))
-    (let* ([red-step (state-red-step current)]
-           [json-data (state-json current)]
-           [response (hasheq 'stepName red-step
-                             'step index
-                             'program json-data)])
-      (response/jsexpr response
-                       #:mime-type #"application/json; charset=utf-8"
-                       #:headers (list (make-header #"X-Is-Last" #"true")))))
-
-  ;; back!: -> response
-  ;; Purpose: Step the programs backwards one step and send that state
-  (define (back!)
-    (set! index (sub1 index))
-    (if (= index 0)
-        (send-last-tree!)
-        (begin
-          (set! current (list-ref history index))
-          (send-current-state))))
+;; init-tree!: request -> response
+;; Purpose: To initialize the tree
+(define (init-tree! req)
+  (define json-data (request-post-data/raw req))                    ;; Get the JSON data from the request
+  (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))      ;; Get the program from that JSON
+  (define sexpr-prog (read-all (open-input-string raw-prog)))       ;; Read the program into sexpressions
+  (define-values (model-prog html-prog) (parse-prog sexpr-prog))    ;; Parse the sexpressions
+  (initialize-all! model-prog)                                      ;; Initialize all state variables with the model program
+  (state+idx/html->response (first trace) index html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
 
 
-  ;; get-path: request -> string
-  ;; Purpose: Gets the path that was pinged as it was on the javascript side
-  (define (get-path req)
-    (string-join (map path/param-path (url-path (request-uri req))) "/"))
+;; reset!: -> response
+;; Purpose: Resets the state of the program to the initial state
+(define (reset!)
+  (define-values (current-downto-second listof-initial-state) (split-at-right trace 1))
+  (set! future-cache (append (reverse current-downto-second) future-cache))
+  (set! trace listof-initial-state)
+  (set! index 0)
+  (state+idx->response (first trace) index))
 
 
-  ;; dispatcher: request -> response
-  ;; Purpose: Maps the input request to an output response
-  (define (dispatcher req)
-    (case (get-path req)
-      [("get/next") (step!)]
-      [("post/init") (init-tree! req)]
-      [("post/reset") (reset!)]
-      [("post/back") (back!)]))
+;; back!: -> response
+;; Purpose: Step the programs backwards one step and send that state
+(define (back!)
+  (match trace
+	[`(,initial-state) (send-tree/initial! initial-state index)]
+	[`(,current-state . ,trace^)
+	 (set! future-cache (cons current-state future-cache))
+     (set! trace trace^)
+	 (set! index (sub1 index))
+	 (state+idx->response (first trace) index)]))
+
+;; get-path: request -> string
+;; Purpose: Gets the path that was pinged as it was on the javascript side
+(define (get-path req)
+  (string-join (map path/param-path (url-path (request-uri req))) "/"))
+
+;; dispatcher: request -> response
+;; Purpose: Maps the input request to an output response
+(define (dispatcher req)
+  (match (get-path req)
+	["get/next"   (step!)]
+	["post/init"  (init-tree! req)]
+	["post/reset" (reset!)]
+	["post/back"  (back!)]))
 
 
+
+(module+ main
   ;; Start the server on port 5000
   (serve/servlet dispatcher
                  #:port 5000
                  #:servlet-regexp #rx""
                  #:listen-ip "0.0.0.0" ; any
                  #:launch-browser? #f)
-  
+  )
+
+(module+ test
+  (require rackunit
+		   redex/reduction-semantics)
+
+  (define test-step! (make-stepper (lambda (_) (term fishsticks))))
+
+  (define test-program
+	'(prog ()
+			  ((∃ (x:q)
+				  (∃ ()
+					 (((((sym "dog1") =? (sym "cat") "u5")
+						∧ ((sym "bear1") =? x:lion "u6") "c4")
+					   ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
+					  ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
+			   (state () 0 ()))))
+
+  (test-suite
+   "Check that step! correctly-advances state"
+   #:before (lambda () (initialize-all! test-program))
+
+   (test-case "stepping works"
+			  (check-equal?
+				(begin
+				  (test-step!)
+				  (state-prog (first trace)))
+				'fishsticks))
+
+   )
+
+  (test-suite
+   "Check that step! correctly-advances state"
+   #:before (lambda () (initialize-all! test-program))
+
+   (test-case "stepping works"
+			  (check-equal?
+				(begin
+				(test-step!)
+				(state-prog (first trace)))
+				'fishsticks))
+
+   )
+
+
+  )
