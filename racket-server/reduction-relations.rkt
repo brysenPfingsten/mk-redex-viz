@@ -6,9 +6,12 @@
          redex/pict)
 (check-redundancy #t)
 
-
-(provide red)
+(provide red step-once)
 (require "definitions.rkt" "judgment-forms.rkt")
+
+;; Term -> [Listof [List String Term]]
+(define (step-once prog)
+  (apply-reduction-relation/tag-with-names red (term ,prog)))
 
 (define red
   (reduction-relation L
