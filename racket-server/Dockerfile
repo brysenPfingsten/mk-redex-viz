@@ -4,8 +4,6 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y xvfb
 
-COPY requirements.txt .
-
 RUN raco pkg install --auto web-server
 RUN raco pkg install --auto redex
 RUN raco pkg install --auto minikanren

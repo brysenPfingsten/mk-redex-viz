@@ -4,14 +4,12 @@ Tags for unification
 - As a reduction step
 - Own function
 - Metafunction
-Carrying unifcations through the state
+Carrying unifications through the state
 proceed (dont delay) ; Invert delays
 - All relation calls are delays unless marked with a proceed
 - How does distributing delays now work?
 - How is this any different
 reification
-Docker file?
-Talk to data labs
 Lists in reification
 Gettings CORS again
 
