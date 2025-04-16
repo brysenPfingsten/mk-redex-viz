@@ -51,27 +51,3 @@
                 (0 (2 : 3))) 11)) + ()))))
 
 |#
-
-(defrel (poso n)
-  (fresh (a d)
-    (== n `(,a . ,d))))
-
-(defrel (dfao l state)
-  (conde
-    [(== l '()) (== state 'q1)]
-    [(fresh (a d next-state)
-       (== l `(,a . ,d))
-       (conde
-         [(== a 'zero) (poso d)
-          (conde
-            [(== state 'q1) (== next-state 'q1)]
-            [(== state 'q2) (== next-state 'q3)]
-            [(== state 'q3) (== next-state 'q2)])]
-         [(== a 'one)
-          (conde
-            [(== state 'q1) (== next-state 'q2)]
-            [(== state 'q2) (== next-state 'q1)]
-            [(== state 'q3) (== next-state 'q3)])])
-        (dfao d next-state))]))
-
-(run* (q) (dfao q 'q1))
