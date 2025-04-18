@@ -14,16 +14,16 @@
 
 (define future-cache 'uninitialized)
 (define trace 'uninitialized)
-(define index 'uninitialized)
 
+(define (get-index)
+  (length trace))
 
 ;; initialize-all!: program -> void
 ;; Purpose: Initializes all of the state variables
 (define (initialize-all! prog)
   (define init-state (state "Initialize Program" prog))
   (set! trace (list init-state))
-  (set! future-cache '())
-  (set! index 1))
+  (set! future-cache '()))
 
 
 ;; state+idx->response: state nat -> response
@@ -75,16 +75,14 @@
 	  [`(,a-state . ,future-cache^)
 	   (set! future-cache future-cache^)
 	   (set! trace (cons a-state trace))
-	   (set! index (add1 index))
-	   (state+idx->response a-state index)]
+	   (state+idx->response a-state (get-index))]
 	  ['()
 	   (match (step-term (state-prog (first trace)))
 		 ['() (send-end-state)]
 		 [(cons (list red-step new-program) _)
 		  (define new-state (state red-step new-program)) ;; form the new state
 		  (set! trace (cons new-state trace))             ;; add to the trace
-		  (set! index (add1 index))
-		  (state+idx->response new-state index)])])))   ;; send response
+		  (state+idx->response new-state (get-index))])])))   ;; send response
 
 
 ;; step!: -> response
@@ -109,7 +107,7 @@
   (define sexpr-prog (read-all (open-input-string raw-prog)))       ;; Read the program into sexpressions
   (define-values (model-prog html-prog) (parse-prog sexpr-prog))    ;; Parse the sexpressions
   (initialize-all! model-prog)                                      ;; Initialize all state variables with the model program
-  (state+idx/html->response (first trace) index html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
+  (state+idx/html->response (first trace) (get-index) html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
 
 
 ;; reset!: -> response
@@ -118,20 +116,21 @@
   (define-values (current-downto-second listof-initial-state) (split-at-right trace 1))
   (set! future-cache (append (reverse current-downto-second) future-cache))
   (set! trace listof-initial-state)
-  (set! index 1)
-  (state+idx->response (first trace) index))
+  (state+idx->response (first trace) (get-index)))
 
 
 ;; back!: -> response
 ;; Purpose: Step the programs backwards one step and send that state
 (define (back!)
   (match trace
-	[`(,second-state ,initial-state) (send-tree/initial! initial-state index)]
+	[`(,second-state ,initial-state)
+	 (set! future-cache (cons second-state future-cache))
+     (set! trace (list initial-state))
+	 (send-tree/initial! (first trace) (get-index))]
 	[`(,current-state ,prior-state . ,trace^)
 	 (set! future-cache (cons current-state future-cache))
      (set! trace (cons prior-state trace^))
-	 (set! index (sub1 index))
-	 (state+idx->response (first trace) index)]))
+	 (state+idx->response (first trace) (get-index))]))
 
 ;; get-path: request -> string
 ;; Purpose: Gets the path that was pinged as it was on the javascript side
@@ -183,44 +182,37 @@
 			   ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
 		(state () 0 ()))))
 
-   (test-case "back! from init is no-op"
-	 (initialize-all! test-program)
-	 (back!)
-	 (check-equal? (state-prog (first trace)) test-program)
-     (check-equal? future-cache '())
-	 (check-equal? index 1))
-
    (test-case "step! works"
 	 (initialize-all! test-program)
 	 (check-equal? (state-prog (first trace)) test-program)
-	 (check-equal? index 1)
+	 (check-equal? (get-index) 1)
 	 (step!/const-tree-output)
 	 (check-equal? (state-prog (first trace)) sample-tree)
 	 (check-equal? (state-prog (second trace)) test-program)
-	 (check-equal? index 2))
+	 (check-equal? (get-index) 2))
 
    (test-case "step!,back!,step! works"
 	 (initialize-all! test-program)
 	 (step!/const-tree-output)
 	 (check-equal? (state-prog (first trace)) sample-tree)
-	 (check-equal? index 2)
+	 (check-equal? (get-index) 2)
 	 (back!)
 	 (check-equal? (state-prog (first future-cache)) sample-tree)
-	 (check-equal? index 1)
+	 (check-equal? (get-index) 1)
 	 (step!/const-tree-output)
 	 (check-equal? (state-prog (first trace)) sample-tree)
-	 (check-equal? index 2))
+	 (check-equal? (get-index) 2))
 
    (test-case "reset! produces same index and trace as init"
 	 (initialize-all! test-program)
-	 (define init-idx index)
+	 (define init-idx (get-index))
 	 (step!/const-tree-output)
 	 (check-equal? (state-prog (first trace)) sample-tree)
-	 (check-equal? index 2)
+	 (check-equal? (get-index) 2)
 	 (reset!)
 	 (check-equal? (state-prog (first trace)) test-program)
      (check-equal? (length trace) 1)
-	 (check-equal? index init-idx))
+	 (check-equal? (get-index) init-idx))
 
   ;; Assumes input is empty ans stream and search tree is just (goal state)
   (define step!/only-inc-state
@@ -237,20 +229,31 @@
 	(match prog
 	  [`(prog ,_ (,_ (state ,_ ,n ,_))) n]))
 
+
+   (test-case "back! from init is no-op"
+	 (initialize-all! sample-tree)
+	 (step!/only-inc-state)
+	 (define will-be-future-cache (list (first trace)))
+	 (back!)
+	 (check-equal? (state-prog (first trace)) sample-tree)
+     (check-equal? future-cache will-be-future-cache)
+	 (check-equal? (get-index) 1))
+
+
    (test-case "step! 2x, back 2x reasonable"
 	 (initialize-all! sample-tree)
 	 (step!/only-inc-state)
 	 (check-equal? (query-program->state-ct (state-prog (first trace))) 1)
-	 (check-equal? index 2)
+	 (check-equal? (get-index) 2)
 	 (step!/only-inc-state)
 	 (check-equal? (query-program->state-ct (state-prog (first trace))) 2)
-	 (check-equal? index 3)
+	 (check-equal? (get-index) 3)
 	 (back!)
 	 (check-equal? (query-program->state-ct (state-prog (first trace))) 1)
-	 (check-equal? index 2)
+	 (check-equal? (get-index) 2)
 	 (back!)
 	 (check-equal? (query-program->state-ct (state-prog (first trace))) 0)
-	 (check-equal? index 1))
+	 (check-equal? (get-index) 1))
 
 
   (define sample-req
