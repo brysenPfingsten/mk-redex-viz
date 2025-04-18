@@ -126,10 +126,10 @@
 ;; Purpose: Step the programs backwards one step and send that state
 (define (back!)
   (match trace
-	[`(,initial-state) (send-tree/initial! initial-state index)]
-	[`(,current-state . ,trace^)
+	[`(,second-state ,initial-state) (send-tree/initial! initial-state index)]
+	[`(,current-state ,prior-state . ,trace^)
 	 (set! future-cache (cons current-state future-cache))
-     (set! trace trace^)
+     (set! trace (cons prior-state trace^))
 	 (set! index (sub1 index))
 	 (state+idx->response (first trace) index)]))
 
@@ -264,6 +264,21 @@
    (list (make-header #"content-type" #"application/json"))
    (delay '())
    (string->bytes/utf-8 "{\"text\":\"(run* (q) (== 'a 'a))\"}")
+   "127.0.0.1"
+   5000
+   "127.0.0.1"))
+
+  (define second-req
+	(make-request
+   #"GET"
+   (make-url #f #f #f #f #t
+             (list (make-path/param "get"  empty)
+                   (make-path/param "next"  empty))
+             empty
+             #f)
+   (list (make-header #"content-type" #"application/json"))
+   (delay '())
+   #f
    "127.0.0.1"
    5000
    "127.0.0.1"))
