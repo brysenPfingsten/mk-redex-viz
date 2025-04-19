@@ -42,7 +42,7 @@
 ;; Purpose: Sends the last tree in the history (init-state) with a header indicating it is the initial one
 (define (trace->response/initial trace)
   (let ([a-state (first trace)]
-		[idx (length trace)])
+		[idx (get-index trace)])
 	(match-let ([(state red-step prog) a-state])
 	  (let ([response (hasheq 'stepName red-step
 							  'step idx
@@ -56,7 +56,7 @@
 ;; Purpose: Send the initial tree and the html embedded program
 (define (trace/html->response trace html)
   (let ([a-state (first trace)]
-		[idx (length trace)])
+		[idx (get-index trace)])
 	(match-let ([(state red-step prog) a-state])
 	  (let ([response (hasheq 'stepName red-step
 							  'step idx
