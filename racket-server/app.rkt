@@ -75,14 +75,14 @@
 	  [`(,a-state . ,future-cache^)
 	   (set! future-cache future-cache^)
 	   (set! trace (cons a-state trace))
-	   (state+idx->response a-state (get-index))]
+	   (state+idx->response (first trace) (get-index))]
 	  ['()
 	   (match (step-term (state-prog (first trace)))
 		 ['() (send-end-state)]
 		 [(cons (list red-step new-program) _)
 		  (define new-state (state red-step new-program)) ;; form the new state
 		  (set! trace (cons new-state trace))             ;; add to the trace
-		  (state+idx->response new-state (get-index))])])))   ;; send response
+		  (state+idx->response (first trace) (get-index))])])))   ;; send response
 
 
 ;; step!: -> response
