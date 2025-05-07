@@ -9,9 +9,51 @@ import Resizable       from './components/Resizable';
 import './styles.css'
 
 function App() {
-  const { stepInfo, tree, init, step, back, reset, loading } = useStepper();
+  const [codeText, setCodeText] = useState('');
+  const {
+    tree, stepInfo, loading,
+    init, step, reset, back
+  } = useStepper({
+    onInit: () => {
+      setDisabled(prev => ({ ...prev, step: false, reset: false }));
+    },
+    onSuccess: () => {
+      // clearHighlights();
+      setDisabled(prev => ({ ...prev, back: false, reset: false }));
+    }
+  });
+  const [disabled, setDisabled] = useState({
+    debug: false,
+    reset: true,
+    back: true,
+    step: true,step
+  });
+  
   const [ darkMode, setDarkMode ] = useState(false);
   const svgRef = useRef();
+
+  const handleInit = async () => {
+    const success = await init(codeText);
+    if (success) {
+      setDisabled(prev => ({
+        ...prev,
+        debug: true,
+        reset: false,
+        step: false,
+      }));
+    }
+  };
+  
+  const handleStep = async () => {
+    const success = await step();
+    if (success) {
+      setDisabled(prev => ({
+        ...prev,
+        back: false,
+      }));
+    }
+  };
+  
 
   useEffect(() => {
     if (tree && svgRef.current) {
@@ -24,14 +66,14 @@ function App() {
       <Resizable>
         <div className="input-container">
           <div className="editor-area">
-            <CodeEditor {...stepInfo} onInit={init} />
+            <CodeEditor codeText={codeText} setCodeText={setCodeText}/>
           </div>
           <Toolbar
-            onDebug={init}
-            onStep={step}
+            onDebug={handleInit}
+            onStep={handleStep}
             onBack={back}
             onReset={reset}
-            disabled={loading}
+            disabled={disabled}
           />
         </div>
         

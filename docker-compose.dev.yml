@@ -7,13 +7,18 @@ services:
       - app-network
 
   frontend:
-    image: react-frontend
-    build:
-      context: ./frontend
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
-      - "8080:80" 
+      - "5173:5173"
     depends_on:
       - racket-server
+    environment:
+      - VITE_API_URL=http://racket-server:3000
     networks:
       - app-network
 
