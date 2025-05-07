@@ -11,7 +11,7 @@ import './styles.css'
 function App() {
   const [codeText, setCodeText] = useState('');
   const {
-    tree, stepInfo, loading,
+    tree, stepInfo,
     init, step, reset, back
   } = useStepper({
     onInit: () => {
@@ -26,7 +26,7 @@ function App() {
     debug: false,
     reset: true,
     back: true,
-    step: true,step
+    step: true,
   });
   
   const [ darkMode, setDarkMode ] = useState(false);
@@ -35,24 +35,32 @@ function App() {
   const handleInit = async () => {
     const success = await init(codeText);
     if (success) {
-      setDisabled(prev => ({
-        ...prev,
-        debug: true,
-        reset: false,
-        step: false,
-      }));
+      setDisabled({debug: true, reset: false, back: true, step: false});
     }
   };
   
   const handleStep = async () => {
-    const success = await step();
-    if (success) {
-      setDisabled(prev => ({
-        ...prev,
-        back: false,
-      }));
+    const [success, isDone] = await step();
+    if (isDone) { // no more reductions
+      setDisabled({debug: false, reset: false, back: false, step: true});
+    } else if (success) {
+      setDisabled(prev => ({...prev, back: false}));
     }
   };
+
+  const handleBack = async () => {
+    const [_, isLast] = await back();
+    if (isLast) {  // TODO: Change this to isStart on both sides
+      setDisabled(prev => ({...prev, back: true}));
+    }
+  }
+
+  const handleReset = async () => {
+    const success = await reset();  
+    if (success) {
+      setDisabled({debug: false, reset: true, back: true, step: true});
+    }
+  }
   
 
   useEffect(() => {
@@ -71,8 +79,8 @@ function App() {
           <Toolbar
             onDebug={handleInit}
             onStep={handleStep}
-            onBack={back}
-            onReset={reset}
+            onBack={handleBack}
+            onReset={handleReset}
             disabled={disabled}
           />
         </div>
