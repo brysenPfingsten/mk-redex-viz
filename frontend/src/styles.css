@@ -92,6 +92,16 @@
     box-sizing: border-box;
     overflow: hidden;
   }
+
+  .frozen-code {
+    flex: 1;
+    padding: 1rem;
+    font-family: monospace;
+    background-color: var(--color-panel-bg);
+    color: var(--color-text);
+    overflow: auto;
+    white-space: pre-wrap;
+  }
   
   .right-pane {
     display: flex;

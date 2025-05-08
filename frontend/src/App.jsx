@@ -10,6 +10,7 @@ import './styles.css'
 
 function App() {
   const [codeText, setCodeText] = useState('');
+  const [isFrozen, setFrozen] = useState(false);
   const {
     tree, stepInfo,
     init, step, reset, back
@@ -36,6 +37,7 @@ function App() {
     const success = await init(codeText);
     if (success) {
       setDisabled({debug: true, reset: false, back: true, step: false});
+      setFrozen(true);
     }
   };
   
@@ -43,7 +45,7 @@ function App() {
     const [success, isDone] = await step();
     if (isDone) { // no more reductions
       setDisabled({debug: false, reset: false, back: false, step: true});
-    } else if (success) {
+    } else if (success) { // success but more reductions
       setDisabled(prev => ({...prev, back: false}));
     }
   };
@@ -59,6 +61,7 @@ function App() {
     const success = await reset();  
     if (success) {
       setDisabled({debug: false, reset: true, back: true, step: true});
+      setFrozen(false);
     }
   }
   
@@ -74,7 +77,7 @@ function App() {
       <Resizable>
         <div className="input-container">
           <div className="editor-area">
-            <CodeEditor codeText={codeText} setCodeText={setCodeText}/>
+            <CodeEditor codeText={codeText} setCodeText={setCodeText} isFrozen={isFrozen} isDark={darkMode}/>
           </div>
           <Toolbar
             onDebug={handleInit}
