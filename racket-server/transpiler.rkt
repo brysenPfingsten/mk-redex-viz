@@ -370,18 +370,18 @@
 
 (define (parse-run r)
   (match r
-    [`(run ,n (,q) ,g) (run n (var q) (parse-goal g))]
-    [`(run* (,q) ,g) (run +inf.0 (var q) (parse-goal g))]))
+    [`(run ,n (,q) . ,gs) (run n (var q) (conj-goals (map parse-goal gs)))]
+    [`(run* (,q) . ,gs) (run +inf.0 (var q) (conj-goals (map parse-goal gs)))]))
 
 (define (parse-relation-defs a-lor)
   (map parse-relation-def a-lor))
 
 (define (parse-relation-def a-relation)
   (match a-relation
-    [`(defrel (,r . ,params) ,g) (defrel
-                                   (relname r)
-                                   (map var params)
-                                   (parse-goal g))]))
+    [`(defrel (,r . ,params) . ,gs) (defrel
+                                      (relname r)
+                                      (map var params)
+                                      (conj-goals (map parse-goal gs)))]))
 
 ;; fresh conde == succeed fail
 (define (parse-goal goal)
