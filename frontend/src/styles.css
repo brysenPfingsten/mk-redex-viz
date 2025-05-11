@@ -153,6 +153,8 @@
   
   .scroll-container {
     flex: 1;
+    display: flex;
+    justify-content: center;
     overflow: auto;
     padding: var(--space-md);
     box-sizing: border-box;

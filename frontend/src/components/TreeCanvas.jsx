@@ -44,32 +44,44 @@ const TreeCanvas = forwardRef((_, ref) => {
             // Compute the layout with adjusted spacing
             treeLayout(root);
             
-            // Calculate dimensions and update SVG
+            // Calculate dimensions after layout
             const nodes = root.descendants();
             const links = root.links();
-            
-            // Calculate bounding box with padding
-            const minX = Math.min(...nodes.map(d => d.x - d.data.measuredWidth/2));
-            const maxX = Math.max(...nodes.map(d => d.x + d.data.measuredWidth/2));
-            const minY = Math.min(...nodes.map(d => d.y));
-            const maxY = Math.max(...nodes.map(d => d.y));
+
+            // 1. Calculate true bounding box including node sizes
+            const trueMinX = Math.min(...nodes.map(d => d.x - d.data.measuredWidth/2));
+            const trueMaxX = Math.max(...nodes.map(d => d.x + d.data.measuredWidth/2));
+            const trueMinY = Math.min(...nodes.map(d => d.y));
+            const trueMaxY = Math.max(...nodes.map(d => d.y + d.data.measuredHeight));
+
+            // 2. Calculate required dimensions
             const padding = 50;
-            
-            const treeWidth = maxX - minX + padding * 2;
-            const treeHeight = maxY - minY + padding * 2;
-            
-            d3.select("svg")
-            .attr("width", treeWidth)
-            .attr("height", treeHeight)
-            .attr("viewBox", `${minX - padding} ${minY - padding} ${treeWidth} ${treeHeight}`)
-            .attr("preserveAspectRatio", "xMidYMid meet");
-            
+            const contentWidth = trueMaxX - trueMinX;
+            const contentHeight = trueMaxY - trueMinY;
+            const svgWidth = contentWidth + padding * 2;
+            const svgHeight = contentHeight + padding * 2;
+
+            // 3. Set SVG dimensions to contain entire tree
+            d3.select(svgRef.current)
+                .attr("width", svgWidth)
+                .attr("height", svgHeight)
+                .attr("viewBox", `${trueMinX - padding} ${trueMinY - padding} ${svgWidth} ${svgHeight}`)
+                .style("overflow", "visible");
+
+            // 4. Calculate centering translation
+            const rootCenterX = root.x;
+            const svgCenterX = (trueMinX - padding) + svgWidth/2;
+            const translateX = svgCenterX - rootCenterX;
+
+            // 5. Apply translation to the <g> element
+            svg.attr("transform", `translate(${translateX},0)`);
+
             // Draw elements
             drawLinks(svg, links);
             drawNodes(svg, nodes);
         }
     }));
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} style={{ overflow: 'visible' }}></svg>;
 });
 
 export default TreeCanvas;
