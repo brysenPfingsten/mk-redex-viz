@@ -1,9 +1,10 @@
-import React, { forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import * as d3 from 'd3';
 import { drawTree, drawLinks, drawNodes } from '../utils/drawing.js';
+import { termToString } from '../utils/strings.js';
 import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
 
-const TreeCanvas = forwardRef((_, ref) => {
+const TreeCanvas = forwardRef(({ onNodeClick }, ref) => {
     const svgRef = React.useRef();
     useImperativeHandle(ref, () => ({
         redraw: (treeData) => {
@@ -80,6 +81,21 @@ const TreeCanvas = forwardRef((_, ref) => {
             // Draw elements
             drawLinks(svg, links);
             drawNodes(svg, nodes);
+
+            // Add click event to show state data
+            svg.selectAll('g.node')
+            .filter(d => d.data.sub || d.data.trail || d.data.id)
+            .on('click', (event, d) => {
+                const subs = (d.data.sub || []).map(s => ({ 
+                    left: termToString(s.key), 
+                    right: termToString(s.value) 
+                }));
+                const trails = (d.data.trail || []).map(crumb => ({
+                    left: termToString(crumb.left),
+                    right: termToString(crumb.right),
+                }));
+                onNodeClick({ substitutionData: subs, trailData: trails });
+            });
         }
     }));
     return <svg ref={svgRef} ></svg>;

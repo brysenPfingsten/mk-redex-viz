@@ -7,6 +7,7 @@ import StepInfo        from './components/StepInfo';
 import TreeCanvas      from './components/TreeCanvas';
 import useStepper      from './hooks/useStepper';
 import Resizable       from './components/Resizable';
+import Sidebar from './components/Sidebar';
 import './styles.css'
 
 function App() {
@@ -30,6 +31,9 @@ function App() {
     back: true,
     step: true,
   });
+  const [substitutionData, setSubstitutionData] = useState([]);
+  const [trailData, setTrailData] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const [ darkMode, setDarkMode ] = useState(false);
   const svgRef = useRef();
@@ -94,11 +98,22 @@ function App() {
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
           <Scrollbar style={{ width: '100%', height: '100%' }}>
             <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
-              <TreeCanvas ref={svgRef} />
+              <TreeCanvas 
+                ref={svgRef}
+                onNodeClick={({ substitutionData, trailData }) => {
+                  setSubstitutionData(substitutionData);
+                  setTrailData(trailData);
+                }} />
             </div>
           </Scrollbar>
         </div>
-      </Resizable>
+      </Resizable>  
+      <Sidebar
+        substitutionData={substitutionData} 
+        trailData={trailData} 
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(o => !o)}
+      />
     </div>
   );
 }

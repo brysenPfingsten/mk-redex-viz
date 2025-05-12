@@ -1,7 +1,7 @@
-/* ============================= */
-/*   Color & Size Variables     */
-/* ============================= */
-:root {
+/* =============================
+   Color & Size Variables
+   ============================= */
+  :root {
     /* Palette */
     --color-page-bg:        #fff;
     --color-panel-bg:       #f4f4f4;
@@ -14,37 +14,48 @@
     --color-node-fill:      lightgray;
     --color-node-stroke:    black;
     --color-link-stroke:    #ccc;
-  
+
     /* Typography */
     --font-sans:            sans-serif;
     --font-mono:            monospace;
     --font-size-base:       14px;
     --font-size-btn:        18px;
-  
+
     /* Spacing */
     --space-xs:             10px;
     --space-sm:             12px;
     --space-md:             20px;
     --space-lg:             50px;
-  
+
     /* Sizing */
     --btn-height:           50px;
     --btn-radius:           8px;
+
+    /* Sidebar & toggle */
+    --sidebar-width:        300px;
+    --toggle-spacing:       var(--space-md);
+
+    /* Shadows & scrollbars */
+    --box-shadow:           0 1px 3px rgba(0,0,0,0.2);
+    --scrollbar-thumb-bg:   var(--color-border);
   }
-  
+
   .dark {
     /* Dark mode overrides */
-    --color-page-bg:       #222;
-    --color-panel-bg:      #333;
-    --color-text:          #eee;
-    --color-border:        #555;
-    --color-btn-bg:        #1a73e8;
-    --color-btn-hover:     #1669c1;
-    --color-btn-disabled:  #555;
-    --color-highlight:     #444;
-    --color-node-fill:     #444;
-    --color-node-stroke:   #eee;
-    --color-link-stroke:   #555;
+    --color-page-bg:        #222;
+    --color-panel-bg:       #333;
+    --color-text:           #eee;
+    --color-border:         #555;
+    --color-btn-bg:         #1a73e8;
+    --color-btn-hover:      #1669c1;
+    --color-btn-disabled:   #555;
+    --color-highlight:      #444;
+    --color-node-fill:      #444;
+    --color-node-stroke:    #eee;
+    --color-link-stroke:    #555;
+
+    /* keep shadows & scrollbars consistent */
+    --scrollbar-thumb-bg:   var(--color-border);
   }
   
   /* ============================= */
@@ -280,4 +291,91 @@
     stroke: var(--color-link-stroke);
     stroke-width: 2px;
   }
-  
+
+  /* -------------------
+    toggle button
+    ------------------- */
+  .toggle-button {
+    position: fixed;
+    top: var(--space-xs);
+    right: var(--toggle-spacing);
+    z-index: 1200;
+    width: var(--btn-height);
+    height: var(--btn-height);
+    background-color: var(--color-panel-bg);
+    border-radius: var(--btn-radius);
+    transition: right 225ms cubic-bezier(0.4,0,0.6,1);
+  }
+
+  .toggle-button:hover {
+    background-color: var(--color-btn-hover);
+  }
+
+  /* -------------------
+    sidebar drawer
+    ------------------- */
+  .sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+  }
+
+  html.dark .MuiDrawer-root .MuiDrawer-paper {
+    background-color: var(--color-panel-bg) !important;
+    color: var(--color-text) !important;
+  }
+
+  .sidebar .MuiDrawer-paper {
+    height: 100vh !important;
+    border-left: 1px solid var(--color-border);
+    background-color: var(--color-panel-bg) !important;
+    color: var(--color-text) !important;
+    overflow-x: hidden;
+  }
+
+  /* sidebar content */
+  .sidebar-content {
+    padding: var(--space-md);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* tabs */
+  .sidebar-tabs {
+    margin-bottom: var(--space-md);
+  }
+
+  /* scrollable list */
+  .sidebar-list {
+    flex: 1;
+    overflow: auto;
+  }
+  .sidebar-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-list::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 3px;
+  }
+
+  /* items */
+  .sidebar-item {
+    display: flex;
+    margin-bottom: var(--space-xs);
+    padding: var(--space-md);
+    background-color: var(--color-page-bg);
+    border-radius: var(--btn-radius);
+    box-shadow: var(--box-shadow);
+    transition: box-shadow 0.2s;
+  }
+  .sidebar-item:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .sidebar-left,
+  .sidebar-right {
+    flex: 1;
+    color: var(--color-text);
+  }
+  .sidebar-right {
+    font-weight: bold;
+  }

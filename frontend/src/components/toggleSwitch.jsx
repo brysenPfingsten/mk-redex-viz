@@ -3,7 +3,7 @@ import './toggleSwitch.css';
 
 export default function ToggleSwitch({ checked, onChange }) {
   useEffect(() => {
-    document.body.classList.toggle('dark', checked);
+    document.documentElement.classList.toggle('dark', checked);
   }, [checked]);
 
   return (

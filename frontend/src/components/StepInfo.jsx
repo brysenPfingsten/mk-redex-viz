@@ -9,7 +9,9 @@ export default function StepInfo({ step, stepName, darkMode, setDarkMode }) {
           Step: {step}<br/>
           Reduction Step: {stepName}
         </div>
+        <div style={{ marginRight: '50px' }}>
         <ToggleSwitch checked={darkMode} onChange={setDarkMode} />
+      </div>
       </div>
     </div>
   );

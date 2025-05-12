@@ -10,7 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@monaco-editor/react": "^4.7.0",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
     "d3": "^7.9.0",
     "monaco-editor": "^0.52.2",
     "react": "^19.0.0",
