@@ -7,14 +7,12 @@ const Resizable = ({ children }) => {
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isDragging) return;
-      
+
       const container = document.querySelector('.container');
       if (!container) return;
-      
+
       const rect = container.getBoundingClientRect();
       const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
-      
-      // Constrain between 20% and 70%
       setLeftWidth(Math.min(Math.max(newWidth, 20), 70));
     };
 
@@ -38,7 +36,7 @@ const Resizable = ({ children }) => {
   }, [isDragging]);
 
   return (
-    <>
+    <div className="resizable-container">
       <div 
         className="input-container" 
         style={{ flex: `0 0 ${leftWidth}%` }}
@@ -60,8 +58,9 @@ const Resizable = ({ children }) => {
       >
         {children[1]}
       </div>
-    </>
+    </div>
   );
 };
+
 
 export default Resizable;

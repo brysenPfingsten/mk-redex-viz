@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import React from 'react';
+import { Scrollbar } from 'react-scrollbars-custom';
 import CodeEditor      from './components/CodeEditor';
 import Toolbar         from './components/Toolbar';
 import StepInfo        from './components/StepInfo';
@@ -32,6 +33,7 @@ function App() {
   
   const [ darkMode, setDarkMode ] = useState(false);
   const svgRef = useRef();
+  const scrollRef = useRef(null);
 
   const handleInit = async () => {
     const success = await init(codeText);
@@ -90,9 +92,11 @@ function App() {
         
         <div className="right-pane">
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
-          <div className="scroll-container">
-            <TreeCanvas ref={svgRef} />
-          </div>
+          <Scrollbar style={{ width: '100%', height: '100%' }}>
+            <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
+              <TreeCanvas ref={svgRef} />
+            </div>
+          </Scrollbar>
         </div>
       </Resizable>
     </div>

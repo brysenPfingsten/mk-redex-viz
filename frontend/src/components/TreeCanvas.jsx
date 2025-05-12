@@ -7,7 +7,8 @@ const TreeCanvas = forwardRef((_, ref) => {
     const svgRef = React.useRef();
     useImperativeHandle(ref, () => ({
         redraw: (treeData) => {
-            const svg = d3.select(svgRef.current).html('').append('g');
+            const svg = d3.select(svgRef.current).html('');
+            const g = svg.append('g');
             
             // Create hierarchy and prepare data
             const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
@@ -74,14 +75,14 @@ const TreeCanvas = forwardRef((_, ref) => {
             const translateX = svgCenterX - rootCenterX;
 
             // 5. Apply translation to the <g> element
-            svg.attr("transform", `translate(${translateX},0)`);
+            g.attr("transform", `translate(${translateX},0)`);
 
             // Draw elements
             drawLinks(svg, links);
             drawNodes(svg, nodes);
         }
     }));
-    return <svg ref={svgRef} style={{ overflow: 'visible' }}></svg>;
+    return <svg ref={svgRef} ></svg>;
 });
 
 export default TreeCanvas;
