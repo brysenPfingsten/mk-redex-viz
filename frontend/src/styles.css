@@ -103,16 +103,6 @@
     box-sizing: border-box;
     overflow: hidden;
   }
-
-  .frozen-code {
-    flex: 1;
-    padding: 1rem;
-    font-family: monospace;
-    background-color: var(--color-panel-bg);
-    color: var(--color-text);
-    overflow: auto;
-    white-space: pre-wrap;
-  }
   
   .right-pane {
     display: flex;
@@ -127,21 +117,6 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-  }
-
-  
-  .editor-area {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .editor-wrapper {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
   }
   
   .right-pane {
@@ -169,23 +144,21 @@
     align-items: center;
   }
   
-  
-.scroll-container {
-  flex: 1;
-  overflow: auto;
-  padding: var(--space-md);
-  box-sizing: border-box;
-  cursor: grab;
-  /* Key addition: */
-  display: flex;
-  justify-content: center;
-}
+  .scroll-container {
+    flex: 1;
+    overflow: auto;
+    padding: var(--space-md);
+    box-sizing: border-box;
+    cursor: grab;
+    display: flex;
+    justify-content: center;
+  }
 
-.tree-wrapper {
-  margin: 0 auto;
-  min-width: min-content;
-  position: relative; 
-}
+  .tree-wrapper {
+    margin: 0 auto;
+    min-width: min-content;
+    position: relative; 
+  }
   
   /* ============================= */
   /*   Buttons                     */
@@ -227,57 +200,26 @@
   /* ============================= */
   /*   Editor & Overlay            */
   /* ============================= */
-  .editor-wrapper {
+  .editor-area {
     flex: 1;
-    display: flex;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
-  
-  textarea {
-    width: 100%;
-    height: 100%;
-    min-height: 100%;
-    background-color: var(--color-panel-bg);
-    color: var(--color-text);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-base);
-    padding: var(--space-xs);
-    box-sizing: border-box;
-    resize: none; 
+
+  .hidden-tag-deco {
+    cursor: pointer;
   }
-  
-  textarea.locked {
-    color: transparent;
-    caret-color: transparent;
+
+  .hidden-tag-deco:hover {
+    background-color: rgba(255, 235, 59, 0.6);
   }
-  
-  #highlight-overlay {
-    display: none;
-    pointer-events: auto;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 90%;
-    padding: var(--space-xs);
-    box-sizing: border-box;
-    font-family: var(--font-mono);
-    font-size: var(--font-size-base);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    z-index: 10;
+
+  .selected-tag-deco {
+    background-color: rgba(0,123,255,0.3);
   }
-  
-  .hidden-tag {
-    pointer-events: auto;
-    display: inline;
-  }
-  
-  .hidden-tag.highlight {
-    background-color: var(--color-highlight);
-  }
-  
+
   /* ============================= */
   /*   Tree Styling                */
   /* ============================= */
@@ -291,6 +233,14 @@
     stroke: var(--color-link-stroke);
     stroke-width: 2px;
   }
+
+  g.node circle.highlighted,
+  g.node rect.highlighted,
+  g.node polygon.highlighted {
+    stroke: rgb(0, 103, 138) !important;
+    stroke-width: 6px   !important;
+  }
+
 
   /* -------------------
     toggle button

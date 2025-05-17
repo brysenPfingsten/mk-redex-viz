@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Scrollbar } from 'react-scrollbars-custom';
 import CodeEditor      from './components/CodeEditor';
 import Toolbar         from './components/Toolbar';
@@ -11,7 +10,8 @@ import Sidebar from './components/Sidebar';
 import './styles.css'
 
 function App() {
-  const [codeText, setCodeText] = useState('');
+  const [rawCode, setRawCode] = useState('');
+  const [displayCode, setDisplayCode] = useState('');
   const [isFrozen, setFrozen] = useState(false);
   const {
     tree, stepInfo,
@@ -21,7 +21,7 @@ function App() {
       setDisabled(prev => ({ ...prev, step: false, reset: false }));
     },
     onSuccess: () => {
-      // clearHighlights();
+      setSelectedId(null);
       setDisabled(prev => ({ ...prev, back: false, reset: false }));
     }
   });
@@ -33,6 +33,7 @@ function App() {
   });
   const [substitutionData, setSubstitutionData] = useState([]);
   const [trailData, setTrailData] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const [ darkMode, setDarkMode ] = useState(false);
@@ -40,10 +41,11 @@ function App() {
   const scrollRef = useRef(null);
 
   const handleInit = async () => {
-    const success = await init(codeText);
+    const [success, prog] = await init(rawCode);
     if (success) {
-      setDisabled({debug: true, reset: false, back: true, step: false});
       setFrozen(true);
+      setDisplayCode(prog);
+      setDisabled({debug: true, reset: false, back: true, step: false});
     }
   };
   
@@ -66,12 +68,12 @@ function App() {
   const handleReset = async () => {
     const success = await reset();  
     if (success) {
-      setDisabled({debug: false, reset: true, back: true, step: true});
       setFrozen(false);
+      setDisplayCode(rawCode);
+      setDisabled({debug: false, reset: true, back: true, step: true});
     }
   }
   
-
   useEffect(() => {
     if (tree && svgRef.current) {
       svgRef.current.redraw(tree);
@@ -83,7 +85,14 @@ function App() {
       <Resizable>
         <div className="input-container">
           <div className="editor-area">
-            <CodeEditor codeText={codeText} setCodeText={setCodeText} isFrozen={isFrozen} isDark={darkMode}/>
+            <CodeEditor 
+              codeText={isFrozen ? displayCode : rawCode} 
+              setCodeText={setRawCode} 
+              isFrozen={isFrozen} 
+              isDark={darkMode}
+              selectedId={selectedId}
+              onTagClick={setSelectedId}
+            />
           </div>
           <Toolbar
             onDebug={handleInit}
@@ -100,10 +109,13 @@ function App() {
             <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
               <TreeCanvas 
                 ref={svgRef}
-                onNodeClick={({ substitutionData, trailData }) => {
+                onNodeClick={({ substitutionData, trailData, id }) => {
                   setSubstitutionData(substitutionData);
                   setTrailData(trailData);
-                }} />
+                  setSelectedId(id);
+                }}
+                selectedId={selectedId}
+                />
             </div>
           </Scrollbar>
         </div>

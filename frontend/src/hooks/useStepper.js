@@ -20,6 +20,7 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
       setTree(JSON.parse(data.program));
       return {
         success: true,
+        prog: data.htmlGuids ? data.htmlGuids : '',
         headers: {
           isLast: res.headers.get('X-Is-Last') === 'true',
           isDone: res.headers.get('X-Done') === 'true',
@@ -43,7 +44,7 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
     init: async (codeText) => {
       const result = await send('POST', '/api/post/init', codeText);
       if (result.success) onInit();
-      return result.success;
+      return [result.success, result.prog];
     },
     step: async () => {
       const result = await send('GET', '/api/get/next');

@@ -1,11 +1,28 @@
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import * as d3 from 'd3';
 import { drawTree, drawLinks, drawNodes } from '../utils/drawing.js';
 import { termToString } from '../utils/strings.js';
 import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
 
-const TreeCanvas = forwardRef(({ onNodeClick }, ref) => {
-    const svgRef = React.useRef();
+const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
+    const svgRef = useRef();
+
+    useEffect(() => {
+        const svg = d3.select(svgRef.current);
+
+        // clear any old highlight
+        svg.selectAll('g.node')
+            .select('circle, rect, polygon')
+            .classed('highlighted', false);
+
+        if (selectedId) {
+            svg.selectAll('g.node')
+            .filter(d => d.data.id === selectedId)
+            .select('circle, rect, polygon')
+            .classed('highlighted', true);
+        }
+        }, [selectedId]);
+
     useImperativeHandle(ref, () => ({
         redraw: (treeData) => {
             const svg = d3.select(svgRef.current).html('');
@@ -94,7 +111,8 @@ const TreeCanvas = forwardRef(({ onNodeClick }, ref) => {
                     left: termToString(crumb.left),
                     right: termToString(crumb.right),
                 }));
-                onNodeClick({ substitutionData: subs, trailData: trails });
+                const id = d.data.id || null;
+                onNodeClick({ substitutionData: subs, trailData: trails, id: id });
             });
         }
     }));
