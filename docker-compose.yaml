@@ -3,6 +3,8 @@ services:
     image: racket-server
     build:
       context: ./racket-server
+    ports:
+      - "5000:5000"
     networks:
       - app-network
 
