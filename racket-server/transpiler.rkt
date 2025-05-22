@@ -182,12 +182,12 @@
              count3
              (append guids1 guids2 guids3))]
 
-    [(run n q goal)
+    [(run n qs goal)
      #:when (run? expr)
      (define-values (id count1) (next-g-id "f" count))
-     (define-values (tq count2 guids1) (transpile q count1))
+     (define-values (tq count2 guids1) (map/fold-with-guids transpile qs count1))
      (define-values (tg count3 guids2) (transpile goal count2))
-     (values `((∃ (,tq) ,tg ,id) (state () 0 ()))
+     (values `((∃ ,tq ,tg ,id) (state () 0 ()))
              count3
              (cons id (append guids1 guids2)))]))
 
@@ -203,8 +203,8 @@
 ;; Purpose: Convert a konst structure to a string
 (define (konst->string const)
   (match const
-    [(konst s) #:when (symbol? s) (symbol->string s)]
-    [(konst s) #:when (string? s) (format "\"~s\"" s)]
+    [(konst s) #:when (symbol? s) (format "'~a" (symbol->string s))]
+    [(konst s) #:when (string? s) (format "~s" s)]
     [(konst b) #:when (boolean? b) (if b "#t" "#f")]
     [(konst n) #:when (number? n) (number->string n)]))
 
@@ -352,13 +352,14 @@
                      tgoal)
              g3)]
 
-    [(run n q goal)
+    [(run n qs goal)
      #:when (run? expr)
      (define id (car guids))
      (define rest (cdr guids))
-     (define-values (tq r1) (add-guids q 0 rest))
+     (define-values (tq r1)
+       (map/fold (λ (q g) (add-guids q 0 g)) qs rest))
      (define-values (tg r2) (add-guids goal 0 r1))
-     (values (format "[[~a]](run~a (~a) ~a)[[/~a]]"
+     (values (format "[[~a]](run~a ~a ~a)[[/~a]]"
                      id
                      (if (= n +inf.0) "*" (format " ~a" n))
                      tq
@@ -370,8 +371,8 @@
 
 (define (parse-run r)
   (match r
-    [`(run ,n (,q) . ,gs) (run n (var q) (conj-goals (map parse-goal gs)))]
-    [`(run* (,q) . ,gs) (run +inf.0 (var q) (conj-goals (map parse-goal gs)))]))
+    [`(run ,n (,q ..1) . ,gs) (run n (map var q) (conj-goals (map parse-goal gs)))]
+    [`(run* (,q ..1) . ,gs) (run +inf.0 (map var q) (conj-goals (map parse-goal gs)))]))
 
 (define (parse-relation-defs a-lor)
   (map parse-relation-def a-lor))

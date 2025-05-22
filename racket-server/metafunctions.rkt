@@ -5,7 +5,11 @@
          "definitions.rkt"
          "reification.rkt")
 
-(provide to-json prog->tree)
+(provide to-json prog->tree num-query-vars set-num-query-vars!)
+
+(define num-of-query-vars 'uninitialized)
+(define (set-num-query-vars! n)
+  (set! num-of-query-vars n))
 
 (define (extract-name input-str)
   (define re #px"^[x,r]:([a-zA-Z]+)") ;; (x or r):letters ; Stops at the <<...>>
@@ -102,7 +106,7 @@
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)))])
+           [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
       (hash-union goal-json
                   (hasheq
                    'sub sub-json
@@ -113,7 +117,7 @@
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)))])
+           [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
       (hasheq 'name "Proceed"
               'id (term o)
               'goal goal-json
@@ -137,7 +141,7 @@
    ,(let* ([sub-json (sub->json (term sub))]
            [rest-json (term (tree->json s))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c))])
+           [reified (reify (term sub) (term c) num-of-query-vars)])
       (displayln reified) (displayln (term sub)) (newline) (newline) (flush-output)
       (hasheq 'name "Answer"
               'sub sub-json
@@ -162,3 +166,10 @@
 
 (define (to-json prog)
   (jsexpr->string (term (tree->json (prog->tree ,prog)))))
+
+(define-metafunction L
+  extract-query-vars : p -> d
+  [(extract-query-vars (prog _ ((∃ d _ _) _))) d])
+
+(define (num-query-vars prog)
+  (length (term (extract-query-vars ,prog))))
