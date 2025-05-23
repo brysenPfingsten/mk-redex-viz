@@ -18,7 +18,7 @@
    ----------------- "empty is closed"
    (closed-term? empty (x ...) c)]
 
-  [(side-condition ,(< (term c_1) (term c_2)))
+  [#;(side-condition ,(< (term c_1) (term c_2)))
    -------------- "logic var is closed"
    (closed-term? c_1 (x ...) c_2)]
 
@@ -41,14 +41,14 @@
   #:mode (closed-trail? I I)
 
   [
-   ------------------ "empty sub is closed"
+   ------------------ "empty trail is closed"
    (closed-trail? () c)]
 
   [(closed-term? t_1 () c)
    (closed-term? t_2 () c)
    (closed-trail? (t_3 =? t_4) c) ...
    ------------------ "trail is closed"
-  (closed-trail? ((t_1 =? t_2 _) (t_3 =? t_4 _)...) c)])
+  (closed-trail? ((t_1 =? t_2 _) (t_3 =? t_4 _) ...) c)])
 
   
 (define-judgment-form
@@ -121,8 +121,13 @@
 
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))
-   -------------------"disj closed"
-   (closed-tree? (s_1 + s_2) (r ...))]
+   -------------------"left disj closed"
+   (closed-tree? (s_1 <-+ s_2) (r ...))]
+
+  [(closed-tree? s_1 (r ...))
+   (closed-tree? s_2 (r ...))
+   -------------------"right disj closed"
+   (closed-tree? (s_1 +-> s_2) (r ...))]
 
   [(closed-tree? s (r ...))
    (closed-goal? g (r ...) () 0)
@@ -131,7 +136,11 @@
 
   [(closed-tree? s (r ...))
    -------------------"delay closed"
-   (closed-tree? (delay s) (r ...))])
+   (closed-tree? (delay s) (r ...))]
+
+  [(closed-tree? s (r ...))
+   -------------------"proceed closed"
+   (closed-tree? (proceed s) (r ...))])
 
 
 (define-judgment-form
