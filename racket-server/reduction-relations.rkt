@@ -14,7 +14,7 @@
   (apply-reduction-relation/tag-with-names red (term ,prog)))
 
 (define red
-  (reduction-relation L
+  (reduction-relation L 
                       #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
                       [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))

@@ -46,9 +46,9 @@
 
   [(closed-term? t_1 () c)
    (closed-term? t_2 () c)
-   (closed-trail? (t_3 =? t_4) c) ...
+   (closed-trail? ((t_3 =? t_4 o) ...) c) 
    ------------------ "trail is closed"
-  (closed-trail? ((t_1 =? t_2 _) (t_3 =? t_4 _) ...) c)])
+  (closed-trail? ((t_1 =? t_2 _) (t_3 =? t_4 o) ...) c)])
 
   
 (define-judgment-form
