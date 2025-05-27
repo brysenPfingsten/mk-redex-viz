@@ -84,7 +84,7 @@
 (define (prepare-minikanren-namespace)
   (let ([ns (make-base-namespace)])
     (parameterize ([current-namespace ns])
-      (namespace-require 'minikanren))
+      (namespace-require 'hosted-minikanren))
     ns))
 
 

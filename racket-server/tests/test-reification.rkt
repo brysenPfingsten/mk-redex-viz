@@ -142,7 +142,11 @@
   (test-case "Generated Namespace Contains run*, fresh, and =="
              (define mapped-syms (namespace-mapped-symbols (prepare-minikanren-namespace)))
              (check-not-false (member 'run* mapped-syms))
+<<<<<<< HEAD
              (check-not-false (member 'fresh mapped-syms))
+=======
+             ;TODO: (check-not-false (member 'fresh mapped-syms))
+>>>>>>> e3fde83 (Switching back to hosted-minikanren)
              (check-not-false (member '== mapped-syms)))
 
   (test-equal? "MK Lists Are Converted To JSON Properly"
@@ -182,4 +186,8 @@
              (check-true (redex-match? L sub SUB3))
              (check-equal? (reify SUB3 4 1)
                            (list #hasheq((num . 1)) #hasheq((num . 2)) #hasheq((num . 3)))))
+<<<<<<< HEAD
   )
+=======
+  )
+>>>>>>> e3fde83 (Switching back to hosted-minikanren)
