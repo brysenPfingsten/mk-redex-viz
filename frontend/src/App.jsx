@@ -4,6 +4,7 @@ import CodeEditor      from './components/CodeEditor';
 import Toolbar         from './components/Toolbar';
 import StepInfo        from './components/StepInfo';
 import TreeCanvas      from './components/TreeCanvas';
+import CustomAlert     from './components/CustomAlert';
 import useStepper      from './hooks/useStepper';
 import Resizable       from './components/Resizable';
 import Sidebar from './components/Sidebar';
@@ -13,6 +14,7 @@ function App() {
   const [rawCode, setRawCode] = useState('');
   const [displayCode, setDisplayCode] = useState('');
   const [isFrozen, setFrozen] = useState(false);
+  const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const {
     tree, stepInfo,
     init, step, reset, back
@@ -34,18 +36,20 @@ function App() {
   const [substitutionData, setSubstitutionData] = useState([]);
   const [trailData, setTrailData] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [ darkMode, setDarkMode ] = useState(false);
   const svgRef = useRef();
   const scrollRef = useRef(null);
 
   const handleInit = async () => {
-    const [success, prog] = await init(rawCode);
+    const [success, progOrError] = await init(rawCode);
     if (success) {
       setFrozen(true);
-      setDisplayCode(prog);
+      setDisplayCode(progOrError);
       setDisabled({debug: true, reset: false, back: true, step: false});
+    } else {
+      setAlert({ isOpen: true, message: progOrError });
     }
   };
   
@@ -125,6 +129,11 @@ function App() {
         trailData={trailData} 
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(o => !o)}
+      />
+      <CustomAlert
+        isOpen={alert.isOpen}
+        message={alert.message}
+        onClose={() => setAlert({ isOpen: false, message: '' })}
       />
     </div>
   );

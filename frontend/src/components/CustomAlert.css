@@ -1,0 +1,64 @@
+.custom-alert {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-alert-content {
+  background-color: var(--color-page-bg);
+  padding: var(--space-md);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--box-shadow);
+  max-width: 400px;
+  width: 90%;
+  text-align: left;
+  font-family: var(--font-sans);
+  border: 1px solid var(--color-border);
+}
+
+.custom-alert-message {
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-base);
+  white-space: pre-wrap;
+}
+
+.custom-alert-button {
+  background-color: var(--color-btn-bg);
+  color: var(--color-text);
+  border: none;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  font-size: var(--font-size-btn);
+  transition: background-color 0.2s;
+}
+
+.custom-alert-button:hover {
+  background-color: var(--color-btn-hover);
+}
+
+.dark .custom-alert-content {
+  background-color: var(--color-page-bg);
+  border-color: var(--color-border);
+}
+
+.dark .custom-alert-message {
+  color: var(--color-text);
+}
+
+.dark .custom-alert-button {
+  background-color: var(--color-btn-bg);
+  color: var(--color-text);
+}
+
+.dark .custom-alert-button:hover {
+  background-color: var(--color-btn-hover);
+}

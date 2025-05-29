@@ -16,7 +16,8 @@ COPY judgment-forms.rkt .
 COPY app.rkt .
 COPY reification.rkt .
 COPY transpiler.rkt .
- 
+COPY syntax-checking.rkt .
+
 ENV PLTSTDERR=error
 ENV DISPLAY=:99
 

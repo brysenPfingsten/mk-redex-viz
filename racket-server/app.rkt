@@ -8,7 +8,8 @@
 (require "definitions.rkt"
          "reduction-relations.rkt"
          "metafunctions.rkt"
-         "transpiler.rkt")
+         "transpiler.rkt"
+         "syntax-checking.rkt")
 
 (define-struct state (red-step prog) #:transparent)
 
@@ -109,12 +110,22 @@
 ;; init-tree!: request -> response
 ;; Purpose: To initialize the tree
 (define (init-tree! req)
-  (define json-data (request-post-data/raw req))                    ;; Get the JSON data from the request
-  (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))      ;; Get the program from that JSON
-  (define sexpr-prog (read-all (open-input-string raw-prog)))       ;; Read the program into sexpressions
-  (define-values (model-prog html-prog) (parse-prog sexpr-prog))    ;; Parse the sexpressions
-  (initialize-all! model-prog)                                      ;; Initialize all state variables with the model program
-  (trace/html->response trace html-prog))              ;; Send the initial program and HTML embedded program back to the JS side
+  (define json-data (request-post-data/raw req))                      ;; Get the JSON data from the request
+  (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))        ;; Get the program from that JSON
+  (define maybe-syntax-error (check-syntax-capture-error raw-prog))   ;; Check for syntax error w/ syntax-spec
+  (cond
+    [(non-empty-string? maybe-syntax-error)                           ;; If there was a syntax error
+     (response/jsexpr (hasheq 'error maybe-syntax-error) #:code 400)] ;; Return error response
+    [else                                                             ;; Else there was no syntax error
+     (define sexpr-prog (read-all (open-input-string raw-prog)))      ;; Read the program into sexpressions
+     (define-values (model-prog html-prog) (parse-prog sexpr-prog))   ;; Parse the sexpressions
+     (define maybe-wf-error (check-well-formed model-prog))           ;; Check if the program is well-formed
+     (cond
+       [(non-empty-string? maybe-wf-error)                            ;; If the program not well-formed
+        (response/jsexpr (hasheq 'error maybe-wf-error) #:code 400)]  ;; Return error respose
+       [else                                                          ;; Else the program is well formed. Continue w/ parsing.
+        (initialize-all! model-prog)                                  ;; Initialize all state variables
+        (trace/html->response trace html-prog)])]))                   ;; Send the initial program and HTML
 
 
 ;; reset!: -> response
