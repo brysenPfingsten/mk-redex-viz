@@ -15,7 +15,24 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
       });
       
       const text = await res.text();
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Failed to parse response: ${err.message}`);
+      }
+
+      if (!res.ok) {
+        if (res.status === 400 && data.error) {
+          return {
+            success: false,
+            error: data.error,
+            headers: {}, 
+          };
+        }
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+
       setStep({ step: data.step, stepName: data.stepName });
       setTree(JSON.parse(data.program));
       return {
@@ -31,12 +48,12 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
       return {
         success: false,
         headers: {
-          isLast: res.headers.get('X-Is-Last') === 'true',
-          isDone: res.headers.get('X-Done') === 'true',
+          isLast: res ? res.headers.get('X-Is-Last') === 'true' : false,
+          isDone: res ? res.headers.get('X-Done') === 'true' : false,
         },
       };
     }
-  }
+  };
   
   return {
     tree,
@@ -44,6 +61,7 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
     init: async (codeText) => {
       const result = await send('POST', '/api/post/init', codeText);
       if (result.success) onInit();
+      if (!result.success) return [result.success, result.error];
       return [result.success, result.prog];
     },
     step: async () => {
