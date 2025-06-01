@@ -66,6 +66,8 @@ function App() {
     const [_, isLast] = await back();
     if (isLast) {  // TODO: Change this to isStart on both sides
       setDisabled(prev => ({...prev, back: true}));
+    } else {
+      setDisabled(prev => ({...prev, step: false}));
     }
   }
 
