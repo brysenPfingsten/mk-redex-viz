@@ -25,8 +25,8 @@
                            (in-hole Ex ((g_1 σ) × g_2))
                            "Distribute State Over Conjunction"]
 
-                      [--> (in-hole Ex (((⊤ σ_1) <-+ s) × g))
-                           (in-hole Ex (((⊤ σ_1) × g) <-+ (s × g)))
+                      [--> (in-hole Ex (((⊤ σ) <-+ s) × g))
+                           (in-hole Ex (((⊤ σ) × g) <-+ (s × g)))
                            "Distribute Left Disjunction Answer Over Conjunction"]
 
                       [--> (in-hole Ex ((s +-> (⊤ σ)) × g))
