@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scrollbar } from 'react-scrollbars-custom';
+import CodeHeader      from './components/CodeHeader.jsx';
 import CodeEditor      from './components/CodeEditor';
 import Toolbar         from './components/Toolbar';
 import StepInfo        from './components/StepInfo';
@@ -13,6 +14,8 @@ import './styles.css'
 function App() {
   const [rawCode, setRawCode] = useState('');
   const [displayCode, setDisplayCode] = useState('');
+  const [theme, setTheme] = useState('');
+  const [model, setModel] = useState('');
   const [isFrozen, setFrozen] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const {
@@ -90,6 +93,13 @@ function App() {
     <div className="container">
       <Resizable>
         <div className="input-container">
+          <CodeHeader
+            logoSrc={darkMode ? "/mk_logo_white.png" : "/mk_logo_black.png"}
+            theme={theme}
+            model={model}
+            onThemeChange={(e) => setTheme(e.target.value)}
+            onModelChange={(e) => setModel(e.target.value)}
+           />
           <div className="editor-area">
             <CodeEditor 
               codeText={isFrozen ? displayCode : rawCode} 
