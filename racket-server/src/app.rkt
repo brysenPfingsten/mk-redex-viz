@@ -6,7 +6,7 @@
          web-server/http/bindings)
 
 (require "definitions.rkt"
-         "reduction-relations.rkt"
+         "reduction-relations/reduction-relations.rkt"
          ;"./dmitry-and-dmitry.rkt"
          "metafunctions.rkt"
          "transpiler.rkt"

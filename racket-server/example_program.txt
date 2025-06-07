@@ -1,8 +1,0 @@
-(defrel (appendo l s out)
-  (conde
-   [[[g1100545]](== l '())[[/g1100545]] 
-    [[g1100546]](== s out)[[/g1100546]]]
-   [(fresh (a d res)
-          [[g1100547]](== l (cons a d))[[/g1100547]]
-          [[g1100548]](== out (cons a res))[[/g1100548]]
-          (appendo d s res))]))

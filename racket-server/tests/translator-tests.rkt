@@ -5,7 +5,9 @@
 (check-redundancy #t)
 (require redex-etc)
 
-(require "../definitions.rkt" "../judgment-forms.rkt" "../reduction-relations.rkt")
+(require "../src/definitions.rkt"
+         "../src/judgment-forms.rkt"
+         "../src/reduction-relations/reduction-relations.rkt")
 
 (module+ test
   (test-true "translation successful"

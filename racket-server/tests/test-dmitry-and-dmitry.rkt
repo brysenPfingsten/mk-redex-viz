@@ -4,7 +4,7 @@
          redex/reduction-semantics
          redex/gui)
 
-(require "../dmitry-and-dmitry.rkt")
+(require "../src/reduction-relations/dmitry-and-dmitry.rkt")
 
 (stepper
  dmitry-and-dmitry

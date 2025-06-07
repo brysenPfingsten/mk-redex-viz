@@ -1,5 +1,5 @@
 *.bak
-racket-server/compiled
+compiled/
 /racksstuff
 *.rkt~
 *.app

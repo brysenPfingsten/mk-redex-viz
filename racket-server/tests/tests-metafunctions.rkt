@@ -1,6 +1,7 @@
 #lang racket
 (require redex)
-(require "../metafunctions.rkt" "../definitions.rkt")
+(require "../src/metafunctions.rkt"
+         "../src/definitions.rkt")
 (require rackunit)
 
 (define PROG1
