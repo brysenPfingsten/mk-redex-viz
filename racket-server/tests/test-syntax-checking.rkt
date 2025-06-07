@@ -1,8 +1,8 @@
 #lang racket
 
-(require "../definitions.rkt"
-         "../syntax-checking.rkt"
-         "../judgment-forms.rkt")
+(require "../src/definitions.rkt"
+         "../src/syntax-checking.rkt"
+         "../src/judgment-forms.rkt")
 (require redex
          rackunit
          rackunit/text-ui)
@@ -41,6 +41,14 @@
 (run* (q) (loopo q))
 "
 )
+
+(define ARITY-MISMATCH
+"
+(defrel (foo x y)
+  (== x 'x))
+(run* (q r s t) (foo q r s t))
+")
+
 (define-test-suite SYNTAX-CHECKING
   (test-equal? "Syntactically Valid Program Returns Empty String"
                (check-syntax-capture-error GOOD-SYNTAX-PROG)
@@ -56,7 +64,10 @@
 ;;  term: (run* (foo q))
 ;;  location: syntax-checker"
   (test-equal? "Non Terminating Program Does Not Evaluate Forever"
-               (check-syntax-capture-error LOOP-PROG) ""))
+               (check-syntax-capture-error LOOP-PROG) "")
+
+  (test-true "Arity Mismatch is Detected"
+             (non-empty-string? (check-syntax-capture-error ARITY-MISMATCH))))
 
 (define/provide-test-suite SYNTAX-CHECKER
     #:before (thunk (displayln "Running Rests For Syntax Checking..."))
