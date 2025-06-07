@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "../styles.css";
 
 // const themeOptions = [
@@ -16,15 +16,25 @@ export default function CodeHeader({
   logoSrc,
   // theme,
   // onThemeChange,
-  model,
-  onModelChange,
 }) {
+  const [model, setModel] = useState('');
+
   const renderOptions = (opts) =>
     opts.map(({ value, label }) => (
       <option key={value} value={value}>
         {label}
       </option>
     ));
+
+  // TODO: Maybe add some error handling here
+  const changeModel = async (newModel) => {
+    setModel(newModel);
+    fetch('api/post/model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json'},
+      body: JSON.stringify({ model: newModel})
+    });
+  }
 
   return (
     <div className="code-header">
@@ -43,7 +53,7 @@ export default function CodeHeader({
 
       <select
         className="select"
-        onChange={onModelChange}
+        onChange={(e) => changeModel(e.target.value)}
         value={model}
       >
         {renderOptions(modelOptions)}
