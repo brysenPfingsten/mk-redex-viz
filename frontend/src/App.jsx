@@ -12,8 +12,8 @@ import Sidebar from './components/Sidebar';
 import './styles.css'
 
 function App() {
-  const [rawCode, setRawCode] = useState('');
-  const [displayCode, setDisplayCode] = useState('');
+  const [code, setCode] = useState('');
+  const originalCodeRef = useRef('');
   const [theme, setTheme] = useState('');
   const [model, setModel] = useState('');
   const [isFrozen, setFrozen] = useState(false);
@@ -22,9 +22,6 @@ function App() {
     tree, stepInfo,
     init, step, reset, back
   } = useStepper({
-    onInit: () => {
-      setDisabled(prev => ({ ...prev, step: false, reset: false }));
-    },
     onSuccess: () => {
       setSelectedId(null);
       setDisabled(prev => ({ ...prev, back: false, reset: false }));
@@ -46,10 +43,11 @@ function App() {
   const scrollRef = useRef(null);
 
   const handleInit = async () => {
-    const [success, progOrError] = await init(rawCode);
+    originalCodeRef.current = code;
+    const [success, progOrError] = await init(code);
     if (success) {
+      setCode(progOrError);
       setFrozen(true);
-      setDisplayCode(progOrError);
       setDisabled({debug: true, reset: false, back: true, step: false});
     } else {
       setAlert({ isOpen: true, message: progOrError });
@@ -59,7 +57,7 @@ function App() {
   const handleStep = async () => {
     const [success, isDone] = await step();
     if (isDone) { // no more reductions
-      setDisabled({debug: false, reset: false, back: false, step: true});
+      setDisabled({debug: true, reset: false, back: false, step: true});
     } else if (success) { // success but more reductions
       setDisabled(prev => ({...prev, back: false}));
     }
@@ -77,8 +75,8 @@ function App() {
   const handleReset = async () => {
     const success = await reset();  
     if (success) {
+      setCode(originalCodeRef.current);
       setFrozen(false);
-      setDisplayCode(rawCode);
       setDisabled({debug: false, reset: true, back: true, step: true});
     }
   }
@@ -95,15 +93,13 @@ function App() {
         <div className="input-container">
           <CodeHeader
             logoSrc={darkMode ? "/mk_logo_white.png" : "/mk_logo_black.png"}
-            theme={theme}
             model={model}
-            onThemeChange={(e) => setTheme(e.target.value)}
             onModelChange={(e) => setModel(e.target.value)}
            />
           <div className="editor-area">
             <CodeEditor 
-              codeText={isFrozen ? displayCode : rawCode} 
-              setCodeText={setRawCode} 
+              codeText={code} 
+              setCodeText={setCode} 
               isFrozen={isFrozen} 
               isDark={darkMode}
               selectedId={selectedId}
