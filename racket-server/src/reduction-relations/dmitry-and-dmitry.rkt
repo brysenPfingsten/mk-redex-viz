@@ -3,7 +3,6 @@
 (require redex
          redex/reduction-semantics
          rackunit
-         redex-etc
          redex/pict)
 (check-redundancy #t)
 
@@ -37,13 +36,13 @@
                            "Conj"]
 
                       [--> (in-hole Ex ((∃ (x) g _) (state sub c trail)))
-                           (in-hole Ex (delay ((substitute-env g (fresh-sub c x)) (state sub ,(+ 1 (term c)) trail))))
+                           (in-hole Ex (delay ((substitute g ,@(term  (fresh-sub c x))) (state sub ,(+ 1 (term c)) trail))))
                            "Fresh"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
                                   (in-hole Ev (in-hole Es ((r_1 t ... o) σ))))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                  (delay (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ)))))
+                                  (delay (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ)))))
                            "Invoke"]
 
                       [--> (in-hole Ex (() <-+ s))

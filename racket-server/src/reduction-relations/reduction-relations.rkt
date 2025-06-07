@@ -2,7 +2,6 @@
 (require redex
          redex/reduction-semantics
          rackunit
-         redex-etc
          redex/pict)
 (check-redundancy #t)
 
@@ -66,7 +65,7 @@
                            "Prune Right Disjunction Failure"]
                       
                       [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail)))
-                           (in-hole Ex ((substitute-env g (fresh-sub c x ...)) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
+                           (in-hole Ex ((substitute g ,@(term (fresh-sub c x ...))) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
                            "Substitute Fresh Variables"]
 
                       [--> (in-hole Ex ((r_1 t ... o) σ))
@@ -74,7 +73,7 @@
                            "Relation Call And Add Delay"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute* g_1 (x_1 t) ...) σ))))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
                            "Substitute Relation Body And Proceed"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))

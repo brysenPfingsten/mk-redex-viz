@@ -3,7 +3,6 @@
 (require redex/reduction-semantics)
 (require rackunit)
 (check-redundancy #t)
-(require redex-etc)
 
 (provide closed-goal? closed-tree? closed-term?
          closed-sub? closed-program?)
