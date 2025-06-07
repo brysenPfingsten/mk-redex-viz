@@ -1,6 +1,6 @@
 import { useState, React } from 'react';
 
-export default function useStepper({ onSuccess = () => {}, onInit = () => {} } = {}) {
+export default function useStepper({ onSuccess = () => {}} = {}) {
   const initialTree = { name: "Empty", children: [] };
   const [tree, setTree] = useState(initialTree);
   const [stepInfo, setStep] = useState({ step: 0, stepName: '' });
@@ -60,7 +60,7 @@ export default function useStepper({ onSuccess = () => {}, onInit = () => {} } =
     stepInfo,
     init: async (codeText) => {
       const result = await send('POST', '/api/post/init', codeText);
-      if (result.success) onInit();
+      if (result.success) onSuccess();
       if (!result.success) return [result.success, result.error];
       return [result.success, result.prog];
     },

@@ -28,7 +28,9 @@ export default function CodeHeader({
 
   return (
     <div className="code-header">
-      <img src={logoSrc} alt="Logo" className="logo" />
+      <a href="https://minikanren.org" target="_blank">
+        <img src={logoSrc} alt="Logo" className="logo"/>
+      </a>
 
       {/*  TODO: Add theme options here for editor */}
       {/* <select */}
