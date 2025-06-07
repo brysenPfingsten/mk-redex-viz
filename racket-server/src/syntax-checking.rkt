@@ -21,6 +21,7 @@
         '()  ;; Stop when EOF is reached
         (cons expr (read-all port)))))
 
+
 ;; String -> String
 ;; Purpose: Uses syntax-spec to capture static errors.
 ;; Returns: Empty string if no errors, else the error message.
