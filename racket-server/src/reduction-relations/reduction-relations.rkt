@@ -7,7 +7,7 @@
 (check-redundancy #t)
 
 (provide red step-once)
-(require "definitions.rkt" "judgment-forms.rkt")
+(require "../definitions.rkt" "../judgment-forms.rkt")
 
 ;; Term -> [Listof [List String Term]]
 (define (step-once prog)

@@ -9,15 +9,7 @@ RUN raco pkg install --auto redex
 RUN raco pkg install --auto hosted-minikanren
 RUN raco pkg install --auto redex-etc
 
-COPY definitions.rkt .
-COPY metafunctions.rkt .
-COPY reduction-relations.rkt .
-COPY dmitry-and-dmitry.rkt . 
-COPY judgment-forms.rkt .
-COPY app.rkt .
-COPY reification.rkt .
-COPY transpiler.rkt .
-COPY syntax-checking.rkt .
+COPY src/ .
 
 ENV PLTSTDERR=error
 ENV DISPLAY=:99
