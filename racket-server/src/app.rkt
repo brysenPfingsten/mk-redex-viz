@@ -6,8 +6,8 @@
          web-server/http/bindings)
 
 (require "definitions.rkt"
-         "reduction-relations/reduction-relations.rkt"
-         ;"./dmitry-and-dmitry.rkt"
+         (prefix-in mmk: "reduction-relations/reduction-relations.rkt")
+         (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
          "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt")
@@ -94,9 +94,11 @@
           (trace->response trace)])])))   ;; send response
 
 
+(define stepper (make-stepper mmk:step-once))
+
 ;; step!: -> response
 ;; Purpose: Applies one reduction step and sends the new JSON data of that tree
-(define step! (make-stepper step-once))
+(define (step!) (stepper))
 
 
 ;; read-all: port -> ListOf sexpression
@@ -152,6 +154,17 @@
      (trace->response trace)]))
 
 
+;; switch-model!: request -> response
+;; Purpose: Switches the model that is being used to step with
+(define (switch-model! req)
+  (define json-data (request-post-data/raw req))
+  (define new-model (hash-ref (bytes->jsexpr json-data) 'model))
+  (match new-model
+    ["microKanren" (set! stepper (make-stepper mmk:step-once))]
+    ["dmitry"      (set! stepper (make-stepper dmitry:step-once))])
+  (response/jsexpr (json-null) #:code 200))
+
+
 ;; get-path: request -> string
 ;; Purpose: Gets the path that was pinged as it was on the javascript side
 (define (get-path req)
@@ -164,7 +177,8 @@
     ["get/next"   (step!)]
     ["post/init"  (init-tree! req)]
     ["post/reset" (reset!)]
-    ["post/back"  (back!)]))
+    ["post/back"  (back!)]
+    ["post/model" (switch-model! req)]))
 
 
 

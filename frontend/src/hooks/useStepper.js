@@ -27,7 +27,7 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
           return {
             success: false,
             error: data.error,
-            headers: {}, 
+    headers: {}, 
           };
         }
         throw new Error(`HTTP error! Status: ${res.status}`);
