@@ -3,7 +3,6 @@
 (require redex/reduction-semantics)
 (require rackunit)
 (check-redundancy #t)
-(require redex-etc)
 
 (require "../src/definitions.rkt"
          "../src/judgment-forms.rkt"
