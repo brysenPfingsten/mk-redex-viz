@@ -13,15 +13,19 @@
 (struct fresh (x g) #:transparent)
 (struct relcall (name terms) #:transparent)
 
+(define (apply-k k v)
+  (match k
+	[else (k v)]))
+
 (define (walk/k t s k)
   (if (not (number? t))
-      (k t)
+      (apply-k k t)
       (match s
-        [(cons (list v t^) _) 
+        [(cons (list v t^) _)
          #:when (eq? t v)
          (walk/k t^ s k)]
         [(cons _ s^) (walk/k t s^ k)]
-        [_ (k t)])))
+        [_ (apply-k k t)])))
 
 
 (define (occurs?/k v t s k)
@@ -35,18 +39,18 @@
                                     (λ (b1)
                                       (occurs?/k v t2^ s
                                                  (λ (b2)
-                                                   (k (or b1 b2))))))))))]
+                                                   (apply-k k (or b1 b2))))))))))]
     [t (walk/k t s
                (λ (t^)
-                 (k (eq? v t^))))]))
+                 (apply-k k (eq? v t^))))]))
 
 
 (define (extend/k v t s k)
   (occurs?/k v t s
              (λ (b)
                (if b
-                   (k #f)
-                   (k (cons (list v t) s))))))
+                   (apply-k k #f)
+                   (apply-k k (cons (list v t) s))))))
 
 
 (define (unify/k t1 t2 s k)
@@ -59,7 +63,7 @@
 
 (define (unify-help/k t1 t2 s k)
   (match (list t1 t2)
-    [(list t t) (k s)]
+    [(list t t) (apply-k k s)]
     [(list v t) #:when (number? v)
                 (extend/k v t s k)]
     [(list t v) #:when (number? v)
@@ -68,29 +72,38 @@
      (unify/k t1a t2a s
               (λ (s^)
                 (unify/k t1b t2b s^ k)))]
-    [(list _ _)  (k #f)]))
+    [(list _ _)  (apply-k k #f)]))
 
+
+;; Was
+;; (define (subst-cons-inner-k a k)
+;;   (λ (d)
+;; 	(apply-k k (cons a d))))
+
+(define (subst-cons-inner-k a* k*)
+  (λ (v)
+	(apply-k k* (cons a* v))))
+
+(define (subst-cons-outer-k var* val* term* k*)
+  (λ (v)
+	(subst-term/k var* val* (cdr term*) (subst-cons-inner-k v k*))))
 
 (define (subst-term/k var val term k)
-  (cond 
+  (cond
     [(cons? term)
-     (subst-term/k var val (car term)
-                   (λ (a)
-                     (subst-term/k var val (cdr term)
-                                   (λ (d)
-                                     (k (cons a d))))))]
-    [(equal? term var) (k val)]
-    [else (k term)]))
+     (subst-term/k var val (car term) (subst-cons-outer-k var val term k))]
+    [(equal? term var) (apply-k k val)]
+    [else (apply-k k term)]))
 
 
 (define (subst-terms/k var val lst k)
   (if (null? lst)
-      (k '())
+      (apply-k k '())
       (subst-term/k var val (car lst)
                     (λ (a^)
                       (subst-terms/k var val (cdr lst)
                                      (λ (d^)
-                                       (k (cons a^ d^))))))))
+                                       (apply-k k (cons a^ d^))))))))
 
 
 (define (substitute/k fresh-var replace-var goal k)
@@ -100,33 +113,33 @@
                    (λ (t1^)
                      (subst-term/k fresh-var replace-var t2
                                    (λ (t2^)
-                                     (k (== t1^ t2^))))))]
+                                     (apply-k k (== t1^ t2^))))))]
 
     [(gor g1 g2)
      (substitute/k fresh-var replace-var g1
                    (λ (g1^)
                      (substitute/k fresh-var replace-var g2
                                    (λ (g2^)
-                                     (k (gor g1^ g2^))))))]
+                                     (apply-k k (gor g1^ g2^))))))]
 
     [(gand g1 g2)
      (substitute/k fresh-var replace-var g1
                    (λ (g1^)
                      (substitute/k fresh-var replace-var g2
                                    (λ (g2^)
-                                     (k (gand g1^ g2^))))))]
+                                     (apply-k k (gand g1^ g2^))))))]
 
     [(fresh x g)
      (if (eqv? x fresh-var)
-         (k goal)
+         (apply-k k goal)
          (substitute/k fresh-var replace-var g
                        (λ (g^)
-                         (k (fresh x g^)))))]
+                         (apply-k k (fresh x g^)))))]
 
     [(relcall name terms)
      (subst-terms/k fresh-var replace-var terms
                     (λ (terms^)
-                      (k (relcall name terms^))))]))
+                      (apply-k k (relcall name terms^))))]))
 
 
 (define sameo (rel 'sameo '(x y) (== 'x 'y)))
@@ -138,7 +151,7 @@
   (match env
     [(cons (rel rname args goal) rest)
      #:when (eqv? name rname)
-     (k `(,args . ,goal))]
+     (apply-k k `(,args . ,goal))]
 
     [(cons _ rest)
      (lookup-rel/k name rest k)]
@@ -147,7 +160,7 @@
 
 (define (foldr/k args terms goal k)
   (if (null? args)
-      (k goal)
+      (apply-k k goal)
       (substitute/k (car args) (car terms) goal
                     (λ (goal^)
                       (foldr/k (cdr args) (cdr terms) goal^ k)))))
@@ -163,33 +176,33 @@
 (define (dmitry/k t k)
   (match t
     [(trip (== t1 t2) s n)
-     (unify/k t1 t2 s 
+     (unify/k t1 t2 s
               (λ (s^)
                 (cond
                   [s^ (displayln "UnifySuccess")
-                      (k (list (mt) `(,s^ ,n)))]
+                      (apply-k k (list (mt) `(,s^ ,n)))]
                   [else (displayln "UnifyFail")
-                        (k (list (mt) #f))])))]
+                        (apply-k k (list (mt) #f))])))]
 
     [(trip (gor g1 g2) s n)
      (displayln "Disj")
-     (k (list (tor (trip g1 s n) (trip g2 s n)) #f))]
+     (apply-k k (list (tor (trip g1 s n) (trip g2 s n)) #f))]
 
     [(trip (gand g1 g2) s n)
      (displayln "Conj")
-     (k (list (tand (trip g1 s n) g2) #f))]
+     (apply-k k (list (tand (trip g1 s n) g2) #f))]
 
     [(trip (fresh x g) s n)
      (displayln "Fresh")
      (substitute/k x n g
                    (λ (g^)
-                     (k (list (trip g^ s (add1 n)) #f))))]
+                     (apply-k k (list (trip g^ s (add1 n)) #f))))]
 
     [(trip (relcall name ts) s n)
      (displayln "Invoke")
      (invoke/k name ts
                (λ (g^)
-                 (k (list (trip g^ s n) #f))))]
+                 (apply-k k (list (trip g^ s n) #f))))]
 
     [(tor t1 t2)
      (dmitry/k t1
@@ -197,19 +210,19 @@
                  (match t1^
                    [(list (mt) #f)
                     (displayln "DisjStop")
-                    (k `(,t2 #f))]
+                    (apply-k k `(,t2 #f))]
 
                    [(list (mt) b)
                     (displayln "DisjStopAns")
-                    (k `(,t2 ,b))]
+                    (apply-k k `(,t2 ,b))]
 
                    [(list s #f)
                     (displayln "DisjStep")
-                    (k `(,(tor t2 s) #f))]
+                    (apply-k k `(,(tor t2 s) #f))]
 
                    [(list s b)
                     (displayln "DisjStepAns")
-                    (k `(,(tor t2 s) ,b))])))]
+                    (apply-k k `(,(tor t2 s) ,b))])))]
 
     [(tand t g)
      (dmitry/k t
@@ -217,19 +230,19 @@
                  (match t^
                    [(list (mt) #f)
                     (displayln "ConjStop")
-                    (k `(,(mt) #f))]
+                    (apply-k k `(,(mt) #f))]
            
                    [(list (mt) `(,subst ,n))
                     (displayln "ConjStopAns")
-                    (k `(,(trip g subst n) #f))]
+                    (apply-k k `(,(trip g subst n) #f))]
 
                    [(list s #f)
                     (displayln "ConjStep")
-                    (k `(,(tand s g) #f))]
+                    (apply-k k `(,(tand s g) #f))]
 
                    [(list t `(,subst ,n))
                     (displayln "ConjStepAns")
-                    (k `(,(tor (trip g subst n) (tand t g)) #f))])))]
+                    (apply-k k `(,(tor (trip g subst n) (tand t g)) #f))])))]
     ))
                    
 (define end/k (lambda (x) x))
@@ -510,3 +523,6 @@
                                  #f))
              (check-equal? out "UnifySuccess\nDisjStopAns\nConjStepAns\n"))
   )
+
+(module+ test
+  (run-test DMITRY))
