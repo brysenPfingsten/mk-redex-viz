@@ -18,33 +18,44 @@
   (if (not (number? t))
       t
       (match s
-        [(cons (list t v) _) v]
+        [(cons (list v t^) _) 
+         #:when (eq? t v)
+         (walk t^ s)]
         [(cons _ s^) (walk t s^)]
-        [_ s])))
+        [_ t])))
+
 
 (define (occurs? v t s)
   (match t 
     [(cons t1 t2) (or (occurs? v (walk t1 s) s)
                       (occurs? v (walk t2 s) s))]
-    [t #:when (eq? v t) #t]
-    [_ #f]))
+    [t (eq? v (walk t s))]))
+
 
 (define (extend v t s)
   (if (occurs? v t s)
       #f
       (cons (list v t) s)))
 
+
 (define (unify t1 t2 s)
+  (let* ([t1^ (walk t1 s)]
+         [t2^ (walk t2 s)])
+    (unify-help t1^ t2^ s)))
+
+
+(define (unify-help t1 t2 s)
   (match (list t1 t2)
     [(list t t) s]
     [(list v t) #:when (number? v)
                 (extend v t s)]
     [(list t v) #:when (number? v)
                 (extend v t s)]
-    [(list (cons t1a t2b) (cons t2a t2b))
-     (define s^ (unify (walk t1a s) (walk t2a) s))
-     (unify (walk t2a s^) (walk t2b s^) s^)]
+    [(list (cons t1a t1b) (cons t2a t2b))
+     (define s^ (unify t1a t2a s))
+     (unify t1b t2b s^)]
     [(list _ _)  #f]))
+
 
 (define (subst-term var val term)
   (cond 
@@ -53,6 +64,7 @@
            (subst-term var val (cdr term)))]
     [(equal? term var) val]
     [else term]))
+
 
 (define (substitute fresh-var replace-var goal)
   (match goal
@@ -73,7 +85,9 @@
      (relcall name (map (lambda (t) (subst-term fresh-var replace-var t)) terms))]))
 
 (define sameo (rel 'sameo '(x y) (== 'x 'y)))
-(define rels (list sameo))
+(define exampleo (rel 'foo '(y x) (gor (== 'y "fish")
+                                       (== 'x "horse"))))
+(define rels (list sameo exampleo))
 
 (define (lookup-rel name env)
   (match env
@@ -157,6 +171,72 @@
           `(,(tor (trip g subst n) (tand t^ g)) #f)])]
       ))) 
 
+(define (mash-dmitry prog)
+  (displayln prog)
+  (let ([next (dmitry prog)])
+    (match next
+      [`(,(mt) #f) next]
+      [(list tree _) (mash-dmitry tree)])))
+
+(define-test-suite MK-HELPERS
+  (test-case "Non-Numeric Term Returns Itself"
+             (check-equal? (walk 'dog '()) 'dog)
+             (check-equal? (walk "dog" '()) "dog")
+             (check-equal? (walk #t '()) #t)
+             (check-equal? (walk (cons 0 1) '()) (cons 0 1)))
+
+  (test-case "Numeric Term Walks To Correct Value"
+             (check-equal? (walk 0 `((0 dog))) 'dog)
+             (check-equal? (walk 0 `((0 1) (1 2) (2 dog))) 'dog)
+             (check-equal? (walk 0 `((0 (1 2)) (1 "bear") (2 "bird"))) (list 1 2)))
+
+  (test-case "Numeric Term Not Bound Returns Itself"
+             (check-equal? (walk 0 '()) 0)
+             (check-equal? (walk 5 '((0 1) (1 2) (2 3))) 5))
+
+  (test-true "Logic Var Occurs In Itself"
+             (occurs? 0 0 '()))
+
+  (test-false "Logic Var Does Not Appear In Ground Atomic Term"
+              (occurs? 0 "not here" '()))
+
+  (test-true "Logic Var Appears Nested In A List"
+             (occurs? 0 (cons (cons 1 2) (cons (cons 0 5) 12)) '()))
+
+  (test-true "Logic Var Appears In A Walked Term"
+             (occurs? 0 1 '((1 0))))
+
+  (test-false "Logic Var Does Not Appear In A List"
+              (occurs? 0 (cons 1 2) '()))
+
+  (test-case "Substitution Is Extended When Occurs Check Passes"
+             (check-false (occurs? 0 "dog" '()))
+             (check-equal? (extend 0 "dog" '()) '((0 "dog"))))
+
+  (test-case "Extending Substitution Fails When Occurs Check Fails"
+             (check-true (occurs? 0 0 '()))
+             (check-false (extend 0 0 '())))
+
+  (test-case "Unifying Two of the Same Terms Returns The Original Substitution"
+             (check-equal? (unify 0 0 '()) '())
+             (check-equal? (unify "dog" "dog" '()) '()))
+
+  (test-case "Unifying A Logic Var And A Term Extends The Substitution"
+             (check-equal? (unify 0 "dog" '()) '((0 "dog")))
+             (check-equal? (unify "dog" 0 '()) '((0 "dog")))
+             (check-equal? (unify 0 1 '((1 "cat"))) '((0 "cat") (1 "cat"))))
+
+  (test-case "Unifying Pairs Works"
+             (check-equal? (unify (cons 0 "bear") (cons "eagle" 1) '())
+                           '((1 "bear") (0 "eagle")))
+             (check-equal? (unify (cons 0 1) (cons 2 3) '((0 "dog") (1 "cat") (2 "dog") (3 "cat")))
+                           '((0 "dog") (1 "cat") (2 "dog") (3 "cat"))))
+
+  (test-case "Unifying Two Different Terms Fails"
+             (check-false (unify "dog" "cat" '()))
+             (check-false (unify 0 1 '((0 "dog") (1 #t)))))
+  )
+
 (define (dmitry-capture-output prog)
   (let ([out (open-output-string)])
     (parameterize ([current-output-port out])
@@ -225,44 +305,44 @@
              (check-equal? out "Fresh\n"))
 
   (test-case "Fresh - Over Conj"
-    (define-values (res out)
-      (dmitry-capture-output
-        (trip (fresh 'x (gand (== 'x "dog")
-                              (== "cat" 'x)))
-              '() 0)))
-    (check-equal?
-      res
-      (list (trip (gand (== 0 "dog")
-                        (== "cat" 0))
-                  '() 1)
-            #f))
-    (check-equal? out "Fresh\n"))
+             (define-values (res out)
+               (dmitry-capture-output
+                (trip (fresh 'x (gand (== 'x "dog")
+                                      (== "cat" 'x)))
+                      '() 0)))
+             (check-equal?
+              res
+              (list (trip (gand (== 0 "dog")
+                                (== "cat" 0))
+                          '() 1)
+                    #f))
+             (check-equal? out "Fresh\n"))
 
   (test-case "Fresh - Over Disj"
-    (define-values (res out)
-      (dmitry-capture-output
-        (trip (fresh 'x (gor (== 'x "dog")
-                             (== "cat" 'x)))
-              '() 0)))
-    (check-equal?
-      res
-      (list (trip (gor (== 0 "dog")
-                       (== "cat" 0))
-                  '() 1)
-            #f))
-    (check-equal? out "Fresh\n"))
+             (define-values (res out)
+               (dmitry-capture-output
+                (trip (fresh 'x (gor (== 'x "dog")
+                                     (== "cat" 'x)))
+                      '() 0)))
+             (check-equal?
+              res
+              (list (trip (gor (== 0 "dog")
+                               (== "cat" 0))
+                          '() 1)
+                    #f))
+             (check-equal? out "Fresh\n"))
 
   (test-case "Fresh - Over Relcall"
-    (define-values (res out)
-      (dmitry-capture-output
-        (trip (fresh 'x (relcall 'sameo '(x "dog")))
-              '() 0)))
-    (check-equal?
-      res
-      (list (trip (relcall 'sameo '(0 "dog"))
-                  '() 1)
-            #f))
-    (check-equal? out "Fresh\n"))
+             (define-values (res out)
+               (dmitry-capture-output
+                (trip (fresh 'x (relcall 'sameo '(x "dog")))
+                      '() 0)))
+             (check-equal?
+              res
+              (list (trip (relcall 'sameo '(0 "dog"))
+                          '() 1)
+                    #f))
+             (check-equal? out "Fresh\n"))
 
   (test-case "Invoke - Relation Exists"
              (define-values (res out)
