@@ -1,6 +1,6 @@
 #lang racket
 (require rackunit rackunit/text-ui)
-(provide (all-defined-out))
+(provide (except-out (all-defined-out) walk occurs? extend))
 
 ;; A subst is a ((var val) ...).
 (define (walk t s)
@@ -42,14 +42,6 @@
 	 => (lambda (i) (list-ref vals i))]
 	[else term]))
 
-#;(define (subst-term var val term)
-  (cond
-	[(cons? term)
-     (cons (subst-term var val (car term))
-		   (subst-term var val (cdr term)))]
-	[(eqv? var term) val]
-	[else term]))
-
 (define (subst-term var val t)
   (subst*-term (list var) (list val) t))
 
@@ -57,9 +49,6 @@
 ;; Simultaneously substitute instances of vars for vals recursively over each term in terms.
 (define (subst*-terms vars vals lst)
   (map (lambda (term) (subst*-term vars vals term)) lst))
-
-#;(define (subst-terms var val lst)
-  (map (lambda (term) (subst-term var val term)) lst))
 
 (define (subst-terms var val lst)
   (subst*-terms (list var) (list val) lst))

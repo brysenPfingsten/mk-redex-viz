@@ -17,25 +17,6 @@
 (define (substitute fv rv g)
   (subst*-goal (list fv) (list rv) g))
 
-#;(define (substitute fresh-var replace-var goal)
-  (match goal
-	[(== t1 t2)
-	 (== (subst-term fresh-var replace-var t1) (subst-term fresh-var replace-var t2))]
-
-	[(gor g1 g2)
-     (gor (substitute fresh-var replace-var g1) (substitute fresh-var replace-var g2))]
-
-	[(gand g1 g2)
-	 (gand (substitute fresh-var replace-var g1) (substitute fresh-var replace-var g2))]
-
-	[(fresh x g)
-	 (if (eq? x fresh-var)
-	     goal
-		 (fresh x (substitute fresh-var replace-var g)))]
-
-	[(relcall name terms)
-     (relcall name (subst-terms fresh-var replace-var terms))]))
-
 (define (subst*-goal vars vals goal)
   (match goal
 	[(== t1 t2)
