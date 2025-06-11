@@ -58,6 +58,50 @@
 	 (lookup-rel name rest)]
 	[_ (error "Relation not found")]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (tor-k t2 k) `(tor-k ,t2 ,k))
+(define (tand-k g k) `(tand-k ,g ,k))
+(define (end-k) `(end-k))
+
+(define (apply-k k v)
+  (match k
+	(`(end-k) v)
+    (`(tor-k ,t2 ,k)
+	  (match v
+		[(list (mt) #f)
+		 (displayln "DisjStop")
+		 (apply-k k `(,t2 #f))]
+
+		[(list (mt) b) #:when b
+		 (displayln "DisjStopAns")
+		 (apply-k k `(,t2 ,b))]
+
+		[(list s #f) #:when (not (equal? s (mt)))
+		 (displayln "DisjStep")
+		 (apply-k k `(,(tor t2 s) #f))]
+
+		[(list s b) #:when (and (not (equal? s (mt))) b)
+		 (displayln "DisjStepAns")
+		 (apply-k k `(,(tor t2 s) ,b))]))
+
+	 (`(tand-k ,g ,k)
+	   (match v
+		 [(list (mt) #f)
+		  (displayln "ConjStop")
+		  (apply-k k `(,(mt) #f))]
+
+		 [(list (mt) `(,subst ,n))
+		  (displayln "ConjStopAns")
+		  (apply-k k `(,(trip g subst n) #f))]
+
+		 [(list s #f) #:when (not (equal? s (mt)))
+		  (displayln "ConjStep")
+		  (apply-k k `(,(tand s g) #f))]
+
+		 [(list t `(,subst ,n)) #:when (not (equal? t (mt)))
+		  (displayln "ConjStepAns")
+		  (apply-k k `(,(tor (trip g subst n) (tand t g)) #f))]))))
+
 (define (dmitry/k t k)
   (match t
 	[(trip (== t1 t2) s n)
@@ -65,73 +109,37 @@
 	   [(unify t1 t2 s)
 		=> (lambda (s^)
 			 (displayln "UnifySuccess")
-			 (k (list (mt) `(,s^ ,n))))]
+			 (apply-k k (list (mt) `(,s^ ,n))))]
 	   [else (displayln "UnifyFail")
-			 (k (list (mt) #f))])]
+			 (apply-k k (list (mt) #f))])]
 
 	[(trip (gor g1 g2) s n)
 	 (displayln "Disj")
-	 (k (list (tor (trip g1 s n) (trip g2 s n)) #f))]
+	 (apply-k k (list (tor (trip g1 s n) (trip g2 s n)) #f))]
 
 	[(trip (gand g1 g2) s n)
 	 (displayln "Conj")
-	 (k (list (tand (trip g1 s n) g2) #f))]
+	 (apply-k k (list (tand (trip g1 s n) g2) #f))]
 
 	[(trip (fresh x g) s n)
 	 (displayln "Fresh")
-     (k (list (trip (substitute x n g) s (add1 n)) #f))]
+     (apply-k k (list (trip (substitute x n g) s (add1 n)) #f))]
 
 	[(trip (relcall name ts) s n)
 	 (displayln "Invoke")
-	 (k (list (trip (invoke name ts) s n) #f))]
+	 (apply-k k (list (trip (invoke name ts) s n) #f))]
 
 	[(tor t1 t2)
-	 (dmitry/k t1
-			   (λ (t1^)
-				 (match t1^
-				   [(list (mt) #f)
-					(displayln "DisjStop")
-					(k `(,t2 #f))]
-
-				   [(list (mt) b)
-					(displayln "DisjStopAns")
-					(k `(,t2 ,b))]
-
-				   [(list s #f)
-					(displayln "DisjStep")
-					(k `(,(tor t2 s) #f))]
-
-				   [(list s b)
-					(displayln "DisjStepAns")
-					(k `(,(tor t2 s) ,b))])))]
+	 (dmitry/k t1 (tor-k t2 k))]
 
 	[(tand t g)
-	 (dmitry/k t
-			   (λ (t^)
-				 (match t^
-				   [(list (mt) #f)
-					(displayln "ConjStop")
-					(k `(,(mt) #f))]
-
-				   [(list (mt) `(,subst ,n))
-					(displayln "ConjStopAns")
-					(k `(,(trip g subst n) #f))]
-
-				   [(list s #f)
-					(displayln "ConjStep")
-					(k `(,(tand s g) #f))]
-
-				   [(list t `(,subst ,n))
-					(displayln "ConjStepAns")
-					(k `(,(tor (trip g subst n) (tand t g)) #f))])))]
+	 (dmitry/k t (tand-k g k))]
 	))
-
-(define end/k (lambda (x) x))
 
 (define (dmitry-capture-output prog)
   (let ([out (open-output-string)])
 	(parameterize ([current-output-port out])
-	  (define res (dmitry/k prog end/k))
+	  (define res (dmitry/k prog (end-k)))
 	  (values res (get-output-string out)))))
 
 (define-test-suite DMITRY
