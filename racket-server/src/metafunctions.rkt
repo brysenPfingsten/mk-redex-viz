@@ -113,6 +113,14 @@
                    'trail trail-json
                    'reified reified)))]
 
+  [(tree->json (∂ s maybe-sub))
+   ,(let* ([tree-json (term (tree->json s))]
+           [sub-json (if (term maybe-sub) #t #f)])
+      (hash-union tree-json
+                  (hasheq
+                    'partial #t
+                    'hasAnswer sub-json)))]
+
   [(tree->json (proceed ((r t ... o) (_ sub c trail))))
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]

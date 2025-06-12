@@ -1,6 +1,6 @@
 #lang racket
 
-(require redex
+(require redex redex/gui
          redex/reduction-semantics
          rackunit
          redex/pict)
@@ -13,94 +13,107 @@
 (define (step-once prog)
   (apply-reduction-relation/tag-with-names dmitry-and-dmitry (term ,prog)))
 
+
 (define dmitry-and-dmitry
   (reduction-relation L 
-                      #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
+                      #:domain p ; (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c trail)))
-                           (in-hole Ex ())
+                      [==> ((t_1 =? t_2 o) (state sub c trail))
+                           (∂ () #f)
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "UnifyFail"]
 
-                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
-                           (in-hole Ex (delay (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o))))))
-                           (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
+                      [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...)))
+                           (∂ (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))) sub_1)
+                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "UnifySuccess"]
 
-                      [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))
-                           (in-hole Ex ((g_1 σ) <-+ (g_2 σ)))
+                      [==> ((g_1 ∨ g_2 _) σ)
+                           (∂ ((g_1 σ) <-+ (g_2 σ)) #f)
                            "Disj"]
 
-                      [--> (in-hole Ex ((g_1 ∧ g_2 _) σ))
-                           (in-hole Ex ((g_1 σ) × g_2))
+                      [==> ((g_1 ∧ g_2 _) σ)
+                           (∂ ((g_1 σ) × g_2) #f)
                            "Conj"]
 
-                      [--> (in-hole Ex ((∃ (x) g _) (state sub c trail)))
-                           (in-hole Ex (delay ((substitute g ,@(term  (fresh-sub c x))) (state sub ,(+ 1 (term c)) trail))))
+                      [==> ((∃ (x) g _) (state sub c trail))
+                           (∂ ((substitute g ,@(term (fresh-sub c x))) (state sub ,(+ 1 (term c)) trail)) #f)
                            "Fresh"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                  (in-hole Ev (in-hole Es ((r_1 t ... o) σ))))
+                                  (in-hole Es ((r_1 t ... o) σ)))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                  (delay (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ)))))
+                                  (∂ (in-hole Es ((substitute g_1 (x_1 t) ...) σ)) #f))
                            "Invoke"]
 
-                      [--> (in-hole Ex (() <-+ s))
-                           (in-hole Ex s)
+                      [==> ((∂ () #f) <-+ s)
+                           s
                            "DisjStopLeft"]
                       
-                      [--> (in-hole Ex (s +-> ()))
-                           (in-hole Ex s)
+                      [==> (s +-> (∂ () #f))
+                           s
                            "DisjStopRight"]
 
-                      [--> (in-hole Ex ((⊤ σ) <-+ s))
-                           (in-hole Ex s)
+                      [==> ((∂ (⊤ σ) sub) <-+ s)
+                           s
                            "DisjStopAnsLeft"]
 
-                      [--> (prog Γ (in-hole Ex (s +-> (⊤ σ))))
-                           (prog Γ (in-hole Ex s))
+                      [==> (s +-> (∂ (⊤ σ) sub))
+                           s
                            "DisjStopAnsRight"]
 
-                      [--> (in-hole Ex (() × g))
-                           (in-hole Ex ())
+                      [==> ((∂ () #f) × g)
+                           (∂ () #f)
                            "ConjStop"]
 
-                      [--> (in-hole Ex ((⊤ σ) × g))
-                           (in-hole Ex (g σ))
+                      [==> ((∂ (⊤ σ) sub) × g)
+                           (g σ)
                            "ConjStopAns"]
                       
-                      [--> (in-hole Ex ((delay s_1) <-+ s_2)) 
-                           (in-hole Ex (s_1 +-> s_2)) 
-                           (where #f ,(redex-match? L (⊤ σ) (term s_1)))
+                      [==> ((∂ s_1 #f) <-+ s_2) 
+                           (s_1 +-> s_2) 
+                           (where #f ,(redex-match? L () (term s_1)))
                            "DisjStepLeft"]
 
-                      [--> (in-hole Ex (s_1 +-> (delay s_2)))
-                           (in-hole Ex (s_1 <-+ s_2))
-                           (where #f ,(redex-match? L (⊤ σ) (term s_2)))
+                      [==> (s_1 +-> (∂ s_2 #f))
+                           (s_1 <-+ s_2)
+                           (where #f ,(redex-match? L () (term s_2)))
                            "DisjStepRight"]
 
-                      [--> (in-hole Ex ((delay (⊤ σ)) <-+ s))
-                           (in-hole Ex ((⊤ σ) +-> s))
+                      [==> ((∂ s_1 sub) <-+ s_2)
+                           (s_1 +-> s_2)
+                           (where #f ,(redex-match? L (⊤ σ) (term s_1)))
                            "DisjStepAnsLeft"]
 
-                      [--> (in-hole Ex (s +-> (delay (⊤ σ))))
-                           (in-hole Ex (s <-+ (⊤ σ)))
+                      [==> (s_1 +-> (∂ s_2 sub))
+                           (s_1 <-+ s_2)
+                           (where #f ,(redex-match? L (⊤ σ) (term s_2)))
                            "DisjStepAnsRight"]
 
-                      [--> (in-hole Ex ((delay s) × g))
-                           (in-hole Ex (s × g))
-                           (where #f ,(redex-match? L (⊤ σ) (term s_1)))
+                      [==> ((∂ s #f) × g)
+                           (s × g)
+                           (where #f ,(redex-match? L () (term s)))
                            "ConjStep"]
 
-                      [--> (in-hole Ex (((⊤ σ) <-+ s) × g))
-                           (in-hole Ex (((⊤ σ) × g) <-+ (s × g)))
+                      [==> (((∂ (⊤ σ) sub) <-+ s) × g)
+                           (((⊤ σ) × g) <-+ (s × g))
                            "ConjStepAnsLeft"]
 
-                      [--> (in-hole Ex ((s +-> (⊤ σ)) × g))
-                           (in-hole Ex ((s × g) +-> ((⊤ σ) × g)))
+                      [==> ((s +-> (∂ (⊤ σ) sub)) × g)
+                           ((s × g) +-> ((⊤ σ) × g))
                            "ConjStepAnsRight"]
-
-                      [--> (prog Γ (in-hole Ev (delay s)))
-                           (prog Γ (in-hole Ev s))
+                      
+                      [--> (in-hole EΓ (∂ s _))
+                           (in-hole EΓ s)
                            "TopStep"]
+
+                      with
+                      [(--> (in-hole Ex a) (in-hole Ex b))
+                            (==> a b)]
                       ))
+
+(stepper dmitry-and-dmitry '(prog
+  ((r:appendo
+    (x:l x:s x:out)
+    (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1") ∨ (∃ (x:a) (∃ (x:d) (∃ (x:res) (((x:l =? (x:a : x:d) "u9") ∧ (x:out =? (x:a : x:res) "u10") "c8") ∧ (r:appendo x:d x:s x:res "r11") "c7") "f6") "f5") "f4") "d0")))
+  ((∃ (x:q) (r:appendo ((sym "dog") : ((sym "cat") : empty)) ((sym "bear") : ((sym "lion") : empty)) x:q "r13") "f12") (state () 0 ()))))

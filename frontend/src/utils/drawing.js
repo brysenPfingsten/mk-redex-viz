@@ -1,13 +1,32 @@
 import * as d3 from 'd3';
 import { termToString } from './strings.js';
 
+
+function applyPartialStyle(selection, hasAnswer) {
+    // Base black dashes
+    selection
+        .clone(true)
+        .lower()
+        .attr("stroke", "black")
+        .attr("stroke-dasharray", "4 4")
+        .attr("stroke-width", "6px");
+
+    // Overlaid green/red dashes, phase-shifted
+    selection
+        .attr("stroke", hasAnswer ? "green" : "red")
+        .attr("stroke-dasharray", "4 4")
+        .attr("stroke-dashoffset", "4") // phase shift by one dash length
+        .attr("stroke-width", "3px");
+}
+
+
 function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
     const size = 30;
     const points = [
         [0, -size], [size, 0], [0, size], [-size, 0]
     ].map(point => point.join(",")).join(" ");
 
-    group.append("polygon")
+    const polygon = group.append("polygon")
         .attr("points", points)
         .attr("fill", fillColor)
         .attr("stroke", "black")
@@ -19,14 +38,15 @@ function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
         .attr("dy", ".35em")
         .style("font-size", "20px")
         .style("fill", textColor);
+    return polygon;
 }
 
-function drawDisjunctionNode(group) { drawPolygonNode(group, "orange", "+"); }
-function drawConjunctionNode(group) { drawPolygonNode(group, "blue", "×", "white"); }
+function drawDisjunctionNode(group) { return drawPolygonNode(group, "orange", "+"); }
+function drawConjunctionNode(group) { return drawPolygonNode(group, "blue", "×", "white"); }
 
 function drawCircle(group, fill, hasSub, text = "", textColor = "black", fontSize = "20px") {
     const radius = 25
-    group.append("circle")
+    const circle = group.append("circle")
         .attr("r", radius)
         .attr("fill", fill)
         .attr("stroke", hasSub ? "yellow" : "black")
@@ -40,13 +60,14 @@ function drawCircle(group, fill, hasSub, text = "", textColor = "black", fontSiz
             .style("font-size", fontSize)
             .style("fill", textColor);
     }
+    return circle;
 }
 
-function drawGoalConjNode(group, d) { drawCircle(group, "purple", d.sub, "∧", "white"); }
-function drawGoalDisjNode(group, d) { drawCircle(group, "#FF69B4", d.sub, "∨"); }
-function drawSucceedNode(group, d)  { drawCircle(group, "green", d.sub); }
-function drawAnswerNode(group, d)   { drawCircle(group, "green", d.sub, "Answer", undefined, "10px") }
-function drawEmptyNode(group, d)    { drawCircle(group, "white", d.sub) }
+function drawGoalConjNode(group, d) { return drawCircle(group, "purple", d.sub, "∧", "white"); }
+function drawGoalDisjNode(group, d) { return drawCircle(group, "#FF69B4", d.sub, "∨"); }
+function drawSucceedNode(group, d)  { return drawCircle(group, "green", d.sub); }
+function drawAnswerNode(group, d)   { return drawCircle(group, "green", d.sub, "Answer", undefined, "10px") }
+function drawEmptyNode(group, d)    { return drawCircle(group, "white", d.sub) }
 
 function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
     const textElement = group.append("text")
@@ -60,7 +81,7 @@ function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
     if (!outline && hasSub) { outline = "yellow"; }
     else if (outline != "green") { outline = "black"; }
 
-    group.append("rect")
+    const rect = group.append("rect")
         .attr("x", -textWidth / 2 - padding)
         .attr("y", -15)
         .attr("width", textWidth + 2 * padding)
@@ -70,29 +91,30 @@ function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
         .style("stroke-width", hasSub ? "6px" : "2px");
 
     textElement.raise();
+    return rect;
 }
 
 function drawProceedNode(group, data) {
     const argsText = data.goal.args ? data.goal.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
     const textContent = `(${data.goal.rel} ${argsText})`;
-    drawTextNode(group, textContent, data.sub, 10, "green");
+    return drawTextNode(group, textContent, data.sub, 10, "green");
 }
 
 function drawUnifyNode(group, data) {
     const textContent = `(== ${termToString(data.left)} ${termToString(data.right)})`;
-    drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent, data.sub);
 }
 
 function drawFreshNode(group, data) {
     const varsText = data.vars ? data.vars.map(t => t.var).join(' ') : '';
     const textContent = `(fresh (${varsText}) ...)`;
-    drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent, data.sub);
 }
 
 function drawRelCallNode(group, data) {
     const argsText = data.args ? data.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
     const textContent = `(${data.rel} ${argsText})`;
-    drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent, data.sub);
 }
 
 
@@ -118,7 +140,7 @@ function drawDelayNode(group) {
         .attr("stroke-width", "3px");
 
     // Draw the minute hand
-    group.append("line")
+    return group.append("line")
         .attr("x1", 0)
         .attr("y1", 0)
         .attr("x2", handLengthMinute * Math.cos(Math.PI / 4)) 
@@ -144,17 +166,22 @@ const nodeDrawFunctions = {
     "Empty": drawEmptyNode
 };
 
+
 export function drawTree(nodeGroups) {
     nodeGroups.each(function (d) {
         const group = d3.select(this);
-        const data = d.data
+        const data = d.data;
         const drawFunction = nodeDrawFunctions[data.name];
 
         if (drawFunction) {
-            drawFunction(group, data);
+            const shape = drawFunction(group, data); // now you get the shape
+            if (data.partial) {
+                applyPartialStyle(shape, data.hasAnswer);
+            }
         }
     });
 }
+
 
 export function drawNodes(svg, nodes) {
     const nodeGroups = svg.selectAll(".node")

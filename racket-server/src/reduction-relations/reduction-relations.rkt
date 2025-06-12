@@ -65,15 +65,18 @@
                            "Prune Right Disjunction Failure"]
                       
                       [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail)))
-                           (in-hole Ex ((substitute g ,@(term (fresh-sub c x ...))) (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
+                           (in-hole Ex ((substitute g ,@(term (fresh-sub c x ...))) 
+                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
                            "Substitute Fresh Variables"]
 
                       [--> (in-hole Ex ((r_1 t ... o) σ))
                            (in-hole Ex (delay (proceed ((r_1 t ... o) σ))))
                            "Relation Call And Add Delay"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
+                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
+                                 (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
+                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
+                                 (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
                            "Substitute Relation Body And Proceed"]
 
                       [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
@@ -96,7 +99,7 @@
                       
                       [--> (in-hole Ex (s_2 +-> (delay s_1)))
                            (in-hole Ex (delay (s_2 <-+ s_1)))
-                           "Propagate Delay Through Right Disjunction and Flip"]
+                           "Propagate Delay Through Right Disjunction And Flip"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (delay s)))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev s))

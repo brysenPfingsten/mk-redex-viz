@@ -38,6 +38,7 @@
   ;-------------------Search Trees------------------------
   [s ()                         ; Empty Tree / Failure
      (g σ)                      ; Goal-State
+     (∂ s maybe-sub)            ; Partially Evaluated Tree
      (s +-> s)                  ; Right Disjunciton
      (s <-+ s)                  ; Left Disjunction
      ((⊤ σ) + s)                ; Answer Stream
