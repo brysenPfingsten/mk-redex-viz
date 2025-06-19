@@ -46,8 +46,8 @@ function App() {
     originalCodeRef.current = code;
     const [success, progOrError] = await init(code);
     if (success) {
-      setCode(progOrError);
       setFrozen(true);
+      setCode(progOrError);
       setDisabled({debug: true, reset: false, back: true, step: false});
     } else {
       setAlert({ isOpen: true, message: progOrError });

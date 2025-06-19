@@ -71,12 +71,12 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
     },
     back: async () => {
       const result = await send('POST', '/api/post/back');
-      if (result.success) onSuccess;
+      if (result.success) onSuccess();
       return [result.success, result.headers.isLast];
     },
     reset: async () => {
       const result = await send('POST', '/api/post/reset');
-      if (result.success) onSuccess;
+      if (result.success) onSuccess();
       return result.success;
     }
   };
