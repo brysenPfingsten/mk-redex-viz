@@ -14,7 +14,7 @@
 
 (define red
   (reduction-relation L 
-                      #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
+                      #:domain p #;(side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
                       [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))
                            (in-hole Ex ((g_1 σ) <-+ (g_2 σ)))

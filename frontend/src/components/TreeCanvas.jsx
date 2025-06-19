@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import * as d3 from 'd3';
 import { drawTree, drawLinks, drawNodes } from '../utils/drawing.js';
 import { termToString } from '../utils/strings.js';
@@ -6,6 +6,7 @@ import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
 
 const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
     const svgRef = useRef();
+    const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: "" });
 
     useEffect(() => {
         const svg = d3.select(svgRef.current);
@@ -101,22 +102,51 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
 
             // Add click event to show state data
             svg.selectAll('g.node')
-            .filter(d => d.data.sub || d.data.trail || d.data.id)
-            .on('click', (event, d) => {
-                const subs = (d.data.sub || []).map(s => ({ 
-                    left: termToString(s.key), 
-                    right: termToString(s.value) 
-                }));
-                const trails = (d.data.trail || []).map(crumb => ({
-                    left: termToString(crumb.left),
-                    right: termToString(crumb.right),
-                }));
-                const id = d.data.id || null;
-                onNodeClick({ substitutionData: subs, trailData: trails, id: id });
-            });
+                .filter(d => d.data.sub || d.data.trail || d.data.reified)
+                .on("click", (event, d) => {
+                    if (d.data.reified) {
+                        setTooltip({
+                            visible: true,
+                            x: event.clientX,
+                            y: event.clientY,
+                            content: termToString(d.data.reified).replace(/\n/g, "<br>")
+                        });
+                    }
+                    if (d.data.sub || d.data.trail || d.data.id) {
+                        const subs = (d.data.sub || []).map(s => ({
+                            left: termToString(s.key),
+                            right: termToString(s.value)
+                        }));
+                        const trails = (d.data.trail || []).map(crumb => ({
+                            left: termToString(crumb.left),
+                            right: termToString(crumb.right),
+                        }));
+                        const id = d.data.id || null;
+                        onNodeClick({ substitutionData: subs, trailData: trails, id: id });
+                    }
+                })
+                .on("mouseout", () => {
+                    setTooltip(prev => ({ ...prev, visible: false }));
+                });
         }
     }));
-    return <svg ref={svgRef} ></svg>;
+    return (
+        <>
+            <svg ref={svgRef} />
+            {tooltip.visible && (
+                <div className="reified-tooltip"
+                    style={{
+                        position: "fixed",
+                        left: tooltip.x,
+                        top: tooltip.y,
+                        zIndex: 1000,
+                        pointerEvents: "none"
+                    }}
+                    dangerouslySetInnerHTML={{ __html: tooltip.content }}
+                />
+            )}
+        </>
+    );
 });
 
 export default TreeCanvas;
