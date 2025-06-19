@@ -55,8 +55,8 @@ const CodeEditor = forwardRef(({
 
   // Memoize parsed results
   const { plain, segments } = useMemo(() => 
-    isFrozen? parseTaggedText(codeText) : { plain: codeText, segements: [] },
-    [codeText, isFrozen]
+    isFrozen ? parseTaggedText(codeText) : { plain: codeText, segments: [] },
+    [isFrozen]
   );
 
   // Keep segments reference updated
@@ -78,25 +78,20 @@ const CodeEditor = forwardRef(({
     // Set initial value
     editor.setValue(plain);
 
-    // Apply initial decorations if frozen
-    if (isFrozen) {
-      updateDecorations();
+    editor.onMouseUp((e) => {
+      const pos = e.target.position;
+      if (!pos) return;
+      
+      const model = editor.getModel();
+      const offset = model.getOffsetAt(pos);
 
-      editor.onMouseUp((e) => {
-        const pos = e.target.position;
-        if (!pos) return;
-        
-        const model = editor.getModel();
-        const offset = model.getOffsetAt(pos);
-        
-        for (const seg of segmentsRef.current) {
-          if (offset >= seg.start && offset < seg.end) {
-            onTagClick(seg.id);
-            break;
-          }
+      for (const seg of segmentsRef.current) {
+        if (offset >= seg.start && offset < seg.end) {
+          onTagClick(seg.id);
+          break;
         }
-      });
-    }
+      }
+    });
   };
 
   const updateDecorations = () => {
