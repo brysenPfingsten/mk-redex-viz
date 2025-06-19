@@ -150,7 +150,6 @@
            [rest-json (term (tree->json s))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (term c) num-of-query-vars)])
-      (displayln reified) (displayln (term sub)) (newline) (newline) (flush-output)
       (hasheq 'name "Answer"
               'sub sub-json
               'trail trail-json
