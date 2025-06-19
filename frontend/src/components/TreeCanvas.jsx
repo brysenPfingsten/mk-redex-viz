@@ -102,7 +102,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
 
             // Add click event to show state data
             svg.selectAll('g.node')
-                .filter(d => d.data.sub || d.data.trail || d.data.reified)
+                .filter(d => d.data.id || d.data.sub || d.data.trail || d.data.reified)
                 .on("click", (event, d) => {
                     if (d.data.reified) {
                         setTooltip({
