@@ -16,7 +16,7 @@
 
 (define dmitry-and-dmitry
   (reduction-relation L 
-                      #:domain p ; (side-condition (name prog p) (judgment-holds (closed-program? prog)))
+                      #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
                       [==> ((t_1 =? t_2 o) (state sub c trail))
                            (∂ () #f)

@@ -369,13 +369,14 @@
     Tooltip
     ------------------- */
   .reified-tooltip {
-      background: #f9f9f9;
-      border: 1px solid #ccc;
-      padding: 8px;
-      font-family: monospace;
-      font-size: 12px;
-      max-width: 300px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-      border-radius: 4px;
-      white-space: pre-wrap;
+    background: var(--color-panel-bg);
+    border: 1px solid var(--color-border);
+    padding: var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-base);
+    max-width: 300px;
+    box-shadow: var(--box-shadow);
+    border-radius: var(--btn-radius);
+    white-space: pre-wrap;
+    color: var(--color-text);
   }
