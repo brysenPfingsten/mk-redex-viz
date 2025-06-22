@@ -102,13 +102,14 @@
   [(tree->json ())
    ,(hasheq 'name "Empty")]
 
-  [(tree->json (g (_ sub c trail)))
+  [(tree->json (g (_ sub c trail o)))
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
       (hash-union goal-json
                   (hasheq
+                   'stateId (term o)
                    'sub sub-json
                    'trail trail-json
                    'reified reified)))]
@@ -121,13 +122,14 @@
                     'partial #t
                     'hasAnswer sub-json)))]
 
-  [(tree->json (proceed ((r t ... o) (_ sub c trail))))
+  [(tree->json (proceed ((r t ... o) (_ sub c trail o_1))))
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
       (hasheq 'name "Proceed"
               'id (term o)
+              'stateId (term o_1)
               'goal goal-json
               'sub sub-json
               'trail trail-json
@@ -145,12 +147,13 @@
       (hasheq 'name "<-+"
               'children (list left-json right-json)))]
 
-  [(tree->json ((⊤ (_ sub c trail)) + s))
+  [(tree->json ((⊤ (_ sub c trail o)) + s))
    ,(let* ([sub-json (sub->json (term sub))]
            [rest-json (term (tree->json s))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (term c) num-of-query-vars)])
       (hasheq 'name "Answer"
+              'stateId (term o)
               'sub sub-json
               'trail trail-json
               'reified reified

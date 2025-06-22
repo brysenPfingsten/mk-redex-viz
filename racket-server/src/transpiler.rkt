@@ -187,17 +187,10 @@
      (define-values (id count1) (next-g-id "f" count))
      (define-values (tq count2 guids1) (map/fold-with-guids transpile qs count1))
      (define-values (tg count3 guids2) (transpile goal count2))
-     (values `((∃ ,tq ,tg ,id) (state () 0 ()))
+     (values `((∃ ,tq ,tg ,id) (state () 0 () "s"))
              count3
              (cons id (append guids1 guids2)))]))
 
-
-    
-
-(define (remove-last lst)
-  (if (null? (cdr lst))
-      '()
-      (cons (car lst) (remove-last (cdr lst)))))
 
 ;; konst->string: konst -> string
 ;; Purpose: Convert a konst structure to a string
@@ -550,7 +543,7 @@
                     ∧ ((sym "bear1") =? x:lion "u6") "c4")
                    ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
                   ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
-           (state () 0 ()))))
+           (state () 0 () "s"))))
 
   (check-equal?
    html-prog

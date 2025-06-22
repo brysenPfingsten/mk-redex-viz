@@ -18,26 +18,26 @@
   (reduction-relation L 
                       #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [==> ((t_1 =? t_2 o) (state sub c trail))
+                      [==> ((t_1 =? t_2 o) (state sub _ _ _))
                            (∂ () #f)
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "UnifyFail"]
 
-                      [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...)))
-                           (∂ (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))) sub_1)
+                      [==> ((t_1 =? t_2 o) (state sub c trail o_1))
+                           (∂ (⊤ (state sub_1 c (,@(term trail) (t_1 =? t_2 o)) o_1)) sub_1)
                            (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "UnifySuccess"]
 
-                      [==> ((g_1 ∨ g_2 _) σ)
-                           (∂ ((g_1 σ) <-+ (g_2 σ)) #f)
+                      [==> ((g_1 ∨ g_2 _) (state sub c trail o))
+                           (∂ ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym))))) #f)
                            "Disj"]
 
                       [==> ((g_1 ∧ g_2 _) σ)
                            (∂ ((g_1 σ) × g_2) #f)
                            "Conj"]
 
-                      [==> ((∃ (x) g _) (state sub c trail))
-                           (∂ ((substitute g ,@(term (fresh-sub c x))) (state sub ,(+ 1 (term c)) trail)) #f)
+                      [==> ((∃ (x) g _) (state sub c trail o))
+                           (∂ ((substitute g ,@(term (fresh-sub c x))) (state sub ,(+ 1 (term c)) trail o)) #f)
                            "Fresh"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
@@ -116,4 +116,4 @@
   ((r:appendo
     (x:l x:s x:out)
     (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1") ∨ (∃ (x:a) (∃ (x:d) (∃ (x:res) (((x:l =? (x:a : x:d) "u9") ∧ (x:out =? (x:a : x:res) "u10") "c8") ∧ (r:appendo x:d x:s x:res "r11") "c7") "f6") "f5") "f4") "d0")))
-  ((∃ (x:q) (r:appendo ((sym "dog") : ((sym "cat") : empty)) ((sym "bear") : ((sym "lion") : empty)) x:q "r13") "f12") (state () 0 ()))))
+  ((∃ (x:q) (r:appendo ((sym "dog") : ((sym "cat") : empty)) ((sym "bear") : ((sym "lion") : empty)) x:q "r13") "f12") (state () 0 () "s"))))

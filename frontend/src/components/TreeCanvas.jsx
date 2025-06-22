@@ -4,27 +4,54 @@ import { drawTree, drawLinks, drawNodes } from '../utils/drawing.js';
 import { termToString } from '../utils/strings.js';
 import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
 
-const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
+const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId }, ref) => {
     const svgRef = useRef();
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: "" });
+
+    const goalIdRef = useRef(selectedGoalId);
+    const stateIdRef = useRef(selectedStateId);
+
+    useEffect(() => {
+        goalIdRef.current = selectedGoalId;
+        stateIdRef.current = selectedStateId;
+    }, [selectedGoalId, selectedStateId]);
+
+    const clearHighlights = () => {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('g.node')
+            .select('circle, rect, polygon')
+            .classed('highlighted', false);
+    }
 
     useEffect(() => {
         const svg = d3.select(svgRef.current);
 
-        // clear any old highlight
-        svg.selectAll('g.node')
-            .select('circle, rect, polygon')
-            .classed('highlighted', false);
+        clearHighlights();
 
-        if (selectedId) {
+        if (selectedGoalId) {
             svg.selectAll('g.node')
-            .filter(d => d.data.id === selectedId)
+            .filter(d => d.data.id === selectedGoalId)
             .select('circle, rect, polygon')
             .classed('highlighted', true);
         }
-        }, [selectedId]);
+    }, [selectedGoalId]);
+    
+    useImperativeHandle(ref, () => ({
+        updateSidebar(sId) {
+        d3.select(svgRef.current)
+            .selectAll('g.node')
+            .filter(d => d.data.stateId === sId)
+            .dispatch('click');
+        }
+    }));
 
     useImperativeHandle(ref, () => ({
+        updateSidebar: (sId) => {
+        d3.select(svgRef.current)
+            .selectAll('g.node')
+            .filter(d => d.data.stateId === sId)
+            .dispatch('click');
+        },
         redraw: (treeData) => {
             const svg = d3.select(svgRef.current).html('');
             const g = svg.append('g');
@@ -102,32 +129,41 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedId }, ref) => {
 
             // Add click event to show state data
             svg.selectAll('g.node')
-                .filter(d => d.data.id || d.data.sub || d.data.trail || d.data.reified)
-                .on("click", (event, d) => {
-                    if (d.data.reified) {
-                        setTooltip({
-                            visible: true,
-                            x: event.clientX,
-                            y: event.clientY,
-                            content: termToString(d.data.reified).replace(/\n/g, "<br>")
-                        });
-                    }
-                    if (d.data.sub || d.data.trail || d.data.id) {
-                        const subs = (d.data.sub || []).map(s => ({
-                            left: termToString(s.key),
-                            right: termToString(s.value)
-                        }));
-                        const trails = (d.data.trail || []).map(crumb => ({
-                            left: termToString(crumb.left),
-                            right: termToString(crumb.right),
-                        }));
-                        const id = d.data.id || null;
-                        onNodeClick({ substitutionData: subs, trailData: trails, id: id });
-                    }
-                })
-                .on("mouseout", () => {
-                    setTooltip(prev => ({ ...prev, visible: false }));
+            .filter(d => d.data.id || d.data.sub || d.data.trail || d.data.reified)
+            .on("click", (event, d) => {
+                const subs = (d.data.sub || []).map(s => ({
+                    left: termToString(s.key),
+                    right: termToString(s.value)
+                }));
+                const trails = (d.data.trail || []).map(crumb => ({
+                    left: termToString(crumb.left),
+                    right: termToString(crumb.right),
+                }));
+
+                let sId = d.data.stateId;
+                let gId = d.data.id;
+                const prevGoalId = goalIdRef.current;
+                const prevStateId = stateIdRef.current;
+
+                if (event.isTrusted && gId === prevGoalId) {
+                    sId = null;
+                    gId = null;
+                }
+                onNodeClick({ substitutionData: subs, trailData: trails, gId: gId, sId: sId });
+            })
+            .on("mouseenter", (event, d) => {
+                if (d.data.reified) {
+                setTooltip({
+                    visible: true,
+                    x: event.clientX,
+                    y: event.clientY,
+                    content: termToString(d.data.reified).replace(/\n/g, "<br>")
                 });
+                }
+            })
+            .on("mouseout", () => {
+                setTooltip(prev => ({ ...prev, visible: false }));
+            });
         }
     }));
     return (

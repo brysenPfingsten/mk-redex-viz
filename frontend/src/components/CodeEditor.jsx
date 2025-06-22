@@ -45,7 +45,7 @@ function parseTaggedText(raw) {
 const CodeEditor = forwardRef(({ 
   codeText, setCodeText, 
   isFrozen, isDark,
-  selectedId, onTagClick 
+  goalId, onTagClick 
 }, ref) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -111,8 +111,8 @@ const CodeEditor = forwardRef(({
       };
     });
 
-    const selDecs = selectedId == null ? [] : segmentsRef.current
-      .filter(s => s.id === selectedId)
+    const selDecs = goalId == null ? [] : segmentsRef.current
+      .filter(s => s.id === goalId)
       .map(seg => {
         const start = model.getPositionAt(seg.start);
         const end = model.getPositionAt(seg.end);
@@ -149,7 +149,7 @@ const CodeEditor = forwardRef(({
     }
 
     updateDecorations();
-  }, [isFrozen, selectedId, plain]);
+  }, [isFrozen, goalId, plain]);
 
   useEffect(() => {
     return () => {
