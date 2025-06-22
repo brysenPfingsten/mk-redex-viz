@@ -16,8 +16,8 @@
   (reduction-relation L 
                       #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [--> (in-hole Ex ((g_1 ∨ g_2 _) σ))
-                           (in-hole Ex ((g_1 σ) <-+ (g_2 σ)))
+                      [--> (in-hole Ex ((g_1 ∨ g_2 _) (state sub c trail o)))
+                           (in-hole Ex ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym))))))
                            "Distribute State Over Disjunction"]
 
                       [--> (in-hole Ex ((g_1 ∧ g_2 _) σ))
@@ -64,9 +64,9 @@
                            (in-hole Ex s)
                            "Prune Right Disjunction Failure"]
                       
-                      [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail)))
+                      [--> (in-hole Ex ((∃ (x ...) g _) (state sub c trail o)))
                            (in-hole Ex ((substitute g ,@(term (fresh-sub c x ...))) 
-                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail)))
+                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o)))
                            "Substitute Fresh Variables"]
 
                       [--> (in-hole Ex ((r_1 t ... o) σ))
@@ -79,12 +79,12 @@
                                  (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
                            "Substitute Relation Body And Proceed"]
 
-                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...))))
-                           (in-hole Ex (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)))))
-                           (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
+                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...) o_2)))
+                           (in-hole Ex (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2)))
+                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "Unification Succeeds"]
 
-                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub c trail)))
+                      [--> (in-hole Ex ((t_1 =? t_2 o) (state sub _ _ _)))
                            (in-hole Ex ())
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "Unification Fails"]

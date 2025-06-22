@@ -63,15 +63,15 @@
 
 
   ;----------------------Other---------------------------
-  [r (variable-prefix r:)] ; to account for arbitrary relation names
-  [x (variable-prefix x:)] ; to account for arbitrary parameter names
-  [c natural]              ; Logic variables
-  [o (sym string)          ; Tagged string  = symbol
-     (nat natural)         ; Tagged natural = natural (not logic variable)
+  [r (variable-prefix r:)]  ; to account for arbitrary relation names
+  [x (variable-prefix x:)]  ; to account for arbitrary parameter names
+  [c natural]               ; Logic variables
+  [o (sym string)           ; Tagged string  = symbol
+     (nat natural)          ; Tagged natural = natural (not logic variable)
      boolean
      string]
-  [σ (state sub c trail)] ; State
-  [sub ((natural t) ...)] ; Substitution
+  [σ (state sub c trail o)] ; State
+  [sub ((natural t) ...)]   ; Substitution
   [maybe-sub sub #f]
   [trail ((t =? t o) ...)]
 

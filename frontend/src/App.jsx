@@ -14,18 +14,16 @@ import './styles.css'
 function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
-  const [theme, setTheme] = useState('');
   const [model, setModel] = useState('');
   const [isFrozen, setFrozen] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
+  const treeRef = useRef();
+  const scrollRef = useRef(null);
   const {
     tree, stepInfo,
     init, step, reset, back
   } = useStepper({
-    onSuccess: () => {
-      setSelectedId(null);
-      setDisabled(prev => ({ ...prev, back: false, reset: false }));
-    }
+    onSuccess: () => { setGoalId(null); }
   });
   const [disabled, setDisabled] = useState({
     debug: false,
@@ -35,12 +33,11 @@ function App() {
   });
   const [substitutionData, setSubstitutionData] = useState([]);
   const [trailData, setTrailData] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [goalId, setGoalId] = useState(null);
+  const [stateId, setStateId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [ darkMode, setDarkMode ] = useState(false);
-  const svgRef = useRef();
-  const scrollRef = useRef(null);
 
   const handleInit = async () => {
     originalCodeRef.current = code;
@@ -82,8 +79,9 @@ function App() {
   }
   
   useEffect(() => {
-    if (tree && svgRef.current) {
-      svgRef.current.redraw(tree);
+    if (tree && treeRef.current) {
+      treeRef.current.redraw(tree);
+      treeRef.current.updateSidebar(stateId);
       }
   }, [tree]);
 
@@ -102,8 +100,8 @@ function App() {
               setCodeText={setCode} 
               isFrozen={isFrozen} 
               isDark={darkMode}
-              selectedId={selectedId}
-              onTagClick={setSelectedId}
+              goalId={goalId}
+              onTagClick={setGoalId}
             />
           </div>
           <Toolbar
@@ -120,13 +118,15 @@ function App() {
           <Scrollbar style={{ width: '100%', height: '100%' }}>
             <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
               <TreeCanvas 
-                ref={svgRef}
-                onNodeClick={({ substitutionData, trailData, id }) => {
+                ref={treeRef}
+                onNodeClick={({ substitutionData, trailData, gId, sId }) => {
                   setSubstitutionData(substitutionData);
                   setTrailData(trailData);
-                  setSelectedId(id);
+                  setGoalId(gId);
+                  setStateId(sId);
                 }}
-                selectedId={selectedId}
+                selectedGoalId={goalId}
+                selectedStateId={stateId}
                 />
             </div>
           </Scrollbar>

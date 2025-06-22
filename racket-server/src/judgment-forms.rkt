@@ -116,7 +116,7 @@
    (closed-sub? sub c)
    (closed-trail? trail c)
    -------------------"goal w/ sub closed"
-   (closed-tree? (g (state sub c trail)) (r ...))]
+   (closed-tree? (g (state sub c trail _)) (r ...))]
 
   [(closed-tree? s (r ...))
    -------------------"partial tree closed"
@@ -136,7 +136,7 @@
    (closed-trail? trail c)
    (closed-tree? s (r ...))
    -------------------"answer stream closed"
-   (closed-tree? ((⊤ (state sub c trail)) + s) (r ...))]
+   (closed-tree? ((⊤ (state sub c trail _)) + s) (r ...))]
 
   [(closed-tree? s (r ...))
    (closed-goal? g (r ...) () 0)
