@@ -6,8 +6,9 @@
          web-server/http/bindings)
 
 (require "definitions.rkt"
-         (prefix-in mmk: "reduction-relations/reduction-relations.rkt")
+         (prefix-in mmk:    "reduction-relations/reduction-relations.rkt")
          (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
+         (prefix-in dfs:    "reduction-relations/dfs.rkt")
          "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt")
@@ -153,7 +154,8 @@
   (define new-model (hash-ref (bytes->jsexpr json-data) 'model))
   (match new-model
     ["microKanren" (set! stepper (make-stepper mmk:step-once))]
-    ["dmitry"      (set! stepper (make-stepper dmitry:step-once))])
+    ["dmitry"      (set! stepper (make-stepper dmitry:step-once))]
+    ["dfs"         (set! stepper (make-stepper dfs:step-once))])
   (response/jsexpr (json-null) #:code 200))
 
 
