@@ -9,7 +9,8 @@ import "../styles.css";
 
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
-  { value: "dmitry",      label: "Dmitry et al." }
+  { value: "dmitry",      label: "Dmitry et al." },
+  { value: "dfs",         label: "DFS"}
 ];
 
 export default function CodeHeader({
@@ -59,5 +60,4 @@ export default function CodeHeader({
         {renderOptions(modelOptions)}
       </select>
     </div>
-  );
-}
+  ); }
