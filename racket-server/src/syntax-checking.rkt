@@ -10,7 +10,7 @@
 (define (check-well-formed model-prog)
   (if (judgment-holds (closed-program? ,model-prog))
       ""
-      "Program is not well formed!"))
+      (error "Program is not well formed!")))
 
 
 ;; read-all: port -> ListOf sexpression
@@ -22,15 +22,11 @@
         (cons expr (read-all port)))))
 
 
-;; String -> String
-;; Purpose: Uses syntax-spec to capture static errors.
-;; Returns: Empty string if no errors, else the error message.
+;; String -> String or Error
+;; Purpose: Uses syntax-spec to throw static errors in the given program.
 (define (check-syntax-capture-error program-str)
-  (define error-out (open-output-string))
-  (with-handlers ([exn:fail:syntax? (lambda (exn) (displayln (exn-message exn) error-out))])
     (parameterize ([current-namespace (make-base-namespace)])
       (expand (datum->syntax #f
                              `(module syntax-checker racket/base
                                 (require hosted-minikanren)
                                 ,@(read-all (open-input-string program-str)))))))
-  (get-output-string error-out))
