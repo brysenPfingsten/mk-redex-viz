@@ -260,7 +260,6 @@
   /* ============================= */
   .node rect {
     fill: var(--color-node-fill);
-    stroke: var(--color-node-stroke);
   }
   
   .link {
@@ -273,7 +272,7 @@
   g.node rect.highlighted,
   g.node polygon.highlighted {
     stroke: rgb(0, 103, 138) !important;
-    stroke-width: 6px   !important;
+    stroke-width: 8px   !important;
   }
 
 
