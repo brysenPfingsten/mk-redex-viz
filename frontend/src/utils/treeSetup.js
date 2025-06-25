@@ -2,6 +2,7 @@
 
 export function addColors(tree) {
     if (tree.sub && tree.name != 'Answer') return tree;
+    if (tree.partial) return tree;
 
     let children = tree.children;
 
@@ -36,7 +37,6 @@ export function addColors(tree) {
             break;
         case "Delay":
             children[0].color = "black";
-            addColors(children[0]);
             break;
         case "Answer":
             children[0].color = "green";

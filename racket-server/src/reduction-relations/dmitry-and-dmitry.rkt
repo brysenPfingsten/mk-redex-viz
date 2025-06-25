@@ -112,7 +112,7 @@
                             (==> a b)]
                       ))
 
-#;(stepper dmitry-and-dmitry '(prog
+(stepper dmitry-and-dmitry '(prog
   ((r:appendo
     (x:l x:s x:out)
     (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1") ∨ (∃ (x:a) (∃ (x:d) (∃ (x:res) (((x:l =? (x:a : x:d) "u9") ∧ (x:out =? (x:a : x:res) "u10") "c8") ∧ (r:appendo x:d x:s x:res "r11") "c7") "f6") "f5") "f4") "d0")))

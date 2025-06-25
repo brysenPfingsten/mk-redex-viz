@@ -2,22 +2,38 @@ import * as d3 from 'd3';
 import { termToString } from './strings.js';
 
 
-function applyPartialStyle(selection, hasAnswer) {
-    // Base black dashes
-    selection
-        .clone(true)
-        .lower()
-        .attr("stroke", "black")
-        .attr("stroke-dasharray", "4 4")
-        .attr("stroke-width", "6px");
+function applyStroke(selection, hasSub, isProceed, isPartial, hasAnswer) {
+    if (hasSub && !isPartial) {
+        selection
+            .clone(true)
+            .lower()
+            .attr("stroke", isProceed ? "green" : "yellow")
+            .attr("stroke-width", "8px")
+            .attr("fill", "none");
+    } else if (isPartial) {
+        selection
+            .clone(true)
+            .lower()
+            .attr("stroke", "black")
+            .attr("stroke-dasharray", "4 4")
+            .attr("stroke-width", "8px")
+            .attr("fill", "none");
 
-    // Overlaid green/red dashes, phase-shifted
-    selection
-        .attr("stroke", hasAnswer ? "green" : "red")
-        .attr("stroke-dasharray", "4 4")
-        .attr("stroke-dashoffset", "4") // phase shift by one dash length
-        .attr("stroke-width", "3px");
+        selection
+            .clone(true)
+            .lower()
+            .attr("stroke", hasAnswer ? "green" : "red")
+            .attr("stroke-dasharray", "4 4")
+            .attr("stroke-dashoffset", "4")
+            .attr("stroke-width", "8px")
+            .attr("fill", "none");
+    } else {
+        selection
+            .attr("stroke", "black")
+            .attr("stroke-width", "3px")
+    }
 }
+
 
 
 function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
@@ -29,8 +45,6 @@ function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
     const polygon = group.append("polygon")
         .attr("points", points)
         .attr("fill", fillColor)
-        .attr("stroke", "black")
-        .attr("stroke-width", "2px");
 
     group.append("text")
         .text(symbol)
@@ -44,13 +58,11 @@ function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
 function drawDisjunctionNode(group) { return drawPolygonNode(group, "orange", "+"); }
 function drawConjunctionNode(group) { return drawPolygonNode(group, "blue", "×", "white"); }
 
-function drawCircle(group, fill, hasSub, text = "", textColor = "black", fontSize = "20px") {
+function drawCircle(group, fill, text = "", textColor = "black", fontSize = "20px") {
     const radius = 25
     const circle = group.append("circle")
         .attr("r", radius)
         .attr("fill", fill)
-        .attr("stroke", hasSub ? "yellow" : "black")
-        .attr("stroke-width", hasSub ? "6px" : "2px");
 
     if (text) {
         group.append("text")
@@ -63,13 +75,13 @@ function drawCircle(group, fill, hasSub, text = "", textColor = "black", fontSiz
     return circle;
 }
 
-function drawGoalConjNode(group, d) { return drawCircle(group, "purple", d.sub, "∧", "white"); }
-function drawGoalDisjNode(group, d) { return drawCircle(group, "#FF69B4", d.sub, "∨"); }
-function drawSucceedNode(group, d)  { return drawCircle(group, "green", d.sub); }
-function drawAnswerNode(group, d)   { return drawCircle(group, "green", d.sub, "Answer", undefined, "10px") }
-function drawEmptyNode(group, d)    { return drawCircle(group, "white", d.sub) }
+function drawGoalConjNode(group, _) { return drawCircle(group, "purple", "∧", "white"); }
+function drawGoalDisjNode(group, _) { return drawCircle(group, "#FF69B4", "∨"); }
+function drawSucceedNode(group, _)  { return drawCircle(group, "green"); }
+function drawAnswerNode(group, _)   { return drawCircle(group, "green", "Answer", undefined, "10px") }
+function drawEmptyNode(group, _)    { return drawCircle(group, "white") }
 
-function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
+function drawTextNode(group, textContent, padding = 10, outline="") {
     const textElement = group.append("text")
         .text(textContent)
         .attr("text-anchor", "middle")
@@ -78,17 +90,12 @@ function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
 
     const textWidth = textElement.node().getBBox().width;
 
-    if (!outline && hasSub) { outline = "yellow"; }
-    else if (outline != "green") { outline = "black"; }
-
     const rect = group.append("rect")
         .attr("x", -textWidth / 2 - padding)
         .attr("y", -15)
         .attr("width", textWidth + 2 * padding)
         .attr("height", 30) 
         .style("fill", "lightgray")
-        .style("stroke", outline)
-        .style("stroke-width", hasSub ? "6px" : "2px");
 
     textElement.raise();
     return rect;
@@ -97,24 +104,24 @@ function drawTextNode(group, textContent, hasSub, padding = 10, outline="") {
 function drawProceedNode(group, data) {
     const argsText = data.goal.args ? data.goal.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
     const textContent = `(${data.goal.rel} ${argsText})`;
-    return drawTextNode(group, textContent, data.sub, 10, "green");
+    return drawTextNode(group, textContent, 10, "green");
 }
 
 function drawUnifyNode(group, data) {
     const textContent = `(== ${termToString(data.left)} ${termToString(data.right)})`;
-    return drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent);
 }
 
 function drawFreshNode(group, data) {
     const varsText = data.vars ? data.vars.map(t => t.var).join(' ') : '';
     const textContent = `(fresh (${varsText}) ...)`;
-    return drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent);
 }
 
 function drawRelCallNode(group, data) {
     const argsText = data.args ? data.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
     const textContent = `(${data.rel} ${argsText})`;
-    return drawTextNode(group, textContent, data.sub);
+    return drawTextNode(group, textContent);
 }
 
 
@@ -174,10 +181,12 @@ export function drawTree(nodeGroups) {
         const drawFunction = nodeDrawFunctions[data.name];
 
         if (drawFunction) {
-            const shape = drawFunction(group, data); // now you get the shape
-            if (data.partial) {
-                applyPartialStyle(shape, data.hasAnswer);
-            }
+            const shape = drawFunction(group, data); 
+            const hasSub = data.sub ? true : false;
+            const isProceed = data.name === "Proceed";
+            const isPartial = data.partial ? true : false;
+            const hasAnswer = data.hasAnswer ? true : false;
+            applyStroke(shape, hasSub, isProceed, isPartial, hasAnswer);
         }
     });
 }
@@ -190,7 +199,6 @@ export function drawNodes(svg, nodes) {
     .attr("class", "node")
     .attr("transform", d => `translate(${d.x},${d.y})`);
     
-    // addTooltips(nodeGroups);
     drawTree(nodeGroups); 
 }
 
