@@ -9,8 +9,6 @@
          (prefix-in mmk: "../src/reduction-relations/reduction-relations.rkt")
          "../src/zipper.rkt")
 
-(provide APP)
-
 (define sample-tree
   '(prog
     ()
@@ -194,8 +192,8 @@
               (check-equal? (zipper-next state) '(test2))
               (check-equal? (get-index   state) 1))
   )
-j
-(define-test-suite APP
+
+(define/provide-test-suite APP
   #:before (thunk (displayln "Running tests for app.rkt..."))
   #:after (thunk (displayln "Finished running tests for app.rkt"))
   STEP!

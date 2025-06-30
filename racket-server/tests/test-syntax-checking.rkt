@@ -8,7 +8,7 @@
          rackunit/text-ui)
 
 (define WELL-FORMED-PROG (term (prog () ())))
-(define BAD-FORMED-PROG (term (prog () ((r:goneo "r0") (state () 0 ())))))
+(define BAD-FORMED-PROG (term (prog () ((r:goneo "r0") (state () 0 () "s")))))
 
 (define-test-suite WELL-FORMED
   (test-case "Well Formed Program Returns Empty String"
@@ -19,8 +19,8 @@
   (test-case "Non Well Formed Program Returns Error Message"
              (check-true (redex-match? L p BAD-FORMED-PROG))
              (check-false (judgment-holds (closed-program? ,BAD-FORMED-PROG)))
-             (check-exn (λ () (check-well-formed BAD-FORMED-PROG))
-                        exn:fail?
+             (check-exn exn:fail?
+                        (λ () (check-well-formed BAD-FORMED-PROG))
                         "Program is not well formed!")))
 
 (define GOOD-SYNTAX-PROG 

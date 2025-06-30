@@ -2,7 +2,6 @@
 (require rackunit
          rackunit/text-ui
          "../src/zipper.rkt")
-(provide ZIPPER)
 
 (define z1 'unititialized)
 (define z2 'unititialized)
@@ -15,7 +14,7 @@
   (set! z3 (zipper '(1) 2 '(3) 3))
   (set! init-zip (zipper '() #f '() 0)))
 
-(define-test-suite ZIPPER
+(define/provide-test-suite ZIPPER
   #:before (thunk (displayln "Running tests for zipper..."))
   #:after (thunk (displayln "Finished running tests for zipper."))
 

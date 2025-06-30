@@ -183,3 +183,5 @@
              (check-true (redex-match? L sub SUB3))
              (check-equal? (reify SUB3 4 1)
                            (list #hasheq((num . 1)) #hasheq((num . 2)) #hasheq((num . 3))))))
+
+#; (run-tests REIFICATION)
