@@ -18,8 +18,8 @@ Open a terminal and run:
 git clone https://github.com/brysenPfingsten/Modeling-miniKanren-in-Redex.git
 cd Modeling-miniKanren-in-Redex
 docker login
-docker-compose build
-docker-compose up
+docker compose build
+docker compose up
 ```
 Finally, visit [localhost:3000](http://localhost:3000).
 
