@@ -18,22 +18,14 @@ Open a terminal and run:
 git clone https://github.com/brysenPfingsten/Modeling-miniKanren-in-Redex.git
 cd Modeling-miniKanren-in-Redex
 docker login
-docker compose build
-docker compose up
+docker compose -f docker-compose.dev.yml up --build
 ```
-Finally, visit [localhost:3000](http://localhost:3000).
+Finally, visit [localhost:5173](http://localhost:5173).
 
 ## **Configuration**
 
 The Docker images expect an amd64 platform. Users on Apple Silicon or other arm64 based architectures,
-will need to work around this, by either
-
-- Set the `DOCKER_DEFAULT_PLATFORM` environment variable (permanently
-  by adding `export DOCKER_DEFAULT_PLATFORM=linux/amd64` to your
-  `bashrc`) or
-- If you regularly use Docker for other purposes, you could add a
-  `platform` to the YAML file found in this directory
-
+will need to rely on emulation. This build is known to build and works under QEMU.
 
 ## **Issues**
 
@@ -60,5 +52,5 @@ Aborted
 
 To resolve this, open Docker.app and under Settings > General >
 Virtual Machine Options, make sure you have un-checked `Use Rosetta
-for x86_64/amd64 emulation on Apple Silicon`
+for x86_64/amd64 emulation on Apple Silicon`, and have selected QEMU as the VMM.
 
