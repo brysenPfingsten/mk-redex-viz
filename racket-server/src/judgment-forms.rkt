@@ -120,7 +120,7 @@
 
   [(closed-tree? s (r ...))
    -------------------"partial tree closed"
-   (closed-tree? (∂ s _) (r ...))]
+   (closed-tree? (∂ s _) (r ...))] ;; TODO: closed-state-judgement?
   
   [(closed-tree? s_1 (r ...))
    (closed-tree? s_2 (r ...))

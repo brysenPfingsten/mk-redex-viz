@@ -39,9 +39,11 @@ export function addColors(tree) {
             children[0].color = "black";
             break;
         case "Answer":
-            children[0].color = "green";
-            addColors(children[0]);
-            break;
+            if (children) {
+                children[0].color = "green";
+                addColors(children[0]);
+            }
+    break;
     }
 
     return tree;

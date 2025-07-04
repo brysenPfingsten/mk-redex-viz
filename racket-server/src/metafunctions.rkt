@@ -114,9 +114,9 @@
                    'trail trail-json
                    'reified reified)))]
 
-  [(tree->json (∂ s maybe-sub))
+  [(tree->json (∂ s maybe-state))
    ,(let* ([tree-json (term (tree->json s))]
-           [sub-json (if (term maybe-sub) #t #f)])
+           [sub-json (if (term maybe-state) #t #f)])
       (hash-union tree-json
                   (hasheq
                     'partial #t
@@ -147,6 +147,16 @@
       (hasheq 'name "<-+"
               'children (list left-json right-json)))]
 
+  [(tree->json ((⊤ (_ sub c trail o)) + ()))
+   ,(let* ([sub-json (sub->json (term sub))]
+           [trail-json (trail->json (term trail) (term sub))]
+           [reified (reify (term sub) (term c) num-of-query-vars)])
+      (hasheq 'name "Answer"
+              'stateId (term o)
+              'sub sub-json
+              'trail trail-json
+              'reified reified))]
+
   [(tree->json ((⊤ (_ sub c trail o)) + s))
    ,(let* ([sub-json (sub->json (term sub))]
            [rest-json (term (tree->json s))]
@@ -166,9 +176,9 @@
               'children (list left-json right-json)))]
 
   [(tree->json (delay s))
-   ,(let* ([tree->json (term (tree->json s))])
+   ,(let* ([children (term (tree->json s))])
       (hasheq 'name "Delay"
-              'children (list tree->json)))])
+              'children (list children)))])
 
 (define-metafunction L
   prog->tree : p -> e

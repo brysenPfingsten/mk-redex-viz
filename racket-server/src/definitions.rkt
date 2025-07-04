@@ -38,7 +38,7 @@
   ;-------------------Search Trees------------------------
   [s ()                         ; Empty Tree / Failure
      (g σ)                      ; Goal-State
-     (∂ s maybe-sub)            ; Partially Evaluated Tree
+     (∂ s maybe-state)          ; Partially Evaluated Tree
      (s +-> s)                  ; Right Disjunciton
      (s <-+ s)                  ; Left Disjunction
      ((⊤ σ) + s)                ; Answer Stream
@@ -73,6 +73,7 @@
   [σ (state sub c trail o)] ; State
   [sub ((natural t) ...)]   ; Substitution
   [maybe-sub sub #f]
+  [maybe-state σ #f]
   [trail ((t =? t o) ...)]
 
 

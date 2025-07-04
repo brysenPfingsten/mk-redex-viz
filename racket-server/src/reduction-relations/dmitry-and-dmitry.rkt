@@ -24,8 +24,9 @@
                            "UnifyFail"]
 
                       [==> ((t_1 =? t_2 o) (state sub c trail o_1))
-                           (∂ (⊤ (state sub_1 c (,@(term trail) (t_1 =? t_2 o)) o_1)) sub_1)
+                           (∂ (⊤ σ) σ)
                            (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           (where σ (state sub_1 c (,@(term trail) (t_1 =? t_2 o)) o_1))
                            "UnifySuccess"]
 
                       [==> ((g_1 ∨ g_2 _) (state sub c trail o))
@@ -41,70 +42,76 @@
                            "Fresh"]
 
                       [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                  (in-hole Es ((r_1 t ... o) σ)))
+                                  (in-hole Ev (in-hole Es ((r_1 t ... o) σ))))
                            (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                  (∂ (in-hole Es ((substitute g_1 (x_1 t) ...) σ)) #f))
+                                  (in-hole Ev (in-hole Es (∂ ((substitute g_1 (x_1 t) ...) σ) #f))))
                            "Invoke"]
 
                       [==> ((∂ () #f) <-+ s)
-                           s
+                           (∂ s #f)
                            "DisjStopLeft"]
                       
                       [==> (s +-> (∂ () #f))
-                           s
+                           (∂ s #f)
                            "DisjStopRight"]
 
-                      [==> ((∂ (⊤ σ) sub) <-+ s)
-                           s
+                      [==> ((∂ (⊤ σ) σ) <-+ s)
+                           (∂ s σ)
                            "DisjStopAnsLeft"]
 
-                      [==> (s +-> (∂ (⊤ σ) sub))
-                           s
+                      [==> (s +-> (∂ (⊤ σ) σ))
+                           (∂ s σ)
                            "DisjStopAnsRight"]
 
                       [==> ((∂ () #f) × g)
                            (∂ () #f)
                            "ConjStop"]
 
-                      [==> ((∂ (⊤ σ) sub) × g)
-                           (g σ)
+                      [==> ((∂ (⊤ σ) σ) × g)
+                           (∂ (g σ) #f)
                            "ConjStopAns"]
                       
                       [==> ((∂ s_1 #f) <-+ s_2) 
-                           (s_1 +-> s_2) 
+                           (∂ (s_1 +-> s_2) #f)
                            (where #f ,(redex-match? L () (term s_1)))
                            "DisjStepLeft"]
 
                       [==> (s_1 +-> (∂ s_2 #f))
-                           (s_1 <-+ s_2)
+                           (∂ (s_1 <-+ s_2) #f)
                            (where #f ,(redex-match? L () (term s_2)))
                            "DisjStepRight"]
 
-                      [==> ((∂ s_1 sub) <-+ s_2)
-                           (s_1 +-> s_2)
+                      [==> ((∂ s_1 σ) <-+ s_2)
+                           (∂ (s_1 +-> σ) sub)
                            (where #f ,(redex-match? L (⊤ σ) (term s_1)))
                            "DisjStepAnsLeft"]
 
-                      [==> (s_1 +-> (∂ s_2 sub))
-                           (s_1 <-+ s_2)
+                      [==> (s_1 +-> (∂ s_2 σ))
+                           (∂ (s_1 <-+ s_2) σ)
                            (where #f ,(redex-match? L (⊤ σ) (term s_2)))
                            "DisjStepAnsRight"]
 
                       [==> ((∂ s #f) × g)
-                           (s × g)
+                           (∂ (s × g) #f)
                            (where #f ,(redex-match? L () (term s)))
                            "ConjStep"]
 
-                      [==> (((∂ (⊤ σ) sub) <-+ s) × g)
-                           (((⊤ σ) × g) <-+ (s × g))
-                           "ConjStepAnsLeft"]
-
-                      [==> ((s +-> (∂ (⊤ σ) sub)) × g)
-                           ((s × g) +-> ((⊤ σ) × g))
-                           "ConjStepAnsRight"]
+                      [==> ((∂ s σ) × g)
+                           (∂ ((g σ) <-+ (s × g)) #f)
+                           (where #f ,(redex-match? L (⊤ σ) (term s)))
+                           "ConjStepAns"]
                       
-                      [--> (in-hole EΓ (∂ s _))
-                           (in-hole EΓ s)
+                      [--> (in-hole EΓ (in-hole Ev (∂ (⊤ σ) σ)))
+                           (in-hole EΓ (in-hole Ev ((⊤ σ) + ())))
+                           "TopStopAns"]
+
+                      [--> (in-hole EΓ (in-hole Ev (∂ s σ)))
+                           (in-hole EΓ (in-hole Ev ((⊤ σ) + s)))
+                           (where #f ,(redex-match? L (⊤ σ) (term s)))
+                           "TopStepAns"]
+
+                      [--> (in-hole EΓ (in-hole Ev (∂ s #f)))
+                           (in-hole EΓ (in-hole Ev s))
                            "TopStep"]
 
                       with
@@ -117,3 +124,17 @@
     (x:l x:s x:out)
     (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1") ∨ (∃ (x:a) (∃ (x:d) (∃ (x:res) (((x:l =? (x:a : x:d) "u9") ∧ (x:out =? (x:a : x:res) "u10") "c8") ∧ (r:appendo x:d x:s x:res "r11") "c7") "f6") "f5") "f4") "d0")))
   ((∃ (x:q) (r:appendo ((sym "dog") : ((sym "cat") : empty)) ((sym "bear") : ((sym "lion") : empty)) x:q "r13") "f12") (state () 0 () "s"))))
+
+(stepper dmitry-and-dmitry '(prog
+  ((r:m (x:q) ((sym "m") =? (sym "m") "u0"))
+   (r:maino
+    (x:p x:q)
+    (∃
+     (x:z)
+     ((((sym "a") =? x:q "u4") ∨ ((sym "b") =? x:q "u5") "d3")
+      ∧
+      ((sym "m") =? x:p "u6")
+      "c2")
+     "f1")))
+  ((∃ (x:a) (∃ (x:b) (r:maino x:a x:b "r9") "f8") "f7") (state () 0 () "s")))
+)
