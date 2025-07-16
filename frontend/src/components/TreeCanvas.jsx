@@ -151,7 +151,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
                 }
                 onNodeClick({ substitutionData: subs, trailData: trails, gId: gId, sId: sId });
             })
-            .on("mouseenter", (event, d) => {
+            .on("mouseover", (event, d) => {
                 if (d.data.reified) {
                 setTooltip({
                     visible: true,
@@ -161,7 +161,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
                 });
                 }
             })
-            .on("mouseout", () => {
+            .on("mouseleave", () => {
                 setTooltip(prev => ({ ...prev, visible: false }));
             });
         }
