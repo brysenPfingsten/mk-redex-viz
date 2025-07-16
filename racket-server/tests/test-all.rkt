@@ -4,13 +4,15 @@
          "./test-reification.rkt"
          "./test-syntax-checking.rkt"
          "./test-zipper.rkt"
-         "./test-metafunctions.rkt")
+         "./test-metafunctions.rkt"
+         "./test-transpiler.rkt")
 
 (define-test-suite ALL
   APP
   REIFICATION
   SYNTAX-CHECKER
   ZIPPER
-  METAFUNCTIONS)
+  METAFUNCTIONS
+  TRANSPILER)
 
 (test/gui ALL)
