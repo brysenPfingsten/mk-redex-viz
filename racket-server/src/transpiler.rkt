@@ -109,15 +109,15 @@
      (define-values (id count1) (next-g-id "d" count))
      (struct acc (expr count guids))
      (define final-acc
-       (foldl
+       (foldr
         (λ (clause accum)
           (define-values (t-clause new-count new-guids)
             (transpile clause (acc-count accum)))
           (acc (if (null? (acc-expr accum))
                    t-clause
-                   `(,(acc-expr accum) ∨ ,t-clause ,id))
+                   `(,t-clause ∨ ,(acc-expr accum) ,id))
                new-count
-               (append (acc-guids accum) new-guids)))
+               (append new-guids (acc-guids accum))))
         (acc '() count1 '())
         clauses))
      (define final-expr (acc-expr final-acc))
