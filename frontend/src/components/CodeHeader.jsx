@@ -9,8 +9,9 @@ import "../styles.css";
 
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
+  { value: "no-rr",       label: "No Railway"},
   { value: "dmitry",      label: "Dmitry et al." },
-  { value: "dfs",         label: "DFS"}
+  { value: "dfs",         label: "DFS"},
 ];
 
 export default function CodeHeader({
