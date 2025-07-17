@@ -10,6 +10,7 @@ import "../styles.css";
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
   { value: "no-rr",       label: "No Railway"},
+  { value: "no-rr-eager", label: "No Railway Eager"},
   { value: "dmitry",      label: "Dmitry et al." },
   { value: "dfs",         label: "DFS"},
 ];

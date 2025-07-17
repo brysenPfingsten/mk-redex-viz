@@ -8,6 +8,7 @@
          (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
          (prefix-in dfs:    "reduction-relations/dfs.rkt")
          (prefix-in no-rr:  "reduction-relations/no-railway.rkt")
+         (prefix-in no-rr-eager: "reduction-relations/no-railway-eager.rkt")
          "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt"
@@ -158,7 +159,8 @@
     ["microKanren" (set! stepper (make-stepper mmk:step-once))]
     ["dmitry"      (set! stepper (make-stepper dmitry:step-once))]
     ["dfs"         (set! stepper (make-stepper dfs:step-once))]
-    ["no-rr"       (set! stepper (make-stepper no-rr:step-once))])
+    ["no-rr"       (set! stepper (make-stepper no-rr:step-once))]
+    ["no-rr-eager" (set! stepper (make-stepper no-rr-eager:step-once))])
   (response/jsexpr (json-null) #:code 200))
 
 
