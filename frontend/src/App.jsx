@@ -26,7 +26,7 @@ function App() {
     onSuccess: () => { setGoalId(null); }
   });
   const [disabled, setDisabled] = useState({
-    debug: false,
+    start: false,
     reset: true,
     back: true,
     step: true,
@@ -45,7 +45,7 @@ function App() {
     if (success) {
       setFrozen(true);
       setCode(progOrError);
-      setDisabled({debug: true, reset: false, back: true, step: false});
+      setDisabled({start: true, reset: false, back: true, step: false});
     } else {
       setAlert({ isOpen: true, message: progOrError });
     }
@@ -54,7 +54,7 @@ function App() {
   const handleStep = async () => {
     const [success, isDone] = await step();
     if (isDone) { // no more reductions
-      setDisabled({debug: true, reset: false, back: false, step: true});
+      setDisabled({start: true, reset: false, back: false, step: true});
     } else if (success) { // success but more reductions
       setDisabled(prev => ({...prev, back: false}));
     }
@@ -74,7 +74,7 @@ function App() {
     if (success) {
       setCode(originalCodeRef.current);
       setFrozen(false);
-      setDisabled({debug: false, reset: true, back: true, step: true});
+      setDisabled({start: false, reset: true, back: true, step: true});
     }
   }
   
@@ -105,7 +105,7 @@ function App() {
             />
           </div>
           <Toolbar
-            onDebug={handleInit}
+            onStart={handleInit}
             onStep={handleStep}
             onBack={handleBack}
             onReset={handleReset}
