@@ -5,7 +5,7 @@
          "definitions.rkt"
          "reification.rkt")
 
-(provide to-json prog->tree num-query-vars set-num-query-vars!)
+(provide to-json prog->tree num-query-vars)
 
 (define num-of-query-vars 'uninitialized)
 (define (set-num-query-vars! n)
@@ -98,15 +98,15 @@
               'children (list goal-json)))])
 
 (define-metafunction L
-  tree->json : s -> any
-  [(tree->json ())
+  tree->json : s natural -> any
+  [(tree->json () _)
    ,(hasheq 'name "Empty")]
 
-  [(tree->json (g (_ sub c trail o)))
+  [(tree->json (g (_ sub c trail o)) natural)
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
+           [reified (reify (term sub) (add1 (term c)) (term natural))])
       (hash-union goal-json
                   (hasheq
                    'stateId (term o)
@@ -114,19 +114,19 @@
                    'trail trail-json
                    'reified reified)))]
 
-  [(tree->json (∂ s maybe-state))
-   ,(let* ([tree-json (term (tree->json s))]
+  [(tree->json (∂ s maybe-state) natural)
+   ,(let* ([tree-json (term (tree->json s natural))]
            [sub-json (if (term maybe-state) #t #f)])
       (hash-union tree-json
                   (hasheq
                     'partial #t
                     'hasAnswer sub-json)))]
 
-  [(tree->json (proceed ((r t ... o) (_ sub c trail o_1))))
+  [(tree->json (proceed ((r t ... o) (_ sub c trail o_1))) natural)
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)) num-of-query-vars)])
+           [reified (reify (term sub) (add1 (term c)) (term natural))])
       (hasheq 'name "Proceed"
               'id (term o)
               'stateId (term o_1)
@@ -135,33 +135,33 @@
               'trail trail-json
               'refied reified))]
 
-  [(tree->json (s_1 +-> s_2))
-   ,(let* ([left-json (term (tree->json s_1))]
-           [right-json (term (tree->json s_2))])
+  [(tree->json (s_1 +-> s_2) natural)
+   ,(let* ([left-json (term (tree->json s_1 natural))]
+           [right-json (term (tree->json s_2 natural))])
       (hasheq 'name "+->"
               'children (list left-json right-json)))]
 
-  [(tree->json (s_1 <-+ s_2))
-   ,(let* ([left-json (term (tree->json s_1))]
-           [right-json (term (tree->json s_2))])
+  [(tree->json (s_1 <-+ s_2) natural)
+   ,(let* ([left-json (term (tree->json s_1 natural))]
+           [right-json (term (tree->json s_2 natural))])
       (hasheq 'name "<-+"
               'children (list left-json right-json)))]
 
-  [(tree->json ((⊤ (_ sub c trail o)) + ()))
+  [(tree->json ((⊤ (_ sub c trail o)) + ()) natural)
    ,(let* ([sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c) num-of-query-vars)])
+           [reified (reify (term sub) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
               'trail trail-json
               'reified reified))]
 
-  [(tree->json ((⊤ (_ sub c trail o)) + s))
+  [(tree->json ((⊤ (_ sub c trail o)) + s) natural)
    ,(let* ([sub-json (sub->json (term sub))]
-           [rest-json (term (tree->json s))]
+           [rest-json (term (tree->json s natural))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c) num-of-query-vars)])
+           [reified (reify (term sub) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
@@ -169,14 +169,14 @@
               'reified reified
               'children (list rest-json)))]
 
-  [(tree->json (s × g))
-   ,(let* ([left-json (term (tree->json s))]
+  [(tree->json (s × g) natural)
+   ,(let* ([left-json (term (tree->json s natural))]
            [right-json (term (goal->json g))])
       (hasheq 'name "Conjunction"
               'children (list left-json right-json)))]
 
-  [(tree->json (delay s))
-   ,(let* ([children (term (tree->json s))])
+  [(tree->json (delay s) natural)
+   ,(let* ([children (term (tree->json s natural))])
       (hasheq 'name "Delay"
               'children (list children)))])
 
@@ -184,8 +184,8 @@
   prog->tree : p -> e
   [(prog->tree (prog Γ e)) e])
 
-(define (to-json prog)
-  (jsexpr->string (term (tree->json (prog->tree ,prog)))))
+(define (to-json prog num-query-variables)
+  (jsexpr->string (term (tree->json (prog->tree ,prog) ,num-query-variables))))
 
 (define-metafunction L
   extract-query-vars : p -> d

@@ -12,6 +12,7 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
         method,
         headers: { 'Content-Type': 'application/json' },
         ...(body && { body: JSON.stringify({ text: body }) }),
+        credentials: "include",
       });
       
       const text = await res.text();
@@ -27,17 +28,19 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
           return {
             success: false,
             error: data.error,
-    headers: {}, 
+            headers: {}, 
           };
         }
         throw new Error(`HTTP error! Status: ${res.status}`);
       }
 
-      setStep({ step: data.step, stepName: data.stepName });
-      setTree(JSON.parse(data.program));
+      if (data != null) {
+        setStep({ step: data.step, stepName: data.stepName });
+        setTree(JSON.parse(data.program));
+      }
       return {
         success: true,
-        prog: data.htmlGuids ? data.htmlGuids : '',
+        prog: data?.htmlGuids ? data.htmlGuids : '',
         headers: {
           isLast: res.headers.get('X-Is-Last') === 'true',
           isDone: res.headers.get('X-Done') === 'true',
