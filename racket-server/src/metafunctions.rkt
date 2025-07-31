@@ -12,7 +12,7 @@
   (set! num-of-query-vars n))
 
 (define (extract-name input-str)
-  (define re #px"^[x,r]:([a-zA-Z]+)") ;; (x or r):letters ; Stops at the <<...>>
+  (define re #rx"^[x,r]:([^«]+)") ;; (x or r):letters ; Stops at the <<...>>
   (define matches (regexp-match re input-str))
   (if matches (second matches) input-str))
 
