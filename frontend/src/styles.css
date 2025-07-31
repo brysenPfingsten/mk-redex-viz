@@ -232,6 +232,14 @@
   .select:hover {
     border-color: var(--color-text);
   }
+
+  .select:disabled {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+    border-color: #ddd;
+    opacity: 0.7;
+  }
   /* ============================= */
   /*   Editor & Overlay            */
   /* ============================= */

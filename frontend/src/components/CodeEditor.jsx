@@ -45,7 +45,8 @@ function parseTaggedText(raw) {
 const CodeEditor = forwardRef(({ 
   codeText, setCodeText, 
   isFrozen, isDark,
-  goalId, onTagClick 
+  goalId, onTagClick,
+  predefinedCodeText,
 }, ref) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -63,6 +64,13 @@ const CodeEditor = forwardRef(({
   useEffect(() => {
     segmentsRef.current = segments;
   }, [segments]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.setValue(predefinedCodeText);
+    }, [predefinedCodeText]);
+
 
   const handleEditorWillMount = (monaco) => {
     monaco.languages.register({ id: 'minikanren' });
@@ -147,9 +155,12 @@ const CodeEditor = forwardRef(({
       );
       return;
     }
+  }, [isFrozen, plain]);
 
-    updateDecorations();
-  }, [isFrozen, goalId, plain]);
+  useEffect(() => {
+      updateDecorations()
+    },
+    [goalId]);
 
   useEffect(() => {
     return () => {

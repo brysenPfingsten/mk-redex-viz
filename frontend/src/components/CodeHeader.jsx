@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import "../styles.css";
+import { exampleProgs } from "../utils/example_programs.js";
 
-// const themeOptions = [
-//   { value: "vs-dark", label: "Dark"  },
-//   { value: "hc-black", label: "Black" },
-//   { value: "hc-light", label: "Light" }
-// ];
 
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
@@ -15,11 +11,12 @@ const modelOptions = [
 
 export default function CodeHeader({
   logoSrc,
-  // theme,
-  // onThemeChange,
+  programText,
+  onProgramChange,
+  modelValue,
+  onModelChange,
+  isFrozen,
 }) {
-  const [model, setModel] = useState('');
-
   const renderOptions = (opts) =>
     opts.map(({ value, label }) => (
       <option key={value} value={value}>
@@ -43,19 +40,20 @@ export default function CodeHeader({
         <img src={logoSrc} alt="Logo" className="logo"/>
       </a>
 
-      {/*  TODO: Add theme options here for editor */}
-      {/* <select */}
-      {/*   className="select" */}
-      {/*   onChange={onThemeChange} */}
-      {/*   value={theme} */}
-      {/* > */}
-      {/*   {renderOptions(themeOptions)} */}
-      {/* </select> */}
+      <select
+        className="select"
+        value={programText}
+        onChange={(e) => onProgramChange(e.target.value)}
+        disabled={isFrozen}
+      >
+        {renderOptions(exampleProgs)}
+      </select>
 
       <select
         className="select"
+        value={modelValue}
         onChange={(e) => changeModel(e.target.value)}
-        value={model}
+        disabled={isFrozen}
       >
         {renderOptions(modelOptions)}
       </select>

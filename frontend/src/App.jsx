@@ -14,6 +14,7 @@ import './styles.css'
 function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
+  const [predefinedCodeText, setPredefinedCodeText] = useState('');
   const [model, setModel] = useState('');
   const [isFrozen, setFrozen] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
@@ -91,8 +92,11 @@ function App() {
         <div className="input-container">
           <CodeHeader
             logoSrc={darkMode ? "/mk_logo_white.png" : "/mk_logo_black.png"}
-            model={model}
-            onModelChange={(e) => setModel(e.target.value)}
+            programText={code}
+            onProgramChange={setPredefinedCodeText}
+            modelValue={model}
+            onModelChange={setModel}
+            isFrozen={isFrozen}
            />
           <div className="editor-area">
             <CodeEditor 
@@ -102,6 +106,7 @@ function App() {
               isDark={darkMode}
               goalId={goalId}
               onTagClick={setGoalId}
+              predefinedCodeText={predefinedCodeText}
             />
           </div>
           <Toolbar
