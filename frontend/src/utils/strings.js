@@ -20,7 +20,7 @@ function arrayToString(arr) {
 export function termToString(term) {
     if (term.var) { return `${term.var}`; }   
     if (term.sym) { return `'${term.sym}`; } 
-    if (term.num) { return `${term.num}`; }
+    if (typeof term === "object" && "num" in term) { return `${term.num}`; }
     if (Array.isArray(term)) { return arrayToString(term); }
     if (term === 'empty') { return "'()"}
     if (typeof term === "string" && !term.includes('_.')) { return `"${term}"`}
