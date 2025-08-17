@@ -55,7 +55,61 @@ function drawPolygonNode(group, fillColor, symbol, textColor = "black") {
     return polygon;
 }
 
-function drawDisjunctionNode(group) { return drawPolygonNode(group, "orange", "+"); }
+function drawDirectedDisjunctionNode(group, _, isLeft, size = 30, strokeColor = "black") {
+  // Diamond background
+  const points = [
+    [0, -size], [size, 0], [0, size], [-size, 0]
+  ].map(p => p.join(",")).join(" ");
+
+  group.append("polygon")
+    .attr("points", points)
+    .attr("fill", "orange");
+
+  const strokeWidth = 2;
+  const arm = size * 0.28;      // half-length for plus arms (fits inside diamond)
+  const arrowTipX = isLeft ? -arm : arm;
+
+  // Vertical stroke of the plus (centered)
+  group.append("line")
+    .attr("x1", 0).attr("y1", -arm)
+    .attr("x2", 0).attr("y2",  arm)
+    .attr("stroke", strokeColor).attr("stroke-width", strokeWidth)
+    .attr("stroke-linecap", "round");
+
+  // Right horizontal arm (center to right)
+  group.append("line")
+    .attr("x1", 0).attr("y1", 0)
+    .attr("x2", -arrowTipX).attr("y2", 0)
+    .attr("stroke", strokeColor).attr("stroke-width", strokeWidth)
+    .attr("stroke-linecap", "round");
+
+  // group.append("line")
+  //   .attr("x1", 0).attr("y1", 0)
+  //   .attr("x2", -arm).attr("y2", 0)
+  //   .attr("stroke", strokeColor).attr("stroke-width", strokeWidth)
+  //   .attr("stroke-linecap", "round");
+
+  // Top center -> left endpoint (diagonal)
+  group.append("line")
+    .attr("x1", 0).attr("y1", -arm)
+    .attr("x2", arrowTipX).attr("y2", 0)
+    .attr("stroke", strokeColor).attr("stroke-width", strokeWidth)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round");
+
+  // Bottom center -> left endpoint (diagonal)
+  group.append("line")
+    .attr("x1", 0).attr("y1",  arm)
+    .attr("x2", arrowTipX).attr("y2", 0)
+    .attr("stroke", strokeColor).attr("stroke-width", strokeWidth)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round");
+
+  return group;
+}
+
+function drawLeftDisjunctionNode(group) { return drawDirectedDisjunctionNode(group, null, true); }
+function drawRightDisjunctionNode(group) { return drawDirectedDisjunctionNode(group, null, false); }
 function drawConjunctionNode(group) { return drawPolygonNode(group, "blue", "×", "white"); }
 
 function drawCircle(group, fill, text = "", textColor = "black", fontSize = "20px") {
@@ -160,9 +214,8 @@ const nodeDrawFunctions = {
     "Answer": drawAnswerNode,
     "Succeed": drawSucceedNode,
     "Unify": drawUnifyNode,
-    "Disjunction": drawDisjunctionNode,
-    "<-+": drawDisjunctionNode,
-    "+->": drawDisjunctionNode,
+    "<-+": drawLeftDisjunctionNode,
+    "+->": drawRightDisjunctionNode,
     "Delay": drawDelayNode,
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,
