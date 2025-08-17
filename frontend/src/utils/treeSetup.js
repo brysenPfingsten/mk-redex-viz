@@ -1,7 +1,35 @@
-
-
 export function addColors(tree) {
-    if (tree.sub && tree.name != 'Answer') return tree;
+
+    const ACTIVE_INDEX = { Conjunction: 0, "<-+": 0, "+->": 1 };
+    const TERMINALS1   = new Set(["Answer", "Succeed", "Empty", "Delay"]);
+    const TERMINALS2   = new Set(["Answer", "Succeed"]);
+    const DISJ         = new Set(["<-+", "+->"]);
+
+    const activeChild = n => {
+        if (!n) return null;
+        const idx = ACTIVE_INDEX[n.name];
+        return idx == null ? null : (n.children?.[idx] ?? null);
+    };
+
+    function stopColoringHere(node) {
+        // Depth 0 check
+        // Goal-states should not be colored
+        if (node.sub && node.name !== "Answer") return true;
+
+        // Depth 1 check
+        // Disjunctions and conjunctions with answers, empty, or delays
+        // Excepting disjunctions with conjunctions in their active position
+        const d1 = activeChild(node);
+        if (DISJ.has(node?.name) && d1?.name === "Conjunction") return false; 
+        if (d1 && TERMINALS1.has(d1.name)) return true;
+
+        // Depth 2 check
+        // Combinations of disjunctions and conjunctions with answers in the active position
+        const d2 = activeChild(d1);
+        return !!(d2 && TERMINALS2.has(d2.name));
+    }
+
+    if (stopColoringHere(tree)) return tree;
     if (tree.partial) return tree;
 
     let children = tree.children;
@@ -23,27 +51,15 @@ export function addColors(tree) {
             children[0].color = "blue";
             addColors(children[0]);
             break;
-        case "Fresh":
-            children[0].color = "red";
-            addColors(children[0]);
-            break;
-        case "Goal-Conj":
-            children[0].color = "purple";
-            addColors(children[0]);
-            break;
-        case "Goal-Disj":
-            children[0].color = "#FF69B4";
-            addColors(children[0]);
-            break;
         case "Delay":
-            children[0].color = "black";
-            break;
+            return tree;
         case "Answer":
             if (children) {
                 children[0].color = "green";
                 addColors(children[0]);
             }
-    break;
+            break;
+        default: return tree;
     }
 
     return tree;
