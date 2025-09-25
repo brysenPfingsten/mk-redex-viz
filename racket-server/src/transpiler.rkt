@@ -92,7 +92,7 @@
        (map/fold-with-guids transpile rels count))
      (define-values (tq count2 guids2)
        (transpile q count1))
-     (values `(prog ,trs ,tq) count2 (append guids1 guids2))]
+     (values `(,tq ,trs) count2 (append guids1 guids2))]
 
     [(fresh vars goal)
      #:when (fresh? expr)

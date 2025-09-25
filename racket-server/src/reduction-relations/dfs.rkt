@@ -13,9 +13,28 @@
   (apply-reduction-relation/tag-with-names dfs (term ,prog)))
 
 (define dfs
-  (reduction-relation L 
+  (reduction-relation L
                       #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
+                      [--> ((in-hole Ex ((r_1 t ... o) σ))
+                            ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                           ((in-hole Ex ((substitute g_1 (x_1 t) ...) σ))
+                            ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                           "Invoke Relation Call"]
+
+                      [--> ((in-hole Ev ((⊤ σ) <-+ s)) Γ)
+                        ((in-hole Ev ((⊤ σ) + s)) Γ)
+                        "Promote Answer"]
+
+                      [--> (e_1 Γ)
+                                    (e_2 Γ)
+                        (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
+                                    (where e_2 ,(car (apply-reduction-relation red-tree (term e_1))))
+                        (computed-name (caar (apply-reduction-relation/tag-with-names red-tree (term e_1))))]))
+
+(define red-tree
+  (reduction-relation L
+                      #:domain e
                       [==> ((g_1 ∨ g_2 _) (state sub c trail o))
                            ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym)))))
                            "Distribute State Over Disjunction"]
@@ -30,7 +49,7 @@
 
                       [==> (((⊤ σ) <-+ s) <-+ s_2)
                            ((⊤ σ) <-+ (s <-+ s_2))
-                           "Reassociate Nested Disjunction With Answer"]
+                           "Reassociate Disjunctions"]
 
                       [==> ((⊤ σ) × g)
                            (g σ)
@@ -43,17 +62,11 @@
                       [==> (() <-+ s)
                            s
                            "Prune Disjunction Failure"]
-                      
-                      [==> ((∃ (x ...) g _) (state sub c trail o))
-                           ((substitute g ,@(term (fresh-sub c x ...))) 
-                            (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o))
-                           "Substitute Fresh Variables"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                 (in-hole Ev (in-hole Es ((r_1 t ... o) σ))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                 (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
-                           "Invoke Relation Call"]
+                      [==> ((∃ (x ...) g _) (state sub c trail o))
+                           ((substitute g ,@(term (fresh-sub c x ...)))
+                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o))
+                           "Substitute Fresh Variables"]
 
                       [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...) o_2))
                            (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
@@ -65,11 +78,7 @@
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "Unification Fails"]
 
-                      [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))
-                           (prog Γ (in-hole Ev ((⊤ σ) + s)))
-                           "Promote Answer"]
-
-                      with
-                      [(--> (in-hole Ex a) (in-hole Ex b))
+                      with [(--> (in-hole Ex a) (in-hole Ex b))
                             (==> a b)]
-                      ))
+					  ))
+

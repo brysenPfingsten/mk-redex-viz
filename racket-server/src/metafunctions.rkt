@@ -182,7 +182,7 @@
 
 (define-metafunction L
   prog->tree : p -> e
-  [(prog->tree (prog Γ e)) e])
+  [(prog->tree (e Γ)) e])
 
 (define (to-json prog num-query-variables)
   (jsexpr->string (term (tree->json (prog->tree ,prog) ,num-query-variables))))
