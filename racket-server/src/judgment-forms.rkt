@@ -159,5 +159,5 @@
   [(closed-goal? g (r ...) (x ...) 0) ...
    (closed-tree? s (r ...))
    ----------------------- "program-closed"
-   (closed-program? (prog ((r (x ...) g) ...) s))]
+   (closed-program? (s ((r (x ...) g) ...)))]
   )

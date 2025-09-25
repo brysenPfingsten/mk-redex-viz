@@ -19,13 +19,9 @@
 ;; Right now we pun between a succeed node in the language and a
 ;; successful result, with that substitution. Not a sin.
 
-;; I could also think about this as though the query is instead the
-;; one and only call to an initial, implicitly define defrel called
-;; "main".
-                                                                                   
 (define-language L
   ;--------------------Top Level-------------------------
-  [p (prog Γ e)]        ; Program
+  [p (e Γ)]             ; Program
   [Γ ((r_!_ d g) ...)]  ; Relation Environment w/ distinct relation names
   [d (x_!_ ...)]        ; Distinct variable declarations
   
@@ -86,8 +82,6 @@
 
 
   ;-----------------Evaluation Contexts------------------
-  ; Program
-  [EΓ (prog Γ hole)]
 
   ; Answer Stream
   [Ev hole
@@ -100,13 +94,13 @@
       (Es × g)]
 
   ;; Prog to first tree w/o sub-tree
-  [Ex (in-hole EΓ (in-hole Ev (in-hole Es hole)))]
+  [Ex (in-hole Ev (in-hole Es hole))]
 
-  
   ;---------------------Binding Forms--------------------
   #:binding-forms
   (∃ (x ...) g #:refers-to (shadow x ...))
-  (prog ((r (x ...) g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
+  (e #:refers-to (shadow r ...) ((r (x ...) g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...))
+)
 
 (default-language L)
 
