@@ -5,7 +5,7 @@
 		 redex/pict)
 (check-redundancy #t)
 
-(provide red step-once)
+(provide red step-once red-tree)
 (require "../definitions.rkt" "../judgment-forms.rkt")
 
 ;; Term -> [Listof [List String Term]]
@@ -34,16 +34,15 @@
 						   ((in-hole Ev ((⊤ σ) + s)) Γ)
 						   "Promote Right Answer"]
 
-					  [--> (e_1 Γ)
+             [--> (e_1 Γ)
                            (e_2 Γ)
 						   (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
                            (where e_2 ,(car (apply-reduction-relation red-tree (term e_1))))
-							"Lift"]
-					  ))
+							(computed-name (format "Lift/~a" (caar (apply-reduction-relation/tag-with-names red-tree (term e_1)))))]))
 
 (define red-tree
   (reduction-relation L
-                      #:domain e #:arrow ==>
+                      #:domain e
                       [==> ((g_1 ∨ g_2 _) (state sub c trail o))
                            ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym)))))
                            "Distribute State Over Disjunction"]
@@ -122,4 +121,7 @@
                       [==> (s_2 +-> (delay s_1))
                            (delay (s_2 <-+ s_1))
                            "Propagate Delay Through Right Disjunction And Flip"]
+
+                      with [(--> (in-hole Ex a) (in-hole Ex b))
+                            (==> a b)]
 					  ))

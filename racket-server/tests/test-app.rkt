@@ -10,13 +10,12 @@
          "../src/zipper.rkt")
 
 (define sample-tree
-  '(prog
-    ()
-    ((∃
+  '(((∃
       (x:q)
       ((sym "tree1") =? (sym "horse") "u5")
       "f0")
-     (state () 0 () "s"))))
+     (state () 0 () "s"))
+    ()))
 
 (define step/const-tree-output
   (make-stepper (lambda (_) (list (list "foo" sample-tree)))))

@@ -7,8 +7,8 @@
          rackunit
          rackunit/text-ui)
 
-(define WELL-FORMED-PROG (term (prog () ())))
-(define BAD-FORMED-PROG (term (prog () ((r:goneo "r0") (state () 0 () "s")))))
+(define WELL-FORMED-PROG (term (() ())))
+(define BAD-FORMED-PROG (term (((r:goneo "r0") (state () 0 () "s")) ())))
 
 (define-test-suite WELL-FORMED
   (test-case "Well Formed Program Returns Empty String"
@@ -77,3 +77,5 @@
   #:after  (thunk (displayln "Finished Running Tests For Syntax Checking."))
   WELL-FORMED
   SYNTAX-CHECKING)
+
+#;(run-tests SYNTAX-CHECKING)
