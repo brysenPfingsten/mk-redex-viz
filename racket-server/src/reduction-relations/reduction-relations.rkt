@@ -1,8 +1,8 @@
 #lang racket
 (require redex
-         redex/reduction-semantics
-         rackunit
-         redex/pict)
+		 redex/reduction-semantics
+		 rackunit
+		 redex/pict)
 (check-redundancy #t)
 
 (provide red step-once)
@@ -73,10 +73,10 @@
                            (delay (proceed ((r_1 t ... o) σ)))
                            "Relation Call And Add Delay"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                 (in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ)))))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) 
-                                 (in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ))))
+                      [--> ((in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ))))
+                            ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                           ((in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ)))
+                            ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
                            "Substitute Relation Body And Proceed"]
 
                       [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...) o_2))
@@ -105,15 +105,15 @@
                            (prog Γ (in-hole Ev s))
                            "Invoke Delay"]
 
-                      [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))
-                           (prog Γ (in-hole Ev ((⊤ σ) + s)))
-                           "Promote Left Answer"]
+					  [--> ((in-hole Ev ((⊤ σ) <-+ s)) Γ)
+						   ((in-hole Ev ((⊤ σ) + s)) Γ)
+						   "Promote Left Answer"]
 
-                      [--> (prog Γ (in-hole Ev (s +-> (⊤ σ))))
-                           (prog Γ (in-hole Ev ((⊤ σ) + s)))
-                           "Promote Right Answer"]
+					  [--> ((in-hole Ev (s +-> (⊤ σ))) Γ)
+						   ((in-hole Ev ((⊤ σ) + s)) Γ)
+						   "Promote Right Answer"]
 
-                      with
-                      [(--> (in-hole Ex a) (in-hole Ex b))
-                            (==> a b)]
-                      ))
+					  with
+					  [(--> (in-hole Ex a) (in-hole Ex b))
+							(==> a b)]
+					  ))
