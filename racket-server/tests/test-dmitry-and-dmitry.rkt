@@ -6,7 +6,7 @@
 
 (require "../src/reduction-relations/dmitry-and-dmitry.rkt")
 
-(stepper
+#;(stepper
  dmitry-and-dmitry
  (term (prog ((r:appendo (x:l x:s x:out)
                          (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1")

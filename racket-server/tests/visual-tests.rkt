@@ -15,7 +15,7 @@
 ;; Add
 (stepper
  red
- (term (((∃ (x:q) (r:add ("s" : ("s" : "z")) x:q)) (state () 0))
+ (term (((∃ (x:q) (r:add ("s" : ("s" : "z")) x:q "g1")) (state () 0 ()))
         ((r:add (x:x x:y)
                 ((∃ (x:x^ x:y^)
                     ((x:x =? ("s" : x:x^)) ∧ ((x:y =? ("s" : x:y^)) ∧ (r:add x:x^ x:y^))))
@@ -42,7 +42,7 @@
 			∧ ("abc" =? "abc"))
 		   ∨ (("def" =? "def")
 			  ∧ ("nine" =? "nine")))))
-	 (state ((3 "x")) 0))
+	 (state ((3 "x")) 0 ()))
     ())))
 
 
@@ -60,13 +60,13 @@
       ("nine" =? "nine")))
     <-+
     (("ghi" =? "ghi")
-     (state ((3 "x")) 0)))
+     (state ((3 "x")) 0) ()))
    ())))
 
 (traces red (term (((((⊤ ∨ ("abc" =? "def")) ∧ ((("abc" =? "def") ∨ ⊤) ∧ (("abc" =? "def") ∨ ⊤)))
 					 ∨
 					 ((("abc" =? "def") ∨ ⊤) ∨ ((⊤ ∧ ⊤) ∨ (⊤ ∨ ("abc" =? "def")))))
-					(state () 0))
+					(state () 0 ()))
 				   ())))
 
 ;; Appendo
@@ -101,10 +101,10 @@
 							∧
 							(r:same-lengtho x:cdr1 x:cdr2))))))))))
 
-#;((∃ x:h1 x:h2 (r:same-lengtho x:h1 x:h2)) (state ()  0))
+#;((∃ x:h1 x:h2 (r:same-lengtho x:h1 x:h2)) (state ()  0 ()))
 #;((∃ x:h1 (r:same-lengtho x:h1 ("dog" : ("cat" : empty)))) (state ()  0))
 
 
 ;; Cdro
-(traces red (term (((r:cdro ("test" : empty) empty) (state () 0))
+(traces red (term (((r:cdro ("test" : empty) empty) (state () 0 ()))
                    ((r:cdro (x:l x:d) (∃ (x:a) (x:l =? (x:a : x:d))))))))

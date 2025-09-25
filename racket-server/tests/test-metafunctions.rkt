@@ -7,16 +7,16 @@
 (provide METAFUNCTIONS)
 
 (define PROG1
-  '(prog () ((∃ (x:q x:r x:v) ("a" =? "a" "u0") "f0") (state () 0 () "s"))))
+  '(((∃ (x:q x:r x:v) ("a" =? "a" "u0") "f0") (state () 0 () "s")) ()))
 
 (define PROG2
-  '(prog () ((∃ (x:q) ("a" =? "a" "u0") "f0") (state () 0 () "s"))))
+  '(((∃ (x:q) ("a" =? "a" "u0") "f0") (state () 0 () "s")) ()))
 
 (define PROG3
-  '(prog () ((∃ () ("a" =? "a" "u0") "f0") (state () 0 () "s"))))
+  '(((∃ () ("a" =? "a" "u0") "f0") (state () 0 () "s")) ()))
 
 (define PROG4
-  '(prog () (("a" =? "a" "u0") (state () 0 () "s"))))
+  '((("a" =? "a" "u0") (state () 0 () "s")) ()))
 
 (define-test-suite NUM-QUERY-VARS
   #:before (thunk (displayln "Running tests for num-query-vars..."))
@@ -45,4 +45,4 @@
   NUM-QUERY-VARS
   )
 
-#; (run-tests METAFUNCTIONS)
+;(run-tests METAFUNCTIONS)

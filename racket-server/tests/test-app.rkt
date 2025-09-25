@@ -10,13 +10,12 @@
          "../src/zipper.rkt")
 
 (define sample-tree
-  '(prog
-    ()
-    ((∃
+  '(((∃
       (x:q)
       ((sym "tree1") =? (sym "horse") "u5")
       "f0")
-     (state () 0 () "s"))))
+     (state () 0 () "s"))
+    ()))
 
 (define step/const-tree-output
   (make-stepper (lambda (_) (list (list "foo" sample-tree)))))
@@ -31,7 +30,7 @@
   #:after  (thunk (displayln "Finished running tests for step!"))
 
   (test-case "step! sends null reponse with header if no more reductions and does not affect state"
-              (define state (zipper '() (step "foo" '(prog () ())) '() 1))
+              (define state (zipper '() (step "foo" '(() ())) '() 1))
               (define response (step! state (make-stepper (λ (_) '()))))
               (check-equal? (response-code response) 200)
               (check-equal? (response-message response) #"OK")
