@@ -189,7 +189,7 @@
 
 (define-metafunction L
   extract-query-vars : p -> d
-  [(extract-query-vars (prog _ ((∃ d _ _) _))) d])
+  [(extract-query-vars (((∃ d _ _) _) _)) d])
 
 (define (num-query-vars prog)
   (length (term (extract-query-vars ,prog))))

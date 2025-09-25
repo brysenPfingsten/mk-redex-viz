@@ -6,12 +6,15 @@
          json)
 
 (require (prefix-in mmk:    "reduction-relations/reduction-relations.rkt")
-         (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
-         (prefix-in dfs:    "reduction-relations/dfs.rkt")
+         ;;(prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
+         ;;(prefix-in dfs:    "reduction-relations/dfs.rkt")
          "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt"
          "zipper.rkt")
+
+(define dmitry:step-once identity)
+(define dfs:step-once identity)
 
 (provide step! back! reset! init! init-session! 
          make-stepper step step-name)

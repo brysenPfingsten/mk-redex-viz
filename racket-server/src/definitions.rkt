@@ -51,8 +51,11 @@
      (∃ d g o)]    ; Variable introduction w/ tag
 
   ;----------------------Terms---------------------------
-  [t c        ; Logic variables
-     o        ; Symbols, naturals, booleans, strings
+  [t c              ; Logic variables
+     (sym string)   ; String
+     (nat natural)  ; Naturals
+     boolean
+     string
      x        ; Parameters
      empty    ; Empty list
      (t : t)] ; Non-empty list
