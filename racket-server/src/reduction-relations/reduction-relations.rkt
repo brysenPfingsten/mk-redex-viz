@@ -26,14 +26,6 @@
 						   ((in-hole Ev s) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
 						   "Invoke Delay"]
 
-					  [--> ((in-hole Ev ((⊤ σ) <-+ s)) Γ)
-						   ((in-hole Ev ((⊤ σ) + s)) Γ)
-						   "Promote Left Answer"]
-
-					  [--> ((in-hole Ev (s +-> (⊤ σ))) Γ)
-						   ((in-hole Ev ((⊤ σ) + s)) Γ)
-						   "Promote Right Answer"]
-
              [--> (e_1 Γ)
                            (e_2 Γ)
 						   (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
@@ -90,6 +82,14 @@
                       [==> (s +-> ())
                            s
                            "Prune Right Disjunction Failure"]
+
+                      [--> (in-hole Ev ((⊤ σ) <-+ s))
+                           (in-hole Ev ((⊤ σ) + s))
+                           "Promote Left Answer"]
+
+                      [--> (in-hole Ev (s +-> (⊤ σ)))
+                           (in-hole Ev ((⊤ σ) + s))
+                           "Promote Right Answer"]
 
                       [==> ((∃ (x ...) g _) (state sub c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...))) 
