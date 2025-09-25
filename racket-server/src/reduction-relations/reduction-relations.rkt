@@ -16,9 +16,9 @@
   (reduction-relation L
                       #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [--> ((in-hole Ev (in-hole Es (proceed ((r_1 t ... o) σ))))
+                      [--> ((in-hole Ex (proceed ((r_1 t ... o) σ)))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-                           ((in-hole Ev (in-hole Es ((substitute g_1 (x_1 t) ...) σ)))
+                           ((in-hole Ex ((substitute g_1 (x_1 t) ...) σ))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
                            "Substitute Relation Body And Proceed"]
 
@@ -38,7 +38,7 @@
                            (e_2 Γ)
 						   (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
                            (where e_2 ,(car (apply-reduction-relation red-tree (term e_1))))
-							(computed-name (format "Lift/~a" (caar (apply-reduction-relation/tag-with-names red-tree (term e_1)))))]))
+							(computed-name (caar (apply-reduction-relation/tag-with-names red-tree (term e_1))))]))
 
 (define red-tree
   (reduction-relation L
