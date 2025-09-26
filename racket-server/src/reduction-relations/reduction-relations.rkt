@@ -1,8 +1,8 @@
 #lang racket
 (require redex
-		 redex/reduction-semantics
-		 rackunit
-		 redex/pict)
+         redex/reduction-semantics
+         rackunit
+         redex/pict)
 (check-redundancy #t)
 
 (provide red step-once red-tree)
@@ -22,15 +22,15 @@
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
                            "Substitute Relation Body And Proceed"]
 
-					  [--> ((in-hole Ev (delay s)) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-						   ((in-hole Ev s) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-						   "Invoke Delay"]
+                      [--> ((in-hole Ev (delay s)) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                           ((in-hole Ev s) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                           "Invoke Delay"]
 
-             [--> (e_1 Γ)
+                      [--> (e_1 Γ)
                            (e_2 Γ)
-						   (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
+                           (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
                            (where e_2 ,(car (apply-reduction-relation red-tree (term e_1))))
-							(computed-name (caar (apply-reduction-relation/tag-with-names red-tree (term e_1))))]))
+                           (computed-name (caar (apply-reduction-relation/tag-with-names red-tree (term e_1))))]))
 
 (define red-tree
   (reduction-relation L
@@ -124,4 +124,4 @@
 
                       with [(--> (in-hole Ex a) (in-hole Ex b))
                             (==> a b)]
-					  ))
+                      ))
