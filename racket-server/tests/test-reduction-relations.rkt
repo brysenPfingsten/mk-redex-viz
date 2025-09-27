@@ -14,7 +14,11 @@
 	  ((r:+ () (∃ () ⊤ (sym "oZ"))) (r:X () (∃ () ⊤ (sym "HYvONcWjZNW"))))
 	  (delay ()))))
 
-(apply-reduction-relation red test-term)
+;; (redex-match L (in-hole Ex (in-hole Ev s)) test-term)
+
+(let ([pn (apply-reduction-relation/tag-with-names red test-term)])
+  (check-true (or (null? pn) (null? (cdr pn)))))
+
 
 
 ;; (traces red test-term)
