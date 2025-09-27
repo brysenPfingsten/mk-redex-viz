@@ -101,8 +101,8 @@
                            (delay (s_2 <-+ s_1))
                            "Propagate Delay Through Right Disjunction And Flip"]
 
-                      [--> (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev (delay s)))
-                           (prog ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...) (in-hole Ev s))
+                      [--> (prog Γ (in-hole Ev (delay s)))
+                           (prog Γ (in-hole Ev s))
                            "Invoke Delay"]
 
                       [--> (prog Γ (in-hole Ev ((⊤ σ) <-+ s)))

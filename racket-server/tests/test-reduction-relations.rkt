@@ -8,18 +8,13 @@
          "../src/judgment-forms.rkt"
          "../src/reduction-relations/reduction-relations.rkt")
 
-(define test-term
+(define two-relations-delay-body
   (term
 	(prog
-	  ((r:+ () (∃ () ⊤ (sym "oZ"))) (r:X () (∃ () ⊤ (sym "HYvONcWjZNW"))))
+	  ((r:+ () (∃ () ⊤ (sym "oZ")))
+	   (r:X () (∃ () ⊤ (sym "HYvONcWjZNW"))))
 	  (delay ()))))
 
-;; (redex-match L (in-hole Ex (in-hole Ev s)) test-term)
-
-(let ([pn (apply-reduction-relation/tag-with-names red test-term)])
+(let ([pn (apply-reduction-relation/tag-with-names red two-relations-delay-body)])
   (check-true (or (null? pn) (null? (cdr pn)))))
 
-
-
-;; (traces red test-term)
-;; (stepper red test-term)
