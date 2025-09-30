@@ -66,7 +66,7 @@
                       
                       [==> ((∃ (x ...) g _) (state sub c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...))) 
-                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o))
+                                        (state sub (bump c (x ...)) trail o))
                            "Substitute Fresh Variables"]
 
                       [==> ((r_1 t ... o) σ)
