@@ -14,7 +14,8 @@
          "zipper.rkt")
 
 (provide step! back! reset! init! init-session! 
-         make-stepper step step-name)
+         make-stepper step step-name 
+         session session-zipper session-stepper session-nqv)
 
 (define-struct step (name prog) #:transparent)
 (define-struct session 
@@ -93,13 +94,11 @@
           (step->response maybe-next idx nqv)))))
 
 
-(define stepper (make-stepper mmk:step-once))
-
 ;; step!: session -> response
 ;; Purpose: Applies one reduction step and sends the new JSON data of that tree
 (define (step! ses) 
   (match-let ([(session zip step nqv) ses])
-    (stepper zip nqv)))
+    (step zip nqv)))
 
 
 ;; read-all: port -> ListOf sexpression
@@ -126,9 +125,9 @@
   (step/html/cookie->response init-step html-prog ses-id nqv))        ;; Send the initial program and HTML
 
 
-;; reset!: session string -> response
+;; reset!: session hash string -> response
 ;; Purpose: Resets the given session to the initial state of its program
-(define (reset! ses ses-id)
+(define (reset! ses ses-table ses-id)
   (match-let ([(session zip _ nqv) ses])
     (define response (match zip
                        [(zipper prev _ _ _) 
@@ -140,7 +139,7 @@
                        [(zipper _ curr _ _) 
                         #:when (step? curr)
                         (step->response/initial curr nqv)]))
-    (hash-remove! session-table ses-id)
+    (hash-remove! ses-table ses-id)
     response))
 
 
@@ -206,7 +205,7 @@
     (match (get-path req)
       ["get/next"   (step! session)]
       ["post/init"  (init! session req session-id)]
-      ["post/reset" (reset! session session-id)]
+      ["post/reset" (reset! session session-table session-id)]
       ["post/back"  (back! session)]
       ["post/model" (switch-model! session req)])))
 
