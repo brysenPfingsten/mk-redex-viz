@@ -68,7 +68,7 @@
   (test-not-exn "Non Terminating Program Does Not Evaluate Forever"
                 (λ ()  (check-syntax-capture-error LOOP-PROG)))
 
-  #;(test-exn "Arity Mismatch is Detected"
+  (test-exn "Arity Mismatch is Detected"
             exn:fail?
             (λ () (check-syntax-capture-error ARITY-MISMATCH))))
 

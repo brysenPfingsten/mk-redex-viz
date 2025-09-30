@@ -16,5 +16,16 @@
 	  (delay ()))))
 
 (let ([pn (apply-reduction-relation/tag-with-names red two-relations-delay-body)])
-  (check-true (or (null? pn) (null? (cdr pn)))))
+  (test-true "Regression: decomposing rel environment when no relcall breaks unique decomposition"
+    (or (null? pn) (null? (cdr pn)))))
 
+
+(define relcall-body
+  (term
+	(prog
+	  ((r:N (x:w) (∃ () (∃ () ⊤ (nat 1)) (sym ""))))
+	  (proceed ((r:N (nat 4)) (state () 2 () (nat 7)))))))
+
+(let ([pn (apply-reduction-relation/tag-with-names red relcall-body)])
+  (test-true ""
+    (or (null? pn) (null? (cdr pn)))))
