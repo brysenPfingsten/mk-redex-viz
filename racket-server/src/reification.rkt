@@ -23,7 +23,7 @@
   [(list->list (t_1 : t_2))
    (cons (term->mk t_1)
          (list->list t_2))]
-  [(list->list t) (cons (term->mk t) '())])
+  [(list->list t) (term->mk t)])
 
 
 ;; Any -> Boolean
@@ -96,13 +96,20 @@
                            ,@unify-clauses))
              ns)))
 
+;; (T -> R) Pair<T> -> List<R>
+;; Purpose: map but for pair. How is this not built in?
+(define (map/pair f p)
+  (match p
+    [`(,a . ,d) (cons (f a) (map/pair f d))]
+    [else (list (f p))]))
 
 ;; Symbol or (ListOf Term) -> JSON
 ;; Purpose: post-process the raw result into JSON
 (define (process-reify-result result)
-  (if (cons? result)
-      (map mk->json result)
-      (mk->json result)))
+  (cond
+    [(list? result) (map mk->json result)]
+    [(pair? result) (map/pair mk->json result)]
+    [else (mk->json result)]))
 
 
 ;; Sub Nat Nat -> JSON

@@ -1,12 +1,14 @@
 const appendo = `(defrel (appendo l s out)
   (conde
-   [(== l '()) (== s out)]
-   [(fresh (a d res)
+    [(== l '())
+    (== s out)]
+    [(fresh (a d res)
       (== l (cons a d))
       (== out (cons a res))
-      (appendo d s res))]))
+      (appendo d s res))]
+  ))
 
-(run* (q) (appendo '(minikanren) '(visualizer) q))`;
+(run* (q) (appendo (list 'minikanren) (list 'visualizer) q))`;
 
 const appendoh1 = `(defrel (appendoh l s out)
   (conde

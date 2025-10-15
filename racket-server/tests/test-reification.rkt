@@ -43,7 +43,7 @@
              (check-equal? (term (term->mk ,L1))
                            '(cons "t" (cons "e" (cons "s" (cons "t" '())))))
              (check-equal? (term (term->mk ,L2))
-                           '(cons "t" (cons "e" (cons "s" (cons "t" '())))))
+                           '(cons "t" (cons "e" (cons "s" "t" ))))
              (check-equal? (term (term->mk ,L3))
                            '(cons "string" (cons '() (cons 'symbol (cons 1 (cons #t '()))))))))
 
@@ -182,6 +182,14 @@
   (test-case "Basic List Reification"
              (check-true (redex-match? L sub SUB3))
              (check-equal? (reify SUB3 4 1)
-                           (list #hasheq((num . 1)) #hasheq((num . 2)) #hasheq((num . 3))))))
+                           (list #hasheq((num . 1)) #hasheq((num . 2)) #hasheq((num . 3)))))
+  (test-case "Another List Reification"
+              (define SUB4 (term ((3 ((sym "world") : empty))
+                                  (1 (sym "hello"))
+                                  (0 (1 : 3)))))
+             (check-true (redex-match? L sub SUB4))
+             (check-equal? (reify SUB4 4 1)
+                           (list #hasheq((sym . "hello")) #hasheq((sym . "world")))))
+  )
 
-#; (run-tests REIFICATION)
+#;(run-tests REIFICATION)

@@ -191,34 +191,63 @@
              count3
              (cons id (append guids1 guids2)))]))
 
-
 ;; konst->string: konst -> string
 ;; Purpose: Convert a konst structure to a string
 (define (konst->string const)
   (match const
     [(konst s) #:when (symbol? s) (format "'~a" (symbol->string s))]
-    [(konst s) #:when (string? s) (format "~s" s)]
+    [(konst s) #:when (string? s) s]
     [(konst b) #:when (boolean? b) (if b "#t" "#f")]
     [(konst n) #:when (number? n) (number->string n)]))
+
+;; TODO: What the hell is going on here. Seems like way to much edge casing just to get it wrong sometimes.
+;; Should probably (within compilation) capture what `type` of list/pair we are parsing.
+;; Something like cons list, quasi pair, quote pair, (list ...), etc and so the lists are actually reproducable
+;; Or, rather than building an AST, build both a CST so the output is the same as its input except with tags
+
+(define (term->string t)
+  (cond
+    [(konst? t) (konst->string t)]
+    [(nil? t) "'()"]
+    [(var? t) (symbol->string (var-v t))]
+    [(relname? t) (symbol->string (relname-name t))]
+    [(kons? t) (kons->string t)]
+    [else t]
+    ))
+
+;; map/kons: (T -> R) (kons of T) -> (kons of R)
+;; Purpose: map but for our cons
+(define (map/kons f k)
+  (match k
+    [_ #:when (nil? k) '()]
+    [(kons a d) #:when (kons? k)
+                (cons (f a) (map/kons f d))]
+    [_ (list (f k))]
+    ))
 
 ;; kons->string: kons -> string
 ;; Purpose: Convert a kons structure to a string
 (define (kons->string l)
+  (let* ([l^ (map/kons term->string l)]
+         [l^^ (string-join l^ " ")]
+         [d (kons-d l)])
+    (if (or (kons? d) (nil? d))
+        (format "(list ~a)" l^^)
+        (format "(cons ~a)" l^^))))
+
+(define (kons->string/help l)
   (match l
     [(kons a nil) #:when (nil? nil)
-                  (kons->string a)]
-    [(kons a ad) #:when (not (kons? ad))
-                 (format "~a . ~a"
-                         (kons->string a)
-                         (kons->string ad))]
+                  (kons->string/help a)]
+    [(var v) #:when (var? l)
+                (format "~a" (var-v v))]
+    [(konst k) #:when (konst? l)
+               (konst->string l)]
     [(kons a d)
      (format "~a ~a"
-             (kons->string a)
-             (kons->string d))]
-    [(var v) #:when (var? l)
-             (format ",~a" (var-v v))]
-    [(konst k) #:when (konst? l)
-               (konst->string l)]))
+             (kons->string/help a)
+             (kons->string/help d))]
+    ))
 
 (define (add2 n) (+ n 2))
 
@@ -329,7 +358,7 @@
 
     [(nil)          #:when (nil? expr)     (values "'()" guids)]
     [(konst k)      #:when (konst? expr)   (values (konst->string expr) guids)]
-    [(kons _ _)     #:when (kons? expr)    (values (format "`(~a)" (kons->string expr)) guids)]
+    [(kons _ _)     #:when (kons? expr)    (values (kons->string expr) guids)]
     [(var v)        #:when (var? expr)     (values (symbol->string (var-v v)) guids)]
     [(relname name) #:when (relname? expr) (values (symbol->string name) guids)]
 
