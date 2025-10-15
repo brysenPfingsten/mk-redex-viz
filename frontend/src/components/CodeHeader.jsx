@@ -26,7 +26,7 @@ export default function CodeHeader({
 
   // TODO: Maybe add some error handling here
   const changeModel = async (newModel) => {
-    setModel(newModel);
+    onModelChange(newModel);
     fetch('api/post/model', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json'},

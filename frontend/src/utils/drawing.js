@@ -63,7 +63,7 @@ function drawDirectedDisjunctionNode(group, _, isLeft, size = 30, strokeColor = 
 
   group.append("polygon")
     .attr("points", points)
-    .attr("fill", "orange");
+    .attr("fill", "#ff8000");
 
   const strokeWidth = 2;
   const arm = size * 0.28;      // half-length for plus arms (fits inside diamond)
@@ -129,8 +129,8 @@ function drawCircle(group, fill, text = "", textColor = "black", fontSize = "20p
     return circle;
 }
 
-function drawGoalConjNode(group, _) { return drawCircle(group, "purple", "∧", "white"); }
-function drawGoalDisjNode(group, _) { return drawCircle(group, "#FF69B4", "∨"); }
+function drawGoalConjNode(group, _) { return drawCircle(group, "#57c4ff", "∧", "white"); }
+function drawGoalDisjNode(group, _) { return drawCircle(group, "orange", "∨"); }
 function drawSucceedNode(group, _)  { return drawCircle(group, "green"); }
 function drawAnswerNode(group, _)   { return drawCircle(group, "green", "Answer", undefined, "10px") }
 function drawEmptyNode(group, _)    { return drawCircle(group, "white") }

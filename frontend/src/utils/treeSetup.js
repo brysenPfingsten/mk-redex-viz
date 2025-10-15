@@ -36,11 +36,11 @@ export function addColors(tree) {
 
     switch (tree.name) {
         case "<-+":
-            children[0].color = "orange";
+            children[0].color = "#ff8000";
             addColors(children[0]);
             break;
         case "+->":
-            children[1].color = "orange";
+            children[1].color = "#ff8000";
             addColors(children[1]);
             break;
         case "Disjunction":
