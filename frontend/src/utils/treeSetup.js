@@ -65,7 +65,9 @@ export function addColors(tree) {
     return tree;
 }
 
-
+/**
+ * @deprecated All disjunctions and conjunctions now show as binary in the tree
+ */
 export function flattenGoalConj(tree) {
     // Helper function to recursively flatten `Goal-Conj`
     function processNode(node) {

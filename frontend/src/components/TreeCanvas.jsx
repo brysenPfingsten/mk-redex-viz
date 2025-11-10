@@ -57,7 +57,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             const g = svg.append('g');
             
             // Create hierarchy and prepare data
-            const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
+            const root = d3.hierarchy(addColors(treeData));
             
             // First pass: measure node sizes
             const tempSvg = d3.select("body").append("svg")
