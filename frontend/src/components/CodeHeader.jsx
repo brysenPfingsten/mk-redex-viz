@@ -5,7 +5,7 @@ import { exampleProgs } from "../utils/example_programs.js";
 
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
-  { value: "dmitry",      label: "Dmitry et al." },
+  // { value: "dmitry",      label: "Dmitry et al." },
   { value: "dfs",         label: "DFS"}
 ];
 

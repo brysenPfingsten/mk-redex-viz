@@ -1,5 +1,14 @@
 #lang racket
 
+#|
+DEPRECATED
+
+CPS and defunctionalized transformation of rozenplas(?) et al. aren't tree
+to tree transformations like how we envisioned.
+Their semantics are non determinstic so we will have to make them deterministic
+and then CPS and Defunc it.
+|#
+
 (require redex redex/gui
          redex/reduction-semantics
          rackunit
