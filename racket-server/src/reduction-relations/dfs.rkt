@@ -35,8 +35,8 @@
 (define red-tree
   (reduction-relation L
                       #:domain e
-                      [==> ((g_1 ∨ g_2 _) (state sub c trail o))
-                           ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym)))))
+                      [==> ((g_1 ∨ g_2 _) (state sub dis c trail o))
+                           ((g_1 (state sub dis c trail o)) <-+ (g_2 (state sub dis c trail ,(symbol->string (gensym)))))
                            "Distribute State Over Disjunction"]
 
                       [==> ((g_1 ∧ g_2 _) σ)
@@ -63,20 +63,39 @@
                            s
                            "Prune Disjunction Failure"]
 
-                      [==> ((∃ (x ...) g _) (state sub c trail o))
+                      [==> ((∃ (x ...) g _) (state sub dis c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...)))
-                                        (state sub ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o))
+                                        (state sub dis ,(+ (length (term (fresh-sub c x ...))) (term c)) trail o))
                            "Substitute Fresh Variables"]
 
-                      [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...) o_2))
-                           (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
-                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "Unification Succeeds"]
-
-                      [==> ((t_1 =? t_2 o) (state sub _ _ _))
+                      [==> ((t_1 =? t_2 _) (state sub _ _ _ _))
                            ()
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "Unification Fails"]
+
+                      [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
+                           (⊤ (state sub_1 dis c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
+                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           (where #f (invalid? sub_1 dis))
+                           "Unification Succeeds Disequalities Not Violated"]
+
+                      [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
+                           ()
+                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           (where #t (invalid? sub_1 dis))
+                           "Unification Succeeds But Disequality Violated"]
+
+                      [==> ((t_1 != t_2 o) (state sub dis c trail o_2))
+                           (⊤ (state sub dis_1 c trail o_2))
+                           (where dis_1 ((t_1 t_2) ,@(term dis)))
+                           (where #f (invalid? sub dis_1))
+                           "Disequality Not Violated"]
+
+                      [==> ((t_1 != t_2 o) (state sub dis c trail o_2))
+                           ()
+                           (where dis_1 ((t_1 t_2) ,@(term dis)))
+                           (where #t (invalid? sub dis_1))
+                           "Disequality Violated"]
 
                       with [(--> (in-hole Ex a) (in-hole Ex b))
                             (==> a b)]
