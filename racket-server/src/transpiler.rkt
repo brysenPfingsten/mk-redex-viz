@@ -536,6 +536,27 @@
 (parse-prog
   '((run* (q) (=/= q 'bear) (== q 'bear))))
 
+(parse-prog
+  '((defrel (membero l x out)
+  (fresh (a d)
+    (== (cons a d) l)
+    (conde
+      [(== a x) (== l out)]
+      [(=/= a x) (membero d x out)])))
+
+(run* (q) (membero (list 1 2 3 4) 2 q))))
+
+#|
+(defrel (membero l x out)
+  (fresh (a d)
+    (== (cons a d) l)
+    (conde
+      [(== a x) (== l out)]
+      [(=/= a x) (membero d x out)])))
+
+(run* (q) (membero (list 1 2 3 4) 2 q))
+|#
+
 
 #;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table
                                (((x:l1 =? empty) ∧ ((x:l1 =? empty) ∧ (x:table =? empty)))

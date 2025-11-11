@@ -101,11 +101,16 @@
                            (delay (proceed ((r_1 t ... o) σ)))
                            "Relation Call And Add Delay"]
 
+                      [==> ((t_1 =? t_2 o) (state sub _ _ _ _))
+                           ()
+                           (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           "Unification Fails"]
+
                       [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
                            (⊤ (state sub_1 dis c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
                            (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
                            (where #f (invalid? sub_1 dis))
-                           "Unification Succeeds"]
+                           "Unification Succeeds Disequalities Not Violated"]
 
                       [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
                            ()
@@ -124,11 +129,6 @@
                            (where dis_1 ((t_1 t_2) ,@(term dis)))
                            (where #t (invalid? sub dis_1))
                            "Disequality Violated"]
-
-                      [==> ((t_1 =? t_2 o) (state sub _ _ _))
-                           ()
-                           (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
-                           "Unification Fails"]
 
                       [==> ((delay s) × g)
                            (delay (s × g))

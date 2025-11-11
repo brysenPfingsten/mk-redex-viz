@@ -166,6 +166,11 @@ function drawUnifyNode(group, data) {
     return drawTextNode(group, textContent);
 }
 
+function drawDisequalityNode(group, data) {
+    const textContent = `(=/= ${termToString(data.left)} ${termToString(data.right)})`;
+    return drawTextNode(group, textContent);
+}
+
 function drawFreshNode(group, data) {
     const varsText = data.vars ? data.vars.map(t => t.var).join(' ') : '';
     const textContent = `(fresh (${varsText}) ...)`;
@@ -214,6 +219,7 @@ const nodeDrawFunctions = {
     "Answer": drawAnswerNode,
     "Succeed": drawSucceedNode,
     "Unify": drawUnifyNode,
+    "Disequality": drawDisequalityNode,
     "<-+": drawLeftDisjunctionNode,
     "+->": drawRightDisjunctionNode,
     "Delay": drawDelayNode,

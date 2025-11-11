@@ -78,6 +78,18 @@ const div3o = `(defrel (same-counto bn)
 
 (run* (q) (multiple-of-threeo q))`
 
+const membero = `(defrel (membero l x out)
+  (fresh (a d)
+        (== (cons a d) l)
+    (conde
+      [(=/= a x)
+      (membero d x out)]
+      [(== a x)
+      (== l out)]
+    )))
+
+(run* (q) (membero (list 'dog 'lion 'bear 'giraffe 'lion) 'lion q))`
+
 export const exampleProgs = [
   { value: "", label: "Examples"},
   { value: appendo, label: "appendo" },
@@ -85,4 +97,5 @@ export const exampleProgs = [
   { value: appendoh2, label: "appendoh 2" },
   { value: same, label: "same"},
   { value: div3o, label: "div3o" },
+  { value: membero, label: "membero" },
 ]

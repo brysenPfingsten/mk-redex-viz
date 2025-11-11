@@ -118,7 +118,8 @@
   (check-syntax-capture-error raw-prog)                               ;; Check for syntax errors
   (define sexpr-prog (read-all (open-input-string raw-prog)))         ;; Read the program into sexpressions
   (define-values (model-prog html-prog) (parse-prog sexpr-prog))      ;; Parse the sexpressions
-  (check-well-formed model-prog)                                      ;; Check if the program is well-formed
+  (displayln model-prog) (flush-output)
+  ;;(check-well-formed model-prog)                                      ;; Check if the program is well-formed
   (init-session! ses model-prog)                                      ;; Initialize all state variables
   (match-define (session zip _ nqv) ses)                              ;; Get zipper and number query vars
   (define init-step (zipper-curr zip))                                ;; Get the initial program

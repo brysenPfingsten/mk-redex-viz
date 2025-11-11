@@ -31,3 +31,69 @@
                '((() ()))))
 
 ;; (run-tests DISEQUALITY)
+
+(define MEMBERO '(((∃
+    (x:q)
+    (r:membero
+     ((nat 1) : ((nat 2) : empty))
+     (nat 2)
+     x:q
+     "r11")
+    "f10")
+   (state () () 0 () "s"))
+  ((r:membero
+    (x:l x:x x:out)
+    (∃
+     (x:a x:d)
+     (((x:a : x:d) =? x:l "u2")
+      ∧
+      (((x:a =? x:x "u8") ∧ (x:l =? x:out "u9") "c7")
+       ∨
+       ((x:a != x:x "u5") ∧ (r:membero x:d x:x x:out "r6") "c4")
+       "d3")
+      "c1")
+     "f0")))))
+
+(define TEMP '(((1 =? (nat 2) "u8")
+    (state
+     ((2 ((nat 2) : empty))
+      (1 (nat 1)))
+     ()
+     3
+     (((1 : 2)
+       =?
+       ((nat 1)
+        :
+        ((nat 2) : empty))
+       "u2"))
+     "s"))
+   ×
+   (((nat 1)
+     :
+     ((nat 2) : empty))
+    =?
+    0
+    "u9")))
+(redex-match L (in-hole Ex (g σ)) TEMP)
+
+;; (stepper red MEMBERO)
+;; (define TEMP '(((1 =? (nat 2) "u8")
+;;     (state
+;;      ((2 ((nat 2) : empty))
+;;       (1 (nat 1)))
+;;      ()
+;;      3
+;;      (((1 : 2)
+;;        =?
+;;        ((nat 1)
+;;         :
+;;         ((nat 2) : empty))
+;;        "u2"))
+;;      "s"))
+;;    ×
+;;    (((nat 1)
+;;      :
+;;      ((nat 2) : empty))
+;;     =?
+;;     0
+;;     "u9")))
