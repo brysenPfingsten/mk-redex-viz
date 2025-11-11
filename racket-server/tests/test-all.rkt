@@ -5,7 +5,8 @@
          "./test-syntax-checking.rkt"
          "./test-zipper.rkt"
          "./test-metafunctions.rkt"
-         "./test-transpiler.rkt")
+         "./test-transpiler.rkt"
+         "./test-disequality.rkt")
 
 (define-test-suite ALL
   APP
@@ -13,6 +14,7 @@
   SYNTAX-CHECKER
   ZIPPER
   METAFUNCTIONS
-  TRANSPILER)
+  TRANSPILER
+  DISEQUALITY)
 
 (test/gui ALL)
