@@ -533,10 +533,10 @@
                      (make-assoc-tableo cdr1 cdr2 cdr3)))))
    '(run 5 (q) (same-lengtho '(abc def ghi) q)))
 
-(parse-prog
+#;(parse-prog
   '((run* (q) (=/= q 'bear) (== q 'bear))))
 
-(parse-prog
+#;(parse-prog
   '((defrel (membero l x out)
   (fresh (a d)
     (== (cons a d) l)

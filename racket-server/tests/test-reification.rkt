@@ -118,26 +118,26 @@
              (check-equal? (length (generate-query-vars 0)) 0))
 
   (test-case "First n Logic Vars Become Corresponding Query Var"
-             (check-equal? (make-unify-clause QUERY-VARS 6 (list 0 5))
+             (check-equal? (make-unify/disequality-clause QUERY-VARS 6 (list 0 5) '==)
                            '(== q v))
-             (check-equal? (make-unify-clause QUERY-VARS 6 (list 1 4))
+             (check-equal? (make-unify/disequality-clause QUERY-VARS 6 (list 1 4) '==)
                            '(== r u)))
   (test-equal? "Logic Vars >= n Are Underscored"
-               (make-unify-clause '() 0 (list 0 1))
+               (make-unify/disequality-clause '() 0 (list 0 1) '==)
                '(== _0 _1))
   (test-case "Primitives Are Turned Into Equations Correctly"
-             (check-equal? (make-unify-clause '() 0 (list 0 '(sym "symbol")))
+             (check-equal? (make-unify/disequality-clause '() 0 (list 0 '(sym "symbol")) '==)
                            '(== _0 'symbol))
-             (check-equal? (make-unify-clause '() 0 (list 1 '(nat 99)))
+             (check-equal? (make-unify/disequality-clause '() 0 (list 1 '(nat 99)) '==)
                            '(== _1 99))
-             (check-equal? (make-unify-clause '() 0 (list 2 "string"))
+             (check-equal? (make-unify/disequality-clause '() 0 (list 2 "string") '==)
                            '(== _2 "string"))
-             (check-equal? (make-unify-clause '() 0 (list 3 #t))
+             (check-equal? (make-unify/disequality-clause '() 0 (list 3 #t) '==)
                            '(== _3 #t))
-             (check-equal? (make-unify-clause '() 0 (list 3 'empty))
+             (check-equal? (make-unify/disequality-clause '() 0 (list 3 'empty) '==)
                            '(== _3 '())))
   (test-equal? "List Are Turned Into Equations Correctly"
-               (make-unify-clause '(q) 1 (list 0 L3))
+               (make-unify/disequality-clause '(q) 1 (list 0 L3) '==)
                '(== q (cons "string" (cons '() (cons 'symbol (cons 1 (cons #t '())))))))
 
   (test-case "Generated Namespace Contains run*, fresh, and =="
@@ -153,6 +153,17 @@
              (check-equal? (process-reify-result '_.0) "_.0")
              (check-equal? (process-reify-result 'mk) (hasheq 'sym "mk"))))
 
+(define-test-suite
+  DISEQUALITY
+
+  (test-equal? "Empty substitution disequality constraint not on query variable"
+                (reify '() '((1 (sym "bear"))) 2 1)
+                "_.0")
+  (test-equal? "Empty substitution empty disequality store"
+               (reify '() '() 1 1)
+               "_.0")
+  )
+
 (define/provide-test-suite
   REIFICATION
   #:before (thunk (display "Running Tests For Reification...\n"))
@@ -161,35 +172,36 @@
   TERM->MK
   MK->JSON
   REIFICATION-HELPERS
+  DISEQUALITY
 
   (test-equal? "One Query Var, All Fresh Bindings"
-               (reify SUB1 4 1)
+               (reify SUB1 '() 4 1)
                "_.0")
 
   (test-case "Multiple Query Vars, All Fresh Bindings"
-             (check-equal? (reify SUB1 4 4)
+             (check-equal? (reify SUB1 '() 4 4)
                            '("_.0" "_.0" "_.0" "_.0"))
-             (check-equal? (reify SUB1 4 3)
+             (check-equal? (reify SUB1 '() 4 3)
                            '("_.0" "_.0" "_.0"))
-             (check-equal? (reify SUB1 4 2)
+             (check-equal? (reify SUB1 '() 4 2)
                            '("_.0" "_.0")))
 
   (test-case "Primitives Are Reified Correctly"
              (check-true (redex-match? L sub SUB2))
-             (check-equal? (reify SUB2 5 5)
+             (check-equal? (reify SUB2 '() 5 5)
                            (list #hasheq((sym . "hello")) "hello" #hasheq((num . 43110)) #t #f)))
 
   (test-case "Basic List Reification"
              (check-true (redex-match? L sub SUB3))
-             (check-equal? (reify SUB3 4 1)
+             (check-equal? (reify SUB3 '() 4 1)
                            (list #hasheq((num . 1)) #hasheq((num . 2)) #hasheq((num . 3)))))
   (test-case "Another List Reification"
               (define SUB4 (term ((3 ((sym "world") : empty))
                                   (1 (sym "hello"))
                                   (0 (1 : 3)))))
              (check-true (redex-match? L sub SUB4))
-             (check-equal? (reify SUB4 4 1)
+             (check-equal? (reify SUB4 '() 4 1)
                            (list #hasheq((sym . "hello")) #hasheq((sym . "world")))))
   )
 
-#;(run-tests REIFICATION)
+(run-tests REIFICATION)

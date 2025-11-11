@@ -101,7 +101,7 @@
                            (delay (proceed ((r_1 t ... o) σ)))
                            "Relation Call And Add Delay"]
 
-                      [==> ((t_1 =? t_2 o) (state sub _ _ _ _))
+                      [==> ((t_1 =? t_2 _) (state sub _ _ _ _))
                            ()
                            (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
                            "Unification Fails"]

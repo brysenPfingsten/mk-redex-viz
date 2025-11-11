@@ -3,7 +3,7 @@
 (require "definitions.rkt")
 (provide reify term->mk mk->json reified?
          generate-fresh-names generate-query-vars
-         make-unify-clause prepare-minikanren-namespace
+         make-unify/disequality-clause prepare-minikanren-namespace
          process-reify-result)
 
 ;; Purpose: Converts a redex term to a miniKanren term
@@ -67,7 +67,7 @@
 
 ;; (ListOf Symbol) Nat (PairOf Term Term) -> (List Symbol Term Term)
 ;; Purpose: Creates a quoted equation unifying the given pair
-(define (make-unify-clause query-vars n pair)
+(define (make-unify/disequality-clause query-vars n pair operator)
   (let* ([l      (car pair)]
          [r      (cadr pair)]
          [lhs    (if (< l n)
@@ -76,7 +76,7 @@
          [rhs    (if (and (number? r) (< r n))
                      (list-ref query-vars r)
                      (term (term->mk ,r)))])
-    `(== ,lhs ,rhs)))
+    (list operator lhs rhs)))
 
 
 ;; -> Namespace
@@ -112,17 +112,18 @@
     [else (mk->json result)]))
 
 
-;; Sub Nat Nat -> JSON
+;; Sub Dis Nat Nat -> JSON
 ;; Purpose: Reifies the given sub with logic variables up to c-1 using n query variables
-(define (reify sub c n)
-  (if (empty? sub)
-      '()
-      (let* ([fresh-names   (generate-fresh-names c)]
-             [query-vars    (generate-query-vars n)]
-             [unify-clauses (map (λ (p) (make-unify-clause query-vars n p)) sub)]
-             [ns            (prepare-minikanren-namespace)]
-             [raw-result    (run-in-namespace ns
-                                              query-vars
-                                              fresh-names
-                                              unify-clauses)])
-        (process-reify-result raw-result))))
+(define (reify sub dis c n)
+  (let* ([fresh-names    (generate-fresh-names c)]
+          [query-vars    (generate-query-vars n)]
+          [unify-clauses (map (λ (p) (make-unify/disequality-clause query-vars n p '==)) sub)]
+          [diseq-clauses (map (λ (p) (make-unify/disequality-clause query-vars n p '=/=)) dis)]
+          [clauses       (append unify-clauses diseq-clauses)]
+          [ns            (prepare-minikanren-namespace)]
+          [raw-result    (run-in-namespace ns
+                                          query-vars
+                                          fresh-names
+                                          ;; NOTE: The extra unify is for when both are empty so body of fresh has something
+                                          (if (empty? clauses) (list '(== 1 1)) clauses))])
+    (process-reify-result raw-result)))

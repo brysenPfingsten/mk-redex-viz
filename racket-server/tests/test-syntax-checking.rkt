@@ -8,7 +8,7 @@
          rackunit/text-ui)
 
 (define WELL-FORMED-PROG (term (() ())))
-(define BAD-FORMED-PROG (term (((r:goneo "r0") (state () 0 () "s")) ())))
+(define BAD-FORMED-PROG (term (((r:goneo "r0") (state () () 0 () "s")) ())))
 
 (define-test-suite WELL-FORMED
   (test-case "Well Formed Program Returns Empty String"

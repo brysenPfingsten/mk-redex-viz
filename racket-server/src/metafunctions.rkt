@@ -110,11 +110,11 @@
   [(tree->json () _)
    ,(hasheq 'name "Empty")]
 
-  [(tree->json (g (_ sub _ c trail o)) natural)
+  [(tree->json (g (_ sub dis c trail o)) natural)
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)) (term natural))])
+           [reified (reify (term sub) (term dis) (add1 (term c)) (term natural))])
       (hash-union goal-json
                   (hasheq
                    'stateId (term o)
@@ -130,11 +130,11 @@
                     'partial #t
                     'hasAnswer sub-json)))]
 
-  [(tree->json (proceed ((r t ... o) (_ sub _ c trail o_1))) natural)
+  [(tree->json (proceed ((r t ... o) (_ sub dis c trail o_1))) natural)
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (add1 (term c)) (term natural))])
+           [reified (reify (term sub) (term dis) (add1 (term c)) (term natural))])
       (hasheq 'name "Proceed"
               'id (term o)
               'stateId (term o_1)
@@ -155,21 +155,21 @@
       (hasheq 'name "<-+"
               'children (list left-json right-json)))]
 
-  [(tree->json ((⊤ (_ sub _ c trail o)) + ()) natural)
+  [(tree->json ((⊤ (_ sub dis c trail o)) + ()) natural)
    ,(let* ([sub-json (sub->json (term sub))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c) (term natural))])
+           [reified (reify (term sub) (term dis) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
               'trail trail-json
               'reified reified))]
 
-  [(tree->json ((⊤ (_ sub _ c trail o)) + s) natural)
+  [(tree->json ((⊤ (_ sub dis c trail o)) + s) natural)
    ,(let* ([sub-json (sub->json (term sub))]
            [rest-json (term (tree->json s natural))]
            [trail-json (trail->json (term trail) (term sub))]
-           [reified (reify (term sub) (term c) (term natural))])
+           [reified (reify (term sub) (term dis) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
