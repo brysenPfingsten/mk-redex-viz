@@ -119,6 +119,11 @@
    (closed-term? t_2 (x ...) c)
    ---------- "==-closed"
    (closed-goal? (t_1 =? t_2 _) _ (x ...) c)]
+
+  [(closed-term? t_1 (x ...) c)
+   (closed-term? t_2 (x ...) c)
+   ---------- "=/=-closed"
+   (closed-goal? (t_1 != t_2 _) _ (x ...) c)]
   
   [(same-length? (t ...) (x_i ...))
    (closed-term? t (x_k ...) c) ...
@@ -146,7 +151,7 @@
    (closed-sub? sub c)
    (closed-trail? trail c)
    -------------------"goal w/ sub closed"
-   (closed-tree? (g (state sub c trail _)) ((r (x ...)) ...))]
+   (closed-tree? (g (state sub _ c trail _)) ((r (x ...)) ...))]
 
   [(closed-tree? s ((r (x ...)) ...))
    -------------------"partial tree closed"
@@ -166,7 +171,7 @@
    (closed-trail? trail c)
    (closed-tree? s ((r (x ...)) ...))
    -------------------"answer stream closed"
-   (closed-tree? ((⊤ (state sub c trail _)) + s) ((r (x ...)) ...))]
+   (closed-tree? ((⊤ (state sub _ c trail _)) + s) ((r (x ...)) ...))]
 
   [(closed-tree? s ((r (x ...)) ...))
    (closed-goal? g ((r (x ...)) ...) () 0)

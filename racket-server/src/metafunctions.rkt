@@ -67,6 +67,14 @@
               'left left-json
               'right right-json))]
 
+  [(goal->json (t_1 != t_2 o))
+   ,(let* ([left-json (term (term->json  t_1))]
+           [right-json (term (term->json t_2))])
+      (hasheq 'name "Unify"
+              'id (term o)
+              'left left-json
+              'right right-json))]
+
   [(goal->json (r t ... o))
    ,(let* ([rel-name (extract-name (symbol->string (term r)))]
            [args-json (args->json (term (t ...)))])
@@ -102,15 +110,17 @@
   [(tree->json () _)
    ,(hasheq 'name "Empty")]
 
-  [(tree->json (g (_ sub c trail o)) natural)
+  [(tree->json (g (_ sub_1 sub_2 c trail o)) natural)
    ,(let* ([goal-json (term (goal->json g))]
-           [sub-json (sub->json (term sub))]
+           [sub-json (sub->json (term sub_1))]
+           [dis-json (sub->json (term sub_2))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (add1 (term c)) (term natural))])
       (hash-union goal-json
                   (hasheq
                    'stateId (term o)
                    'sub sub-json
+                   'dis dis-json
                    'trail trail-json
                    'reified reified)))]
 
@@ -122,9 +132,10 @@
                     'partial #t
                     'hasAnswer sub-json)))]
 
-  [(tree->json (proceed ((r t ... o) (_ sub c trail o_1))) natural)
+  [(tree->json (proceed ((r t ... o) (_ sub_1 sub_2 c trail o_1))) natural)
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
-           [sub-json (sub->json (term sub))]
+           [sub-json (sub->json (term sub_1))]
+           [dis-json (sub->json (term sub_2))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (add1 (term c)) (term natural))])
       (hasheq 'name "Proceed"
@@ -132,6 +143,7 @@
               'stateId (term o_1)
               'goal goal-json
               'sub sub-json
+              'dis dis-json
               'trail trail-json
               'refied reified))]
 
@@ -147,24 +159,28 @@
       (hasheq 'name "<-+"
               'children (list left-json right-json)))]
 
-  [(tree->json ((⊤ (_ sub c trail o)) + ()) natural)
-   ,(let* ([sub-json (sub->json (term sub))]
+  [(tree->json ((⊤ (_ sub_1 sub_2 c trail o)) + ()) natural)
+   ,(let* ([sub-json (sub->json (term sub_1))]
+           [dis-json (sub->json (term sub_2))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
+              'dis dis-json
               'trail trail-json
               'reified reified))]
 
-  [(tree->json ((⊤ (_ sub c trail o)) + s) natural)
-   ,(let* ([sub-json (sub->json (term sub))]
+  [(tree->json ((⊤ (_ sub_1 sub_2 c trail o)) + s) natural)
+   ,(let* ([sub-json (sub->json (term sub_1))]
+           [dis-json (sub->json (term sub_2))]
            [rest-json (term (tree->json s natural))]
            [trail-json (trail->json (term trail) (term sub))]
            [reified (reify (term sub) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
               'sub sub-json
+              'dis dis-json
               'trail trail-json
               'reified reified
               'children (list rest-json)))]

@@ -28,6 +28,7 @@
 
                       [--> (e_1 Γ)
                            (e_2 Γ)
+                           ;; TODO: How to not call the same thing three times?
                            (side-condition (not (null? (apply-reduction-relation red-tree (term e_1)))))
                            (where e_2 ,(car (apply-reduction-relation red-tree (term e_1))))
                            (computed-name (caar (apply-reduction-relation/tag-with-names red-tree (term e_1))))]))
@@ -35,8 +36,8 @@
 (define red-tree
   (reduction-relation L
                       #:domain e
-                      [==> ((g_1 ∨ g_2 _) (state sub c trail o))
-                           ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym)))))
+                      [==> ((g_1 ∨ g_2 _) (state sub dis c trail o))
+                           ((g_1 (state sub dis c trail o)) <-+ (g_2 (state sub dis c trail ,(symbol->string (gensym)))))
                            "Distribute State Over Disjunction"]
 
                       [==> ((g_1 ∧ g_2 _) σ)
@@ -91,19 +92,38 @@
                            (in-hole Ev ((⊤ σ) + s))
                            "Promote Right Answer"]
 
-                      [==> ((∃ (x ...) g _) (state sub c trail o))
+                      [==> ((∃ (x ...) g _) (state sub dis c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...))) 
-                                        (state sub (bump c (x ...)) trail o))
+                                        (state sub dis (bump c (x ...)) trail o))
                            "Substitute Fresh Variables"]
 
                       [==> ((r_1 t ... o) σ)
                            (delay (proceed ((r_1 t ... o) σ)))
                            "Relation Call And Add Delay"]
 
-                      [==> ((t_1 =? t_2 o) (state sub c ((t_3 =? t_4 o_1) ...) o_2))
-                           (⊤ (state sub_1 c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
+                      [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
+                           (⊤ (state sub_1 dis c ((t_3 =? t_4 o_1) ... (t_1 =? t_2 o)) o_2))
                            (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           (where #f (invalid? sub_1 dis))
                            "Unification Succeeds"]
+
+                      [==> ((t_1 =? t_2 o) (state sub dis c ((t_3 =? t_4 o_1) ...) o_2))
+                           ()
+                           (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+                           (where #t (invalid? sub_1 dis))
+                           "Unification Succeeds But Disequality Violated"]
+
+                      [==> ((t_1 != t_2 o) (state sub dis c trail o_2))
+                           (⊤ (state sub dis_1 c trail o_2))
+                           (where dis_1 ((t_1 t_2) ,@(term dis)))
+                           (where #f (invalid? sub dis_1))
+                           "Disequality Not Violated"]
+
+                      [==> ((t_1 != t_2 o) (state sub dis c trail o_2))
+                           ()
+                           (where dis_1 ((t_1 t_2) ,@(term dis)))
+                           (where #t (invalid? sub dis_1))
+                           "Disequality Violated"]
 
                       [==> ((t_1 =? t_2 o) (state sub _ _ _))
                            ()

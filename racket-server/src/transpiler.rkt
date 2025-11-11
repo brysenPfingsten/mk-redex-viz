@@ -1,10 +1,5 @@
 #lang racket
-(require racket/struct
-         racket/generic
-         redex
-         syntax/to-string
-         racket/pretty
-         "definitions.rkt")
+(require redex)
 
 (provide parse-prog)
 
@@ -15,6 +10,7 @@
 (struct disj (g1 g2) #:transparent)
 (struct conj (g1 g2) #:transparent)
 (struct unify (t1 t2) #:transparent)
+(struct diseq (t1 t2) #:transparent)
 (struct succeed () #:transparent)
 (struct fail () #:transparent)
 (struct relcall (name terms) #:transparent)
@@ -139,6 +135,13 @@
      (define-values (tt2 count3 guids2) (transpile t2 count2))
      (values `(,tt1 =? ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
 
+    [(diseq t1 t2)
+     #:when (diseq? expr)
+     (define-values (id count1) (next-g-id "u" count))
+     (define-values (tt1 count2 guids1) (transpile t1 count1))
+     (define-values (tt2 count3 guids2) (transpile t2 count2))
+     (values `(,tt1 != ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
+
     [(succeed) #:when (succeed? expr) (values (term ⊤) count '())]
     [(fail)    #:when (fail? expr)    (values (term ⊥) count '())]
 
@@ -187,7 +190,7 @@
      (define-values (id count1) (next-g-id "f" count))
      (define-values (tq count2 guids1) (map/fold-with-guids transpile qs count1))
      (define-values (tg count3 guids2) (transpile goal count2))
-     (values `((∃ ,tq ,tg ,id) (state () 0 () "s"))
+     (values `((∃ ,tq ,tg ,id) (state () () 0 () "s"))
              count3
              (cons id (append guids1 guids2)))]))
 
@@ -341,6 +344,20 @@
                      id)
              rest2)]
 
+    [(diseq t1 t2)
+     #:when (diseq? expr)
+     (define id (car guids))
+     (define rest (cdr guids))
+     (define-values (tt1 rest1) (add-guids t1 0 rest))
+     (define-values (tt2 rest2) (add-guids t2 0 rest1))
+     (values (format "~a[[~a]](=/= ~a ~a)[[/~a]]"
+                     (make-string s #\space)
+                     id
+                     tt1
+                     tt2
+                     id)
+             rest2)]
+
     [(relcall name terms)
      #:when (relcall? expr)
      (define id (car guids))
@@ -412,6 +429,7 @@
     [`(fresh ,vars . ,goals) (fresh (map var vars) (conj-goals (map parse-goal goals)))]
     [`(conde . ,clauses) (conde (map parse-clause clauses))]
     [`(== ,t1 ,t2) (unify (parse-term t1) (parse-term t2))]
+    [`(=/= ,t1 ,t2) (diseq (parse-term t1) (parse-term t2))]
     ['succeed (succeed)]
     ['fail (fail)]
     [`(,r . ,terms) (relcall (relname r) (map parse-term terms))]))
@@ -514,6 +532,9 @@
                      (== table `((,car1 . ,car2) . ,cdr3))
                      (make-assoc-tableo cdr1 cdr2 cdr3)))))
    '(run 5 (q) (same-lengtho '(abc def ghi) q)))
+
+(parse-prog
+  '((run* (q) (=/= q 'bear) (== q 'bear))))
 
 
 #;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table

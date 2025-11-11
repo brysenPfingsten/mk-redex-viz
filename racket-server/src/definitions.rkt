@@ -6,7 +6,7 @@
 
 #;(current-traced-metafunctions 'all)
 
-(provide L unify walk extend fresh-sub occurs?)
+(provide L unify walk extend fresh-sub occurs? invalid?)
 
 ;; Jason Hemann
 ;; Initial redex lang setup from Ryan Jung
@@ -45,6 +45,7 @@
   ;----------------------Goals----------------------------
   [g ⊤
      (t =? t o)    ; Syntactic equality w/ tag
+     (t != t o)    ; Syntactic disequality w/ tag
      (r t ... o)   ; Relation call w/ tag
      (g ∨ g o)     ; Disjunction w/ tag
      (g ∧ g o)     ; Conjunction w/ tag
@@ -69,8 +70,9 @@
      (nat natural)          ; Tagged natural = natural (not logic variable)
      boolean
      string]
-  [σ (state sub c trail o)] ; State
+  [σ (state sub dis c trail o)] ; State
   [sub ((natural t) ...)]   ; Substitution
+  [dis ((t t) ...)] ; Pairs of disequality constraints
   [maybe-sub sub #f]
   [maybe-state σ #f]
   [trail ((t =? t o) ...)]
@@ -117,6 +119,14 @@
    (where sub_1 (unify (walk t_1a sub) (walk t_2a sub) sub))]
   [(unify t_1 t_1 sub) sub]
   [(unify _ _ _) #f])
+
+(define-metafunction L
+  invalid? : sub dis -> boolean
+  [(invalid? sub ()) #f]
+  [(invalid? sub ((t_1 t_2) (t_3 t_4) ...)) 
+   #t (where sub (unify (walk t_1 sub) (walk t_2 sub) sub))]
+  [(invalid? sub_1 ((t_1 t_2) (t_3 t_4) ...))
+   (invalid? sub_1 ((t_3 t_4) ...))])
 
 (define-metafunction L
   walk : t sub -> t
