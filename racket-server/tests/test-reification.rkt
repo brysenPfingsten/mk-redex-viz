@@ -202,6 +202,17 @@
              (check-true (redex-match? L sub SUB4))
              (check-equal? (reify SUB4 '() 4 1)
                            (list #hasheq((sym . "hello")) #hasheq((sym . "world")))))
+
+  (test-case "Mutiple Variables with Pairs and Lists Reification"
+             (let ([sub1 '((0 (2 : 3)))])
+               (check-true (redex-match? L sub sub1))
+               (check-equal? (reify sub1 '() 4 2)
+                             (list (list "_.0" "_.1") "_.2")))
+             (let ([sub1 '((0 ("nested" : "pair")) 
+                           (1 (3 : 2)) 
+                           (2 (4 : empty)))])
+               (check-true (redex-match? L sub sub1))
+               (check-equal? (reify sub1 '() 5 2) '(("nested" "pair") ("_.0" "_.1")))))
   )
 
 (run-tests REIFICATION)

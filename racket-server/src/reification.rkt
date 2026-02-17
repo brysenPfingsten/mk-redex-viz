@@ -97,18 +97,18 @@
              ns)))
 
 ;; (T -> R) Pair<T> -> List<R>
-;; Purpose: map but for pair. How is this not built in?
+;; Purpose: map but for pairs
 (define (map/pair f p)
   (match p
-    [`(,a . ,d) (cons (f a) (map/pair f d))]
-    [else (list (f p))]))
+    [(cons a d) (cons (f a) (map/pair f d))]
+    [_          (list (f p))]))
 
 ;; Symbol or (ListOf Term) -> JSON
 ;; Purpose: post-process the raw result into JSON
 (define (process-reify-result result)
   (cond
-    [(list? result) (map mk->json result)]
-    [(pair? result) (map/pair mk->json result)]
+    [(list? result) (map process-reify-result result)]
+    [(pair? result) (map/pair process-reify-result result)]
     [else (mk->json result)]))
 
 
