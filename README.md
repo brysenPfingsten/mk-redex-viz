@@ -1,4 +1,4 @@
-# Modeling-miniKanren-in-Redex
+# miniKanren Semantics and Tree Stepper
 ## **Docker Setup**
 
 Follow the steps below to clone this repository, set up Docker, and run the application.
@@ -15,8 +15,8 @@ Before you begin, ensure you have the following installed:
 
 Open a terminal and run:
 ```sh
-git clone https://github.com/brysenPfingsten/Modeling-miniKanren-in-Redex.git
-cd Modeling-miniKanren-in-Redex
+git clone https://github.com/brysenPfingsten/mk-redex-viz.git
+cd mk-redex-viz
 docker login
 docker compose -f docker-compose.dev.yml up --build
 ```
