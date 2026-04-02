@@ -2,11 +2,10 @@
 
 (require rackunit
          rackunit/text-ui
-         json
          redex/reduction-semantics
          (prefix-in rt: "../src/random-test-support.rkt")
          (prefix-in gk: "./generator-kernel.rkt")
-         "../src/canonical-json.rkt"
+         "../src/search-lattice/picture.rkt"
          "../src/search-lattice/languages/core-lang.rkt"
          "../src/search-lattice/wf/core-wf.rkt"
          "../src/search-lattice/reduction-relations/core-red.rkt"
@@ -205,12 +204,46 @@
      (match (tagged-next* cfg)
        ['() #t]
        [(list (list _ cfg^))
-        (trace-zero-bounced? cfg^ (sub1 remaining))]
+       (trace-zero-bounced? cfg^ (sub1 remaining))]
+       [_ #f])]))
+
+(define (zero-bounced? cfg)
+  (zero? (count-bounced cfg)))
+
+(define (zero-shell-freshened? cfg)
+  (zero? (count-freshened-shell cfg)))
+
+(define (operational/extensional-agree? cfg)
+  (equal? (cfg->operational-picture cfg)
+          (cfg->extensional-picture cfg)))
+
+(define (trace-operational/extensional-agree? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (operational/extensional-agree? cfg)) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-operational/extensional-agree? cfg^ (sub1 remaining))]
+       [_ #f])]))
+
+(define (extensional-visible-json-wf/cfg? cfg)
+  (visible-json-wf? (cfg->extensional-picture cfg)))
+
+(define (trace-extensional-visible-json-wf/cfg? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (extensional-visible-json-wf/cfg? cfg)) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-extensional-visible-json-wf/cfg? cfg^ (sub1 remaining))]
        [_ #f])]))
 
 (define (cfg->visible-json cfg)
-  (string->jsexpr
-   (to-json/canonical cfg (num-query-vars/canonical cfg))))
+  (cfg->operational-picture cfg))
 
 (define (visible-json-wf/cfg? cfg)
   (visible-json-wf? (cfg->visible-json cfg)))
@@ -547,8 +580,14 @@
     (check-source-guarded-property "trace-exact-scope" trace-exact-scope?))
   (test-case "WF-guarded visible AST shape"
     (check-wf-guarded-property "visible-json-wf" visible-json-wf/cfg?))
+  (test-case "WF-guarded extensional picture shape"
+    (check-wf-guarded-property "extensional-visible-json-wf"
+                               extensional-visible-json-wf/cfg?))
   (test-case "Source-guarded visible AST shape through trace"
     (check-source-guarded-property "trace-visible-json-wf" trace-visible-json-wf/cfg?))
+  (test-case "Source-guarded extensional picture shape through trace"
+    (check-source-guarded-property "trace-extensional-visible-json-wf"
+                                   trace-extensional-visible-json-wf/cfg?))
   (test-case "Source-guarded Freshened accounting"
     (check-source-guarded-property "freshened-accounting" freshened-accounting?))
   (test-case "Source-guarded exact Freshened accounting"
@@ -557,9 +596,21 @@
   (test-case "Source-guarded Freshened monotonicity through trace"
     (check-source-guarded-property "trace-freshened-monotone"
                                    trace-freshened-monotone?))
+  (test-case "Source-guarded source states start with tree-only Freshened"
+    (check-source-guarded-property "zero-shell-freshened"
+                                   zero-shell-freshened?))
+  (test-case "WF-guarded operational and extensional pictures agree in core"
+    (check-wf-guarded-property "operational/extensional-agree"
+                               operational/extensional-agree?))
+  (test-case "Source-guarded operational and extensional pictures agree through trace"
+    (check-source-guarded-property "trace-operational/extensional-agree"
+                                   trace-operational/extensional-agree?))
   (test-case "Source-guarded core traces never introduce Bounced"
     (check-source-guarded-property "trace-zero-bounced"
-                                   trace-zero-bounced?)))
+                                   trace-zero-bounced?))
+  (test-case "WF-guarded core configurations never contain Bounced"
+    (check-wf-guarded-property "zero-bounced"
+                               zero-bounced?)))
 
 (define/provide-test-suite PROPERTY-CORE
   #:before

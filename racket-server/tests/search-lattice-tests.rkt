@@ -4,7 +4,7 @@
          rackunit
          rackunit/text-ui
          redex/reduction-semantics
-         "../src/canonical-json.rkt"
+         "../src/search-lattice/picture.rkt"
          (prefix-in lang:
                     "../src/search-lattice/languages/all.rkt")
          (prefix-in red:
@@ -417,17 +417,61 @@
 
   (test-case "canonical JSON preserves bounced observables under Freshened prefixes"
     (define rendered
-      (string->jsexpr
-       (to-json/canonical
-        (term (() (FreshenedShell
-                   (u:0)
-                   (Bounced (empty-tree))
-                   (label "fresh"))))
-        0)))
+      (cfg->operational-picture
+       (term (() (FreshenedShell
+                  (u:0)
+                  (Bounced (empty-tree))
+                  (label "fresh"))))))
     (check-equal? (hash-ref rendered 'name) "Freshened")
     (check-equal? (hash-ref rendered 'id) "fresh")
     (define child (first (hash-ref rendered 'children)))
     (check-equal? (hash-ref child 'name) "Bounced"))
+
+  (test-case "extensional pictures erase bounced nodes while operational pictures keep them"
+    (define cfg
+      (term (() (FreshenedShell
+                 (u:0)
+                 (Bounced (empty-tree))
+                 (label "fresh")))))
+    (define operational (cfg->operational-picture cfg))
+    (define extensional (cfg->extensional-picture cfg))
+    (check-equal? (hash-ref operational 'name) "Freshened")
+    (check-equal? (hash-ref (first (hash-ref operational 'children)) 'name) "Bounced")
+    (check-equal? (hash-ref extensional 'name) "Freshened")
+    (check-equal? (hash-ref (first (hash-ref extensional 'children)) 'name) "Empty"))
+
+  (test-case "summary judgments expose answer, bounced, and freshening counts"
+    (define sigma-u0
+      (term (state () () (u:0) () (label "su0"))))
+    (define core-summary
+      (first
+       (judgment-holds
+        (wf:wf-summary-cfg/core?
+         ,(term (FreshenedTree (u:0)
+                               (⊤ ,sigma-u0)
+                               (label "fresh")))
+         summary)
+        summary)))
+    (define delay-summary
+      (first
+       (judgment-holds
+        (wf:wf-summary-cfg/delay?
+         ,(term (FreshenedShell
+                 (u:0)
+                 (Bounced (⊤ ,sigma-u0))
+                 (label "fresh")))
+         summary)
+        summary)))
+    (define disj-summary
+      (first
+       (judgment-holds
+        (wf:wf-summary-cfg/disj?
+         ,(term ((⊤ ,sigma-a) + ((⊤ ,sigma-b) + (empty-tree))))
+         summary)
+        summary)))
+    (check-equal? core-summary '(wf-summary 1 0 1 0))
+    (check-equal? delay-summary '(wf-summary 1 1 0 1))
+    (check-equal? disj-summary '(wf-summary 2 0 0 0)))
 
   (test-case "search-only scheduler variants differ only in delayed left-branch policy"
       (for ([entry (in-list

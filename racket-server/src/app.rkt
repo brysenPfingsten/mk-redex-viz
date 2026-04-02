@@ -4,7 +4,7 @@
          net/url-structs
          web-server/http
          web-server/servlet-env
-         "canonical-json.rkt"
+         "search-lattice/picture.rkt"
          "search-runtime.rkt"
          "search-strategy.rkt"
          "sexpr-read.rkt"
@@ -40,6 +40,9 @@
 (struct step (name prog) #:transparent)
 (struct session (zipper stepper nqv search-strategy) #:transparent)
 
+(define (program->json-string prog nqv)
+  (jsexpr->string (cfg->operational-picture prog nqv)))
+
 (define (make-empty-session [strategy default-search-strategy])
   (define normalized (normalize-search-strategy strategy))
   (session (make-empty-zipper)
@@ -56,14 +59,14 @@
                  (step "Initialize Program" prog)))
    (struct-copy session ses
                 [zipper seeded-zipper]
-                [nqv (num-query-vars/canonical prog)])])
+                [nqv (program-query-var-count prog)])])
 
 (define/match (step->response a-step a-idx nqv)
   [((step name prog) a-idx nqv)
    (response/jsexpr
     (hasheq 'stepName name
             'step a-idx
-            'program (to-json/canonical prog nqv))
+            'program (program->json-string prog nqv))
     #:mime-type #"application/json; charset=utf-8")])
 
 (define/match (step->response/start a-step nqv)
@@ -71,7 +74,7 @@
    (response/jsexpr
     (hasheq 'stepName name
             'step 0
-            'program (to-json/canonical prog nqv))
+            'program (program->json-string prog nqv))
     #:mime-type #"application/json; charset=utf-8"
     #:headers (list (make-header #"X-Is-Start" #"true")))])
 
@@ -80,7 +83,7 @@
    (response/jsexpr
     (hasheq 'stepName name
             'step 0
-            'program (to-json/canonical prog nqv)
+            'program (program->json-string prog nqv)
             'htmlGuids tagged-prog)
     #:mime-type #"application/json; charset=utf-8"
     #:headers
