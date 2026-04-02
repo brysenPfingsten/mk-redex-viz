@@ -1,27 +1,71 @@
 #lang racket
 
-(require "../src/definitions.rkt"
-         "../src/syntax-checking.rkt"
-         "../src/judgment-forms.rkt")
+(require "../src/syntax-checking.rkt"
+         "../src/core-definitions.rkt"
+         "../src/wf-core.rkt"
+         "../src/transpiler.rkt")
 (require redex/reduction-semantics
          rackunit
          rackunit/text-ui)
 
-(define WELL-FORMED-PROG (term (() ())))
-(define BAD-FORMED-PROG (term (((r:goneo "r0") (state () 0 () "s")) ())))
+(define WELL-FORMED-CONFIG (term (() (empty-tree))))
+(define BAD-FORMED-CONFIG
+  (term (() ((u:1 =? (sym "a") (label "t"))
+             (state () () () (label "s"))))))
+
+(define (read-all port)
+  (let ([expr (read port)])
+    (if (eof-object? expr)
+        '()
+        (cons expr (read-all port)))))
 
 (define-test-suite WELL-FORMED
-  (test-case "Well Formed Program Returns Empty String"
-             (check-true (redex-match? L p WELL-FORMED-PROG))
-             (check-true (judgment-holds (closed-program? ,WELL-FORMED-PROG)))
-             (check-not-exn (λ () (check-well-formed WELL-FORMED-PROG)) ""))
+  (test-case "Well-formed canonical config is accepted"
+             (check-true (redex-match? Core config WELL-FORMED-CONFIG))
+             (check-true (canonical-core-shape? WELL-FORMED-CONFIG))
+             (check-true (canonical-well-formed? WELL-FORMED-CONFIG))
+             (check-not-exn (λ () (check-canonical-well-formed WELL-FORMED-CONFIG)) ""))
 
-  (test-case "Non Well Formed Program Returns Error Message"
-             (check-true (redex-match? L p BAD-FORMED-PROG))
-             (check-false (judgment-holds (closed-program? ,BAD-FORMED-PROG)))
+  (test-case "Malformed canonical config is rejected"
+             (check-true (redex-match? Core config BAD-FORMED-CONFIG))
+             (check-true (canonical-core-shape? BAD-FORMED-CONFIG))
+             (check-false (canonical-well-formed? BAD-FORMED-CONFIG))
              (check-exn exn:fail?
-                        (λ () (check-well-formed BAD-FORMED-PROG))
-                        "Program is not well formed!")))
+                        (λ () (check-canonical-well-formed BAD-FORMED-CONFIG))))
+
+  (test-case "Canonical core gate rejects malformed canonical core program"
+             (define bad-canonical
+               '(() ((u:1 =? (sym "a") (label "t"))
+                     (state () () () (label "s")))))
+             (check-true (canonical-core-shape? bad-canonical))
+             (check-false (canonical-well-formed? bad-canonical))
+             (check-exn exn:fail?
+                        (λ () (check-canonical-well-formed bad-canonical))))
+
+  (test-case "Canonical L4 gate accepts non-core shape directly"
+             (define non-core-canonical '(() (delay (empty-tree))))
+             (check-false (canonical-core-shape? non-core-canonical))
+             (check-true (canonical-target-in-domain? non-core-canonical "L4/config"))
+             (check-true (canonical-target-well-formed? non-core-canonical "L4/config"))
+             (check-not-exn
+              (λ () (check-canonical-well-formed non-core-canonical))))
+
+  (test-case "Canonical gate rejects out-of-target-domain term"
+             (define out-of-domain-canonical '(bogus))
+             (check-false (canonical-target-in-domain? out-of-domain-canonical "L4/config"))
+             (check-exn exn:fail?
+                        (λ () (check-canonical-well-formed out-of-domain-canonical))))
+
+  (test-case "Surface parser emits canonical config accepted by L4 gate"
+             (define src
+               "(defrel (same x y) (== x y))
+(run* (q) (same q 'cat))")
+             (define-values (canonical _html)
+               (parse-prog/canonical (read-all (open-input-string src))))
+             (check-true (canonical-target-in-domain? canonical "L4/config"))
+             (check-true (canonical-target-well-formed? canonical "L4/config"))
+             (check-not-exn
+              (λ () (check-canonical-well-formed canonical)))))
 
 (define GOOD-SYNTAX-PROG 
   "

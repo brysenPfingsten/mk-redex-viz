@@ -1,0 +1,56 @@
+microKanren-rail | appendo | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-rail | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-rail | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+microKanren-rail | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+microKanren-rail | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-rail | same | value | steps=27 | last=core/collect-answer | 
+microKanren-rail | div3o | cap | steps=400 | last=rail/enter-right | cap400
+microKanren-noi-flip | appendo | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-noi-flip | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-noi-flip | appendoh 2 | stuck | steps=16 | last=call/delay-through-conj | 
+microKanren-noi-flip | fives/fours | stuck | steps=3 | last=call/lazy-suspend-call | 
+microKanren-noi-flip | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-noi-flip | same | stuck | steps=4 | last=call/lazy-suspend-call | 
+microKanren-noi-flip | div3o | stuck | steps=22 | last=call/lazy-suspend-call | 
+microKanren-dfs-nodelay | appendo | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | appendoh 1 | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | appendoh 2 | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | fives/fours | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | call timing | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | same | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | div3o | incompatible | steps=0 | last= | not-in-domain
+microKanren-flip | appendo | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-flip | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-flip | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+microKanren-flip | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+microKanren-flip | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-flip | same | value | steps=27 | last=core/collect-answer | 
+microKanren-flip | div3o | cap | steps=400 | last=flip/delay-swap-left | cap400
+microKanren-rail-eager | appendo | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-rail-eager | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-rail-eager | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+microKanren-rail-eager | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+microKanren-rail-eager | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-rail-eager | same | value | steps=27 | last=core/collect-answer | 
+microKanren-rail-eager | div3o | cap | steps=400 | last=rail/enter-right | cap400
+microKanren-flip-eager | appendo | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-flip-eager | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+microKanren-flip-eager | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+microKanren-flip-eager | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+microKanren-flip-eager | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-flip-eager | same | value | steps=27 | last=core/collect-answer | 
+microKanren-flip-eager | div3o | cap | steps=400 | last=flip/delay-swap-left | cap400
+dmitry | appendo | value | steps=31 | last=core/conj-prune-fail | 
+dmitry | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+dmitry | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+dmitry | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+dmitry | call timing | value | steps=6 | last=core/collect-answer | 
+dmitry | same | value | steps=27 | last=core/collect-answer | 
+dmitry | div3o | cap | steps=400 | last=rail/enter-right | cap400
+dfs | appendo | value | steps=31 | last=core/conj-prune-fail | 
+dfs | appendoh 1 | value | steps=31 | last=core/conj-prune-fail | 
+dfs | appendoh 2 | cap | steps=400 | last=call/delay-through-conj | cap400
+dfs | fives/fours | cap | steps=400 | last=disj/goal-to-tree | cap400
+dfs | call timing | value | steps=6 | last=core/collect-answer | 
+dfs | same | value | steps=27 | last=core/collect-answer | 
+dfs | div3o | cap | steps=400 | last=rail/enter-right | cap400

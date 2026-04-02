@@ -156,8 +156,23 @@ function drawTextNode(group, textContent, padding = 10, outline="") {
 }
 
 function drawProceedNode(group, data) {
-    const argsText = data.goal.args ? data.goal.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
-    const textContent = `(${data.goal.rel} ${argsText})`;
+    const goal = data?.goal || {};
+    let textContent;
+
+    if (goal.rel) {
+      const args = Array.isArray(goal.args) ? goal.args : [];
+      const argsText = args.map(t => (t && t.var) ? t.var : termToString(t)).join(' ');
+      textContent = `(${goal.rel}${argsText ? ` ${argsText}` : ""})`;
+    } else if (goal.name === "Unify") {
+      textContent = `(== ${termToString(goal.left)} ${termToString(goal.right)})`;
+    } else if (goal.name === "Succeed") {
+      textContent = `(succeed)`;
+    } else if (goal.name) {
+      textContent = `(proceed ${goal.name})`;
+    } else {
+      textContent = `(proceed ...)`;
+    }
+
     return drawTextNode(group, textContent, 10, "green");
 }
 
@@ -173,8 +188,10 @@ function drawFreshNode(group, data) {
 }
 
 function drawRelCallNode(group, data) {
-    const argsText = data.args ? data.args.map(t => t.var ? t.var : termToString(t)).join(' ') : '';
-    const textContent = `(${data.rel} ${argsText})`;
+    const rel = data?.rel || "call";
+    const args = Array.isArray(data?.args) ? data.args : [];
+    const argsText = args.map(t => (t && t.var) ? t.var : termToString(t)).join(' ');
+    const textContent = `(${rel}${argsText ? ` ${argsText}` : ""})`;
     return drawTextNode(group, textContent);
 }
 

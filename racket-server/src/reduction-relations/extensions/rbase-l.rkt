@@ -2,7 +2,7 @@
 
 (require redex/reduction-semantics
          "./common.rkt"
-         "./rdisj-left.rkt"
+         "./rdisj-l3-common.rkt"
          "./core-l3.rkt")
 
 (check-redundancy #t)
@@ -15,43 +15,33 @@
     #:domain config
     ;; Stage 1 (inside active branch): call contexts from L1.
     ;; Stage 2 (outside): left-disjunction scheduler contexts.
-    [--> (Γ ans* (in-hole Kleft (in-hole Kcall ((r t ... tag) σ))))
-         (Γ ans* (in-hole Kleft (in-hole Kcall (delay (proceed ((r t ... tag) σ)))))
-                 )
+    [--> (Γ (in-hole Kleft (in-hole Kcore ((r t ... tag) σ))) as)
+         (Γ (in-hole Kleft (in-hole Kcore (delay (proceed ((r t ... tag) σ)))) ) as)
          "call/lazy-suspend-call"]
 
-    [--> (Γ ans* (in-hole Kleft (in-hole Kcall (delay (proceed ((r t ... tag) σ))))))
-         (Γ ans* (in-hole Kleft (in-hole Kcall (proceed ((r t ... tag) σ))))
-                 )
+    [--> (Γ (in-hole Kdelay (delay (proceed ((r t ... tag) σ)))) as)
+         (Γ (in-hole Kdelay (proceed ((r t ... tag) σ))) as)
          "call/lazy-invoke-delay"]
 
-    [--> (Γ ans* (in-hole Kleft (in-hole Kcall (proceed ((r t ... tag) σ)))))
-         (Γ ans* (in-hole Kleft (in-hole Kcall (g_new σ))))
+    [--> (Γ (in-hole Kleft (in-hole Kcore (proceed ((r t ... tag) σ)))) as)
+         (Γ (in-hole Kleft (in-hole Kcore (g_new σ))) as)
          (where g_new ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-         "call/lazy-expand-on-resume"]))
+         "call/lazy-expand-on-resume"]
+
+    [--> (Γ (in-hole Kleft (in-hole Kcore ((delay s_1) × g c))) as)
+         (Γ (in-hole Kleft (in-hole Kcore (delay (s_1 × g c)))) as)
+         "call/delay-through-conj"]))
+
+(define call+core-l3/lazy
+  (union-reduction-relations
+   call-lazy-extra/l3
+   core-cfg/l3))
 
 (define disj-extra/l3
-  (reduction-relation
-    L3/K
-    #:domain config
-    [--> (Γ ans* (in-hole Kleft (in-hole Kcore ((g_1 ∨ g_2 tag) σ))))
-         (Γ ans* (in-hole Kleft (in-hole Kcore ((g_1 σ) <-+ (g_2 σ)))))
-         "disj/goal-to-tree"]
-
-    [--> (Γ ans* (in-hole Kleft (in-hole Kcore ((s_1 <-+ s_2) × g c))))
-         (Γ ans* (in-hole Kleft (in-hole Kcore ((s_1 × g c) <-+ (s_2 × g c)))))
-         "disj/distribute-over-conj"]
-
-    [--> (Γ (σ ...) (in-hole Kleft ((⊤ σ_new) <-+ s_right)))
-         (Γ (σ ... σ_new) (in-hole Kleft s_right))
-         "disj/collect-left-answer"]
-
-    [--> (Γ ans* (in-hole Kleft ((empty-tree) <-+ s_right)))
-         (Γ ans* (in-hole Kleft s_right))
-         "disj/skip-left-fail"]))
+  (make-disj-extra/l3 call+core-l3/lazy))
 
 (define Rbase-l
   (union-reduction-relations
    call-lazy-extra/l3
    disj-extra/l3
-   core-base-extra-l3))
+   core-cfg/l3))

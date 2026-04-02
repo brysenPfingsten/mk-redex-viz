@@ -5,7 +5,9 @@
          "definitions.rkt"
          "reification.rkt")
 
-(provide to-json prog->tree num-query-vars)
+(provide to-json
+         prog->tree
+         num-query-vars)
 
 (define num-of-query-vars 'uninitialized)
 (define (set-num-query-vars! n)

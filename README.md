@@ -22,6 +22,12 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 Finally, visit [localhost:5173](http://localhost:5173).
 
+### Docker Compose Notes
+
+- `docker-compose.dev.yml` is the supported dev stack (`frontend` on `5173`, backend servlet on `5000`).
+- In the dev frontend container, API calls are expected to go through the Vite proxy (`/api -> racket-server:5000`).
+- `docker-compose.yaml` binds frontend on `8080`; if that port is in use, startup will fail with an "address already in use" error.
+
 ## **Test Lanes**
 
 Use the lane that matches what you are validating.
@@ -40,23 +46,19 @@ Includes syntax-compat checks that frontend example programs parse and lift to `
 raco test racket-server/tests/test-all.rkt
 ```
 
-### **3) Legacy semantics lane (manual host lane)**
-
-This lane exercises legacy Redex models and visual smoke tests:
+### **3) Frontend compatibility-gating lane**
 
 ```sh
-raco test \
-  racket-server/tests/test-reduction-relations.rkt \
-  racket-server/tests/unit-tests.rkt \
-  racket-server/tests/translator-tests.rkt \
-  racket-server/tests/visual-tests.rkt \
-  racket-server/tests/test-dmitry-and-dmitry.rkt
+npm --prefix frontend test
 ```
 
-Optional interactive visual check:
+### **4) Model×Example API-flow matrix lane**
+
+Automates model selection + example execution checks across the full cross-product
+using backend endpoints (analyze/model/init/step), up to 25 steps or termination.
 
 ```sh
-racket racket-server/tests/visual-tests.rkt
+raco test racket-server/tests/model-example-matrix-tests.rkt
 ```
 
 ## **Backend Model Registry**
@@ -71,6 +73,33 @@ Each entry includes:
 - `id` (used by `POST /api/post/model`)
 - `label` (display name)
 - `parserProfile` (currently `"surface->l4"` for all registered models)
+- `parserTarget` (currently `"L4/config"` for all registered models)
+
+## **LLM Orientation (Minimal)**
+
+Use this if you are jumping in with no project history:
+
+- Canonical parser/transpiler target is **L4 config syntax**:
+  - `parserProfile = "surface->l4"`
+  - `parserTarget = "L4/config"`
+- Backend canonical entry points live in:
+  - `racket-server/src/transpiler.rkt` (`parse-prog/canonical`)
+  - `racket-server/src/app.rkt` (`init!` enforces canonical config shape)
+  - `racket-server/src/model-registry.rkt` (exposes parser contract in `/api/get/models`)
+- Canonical WF stack is split by layer:
+  - `racket-server/src/wf-kernel.rkt` (shared term/state/substitution checks)
+  - `racket-server/src/wf-core.rkt` (core judgments/shapes)
+  - `racket-server/src/wf-variants.rkt` (L1/L2/L3/L4 judgments)
+- Frontend examples are source-of-truth in:
+  - `frontend/src/utils/example_programs.js`
+- Integration test auto-loads all frontend examples and checks parse + lift to canonical target:
+  - `racket-server/tests/example-compat-tests.rkt`
+
+Fast validation command:
+
+```sh
+raco test racket-server/tests/test-all-headless.rkt
+```
 
 ## **Configuration**
 

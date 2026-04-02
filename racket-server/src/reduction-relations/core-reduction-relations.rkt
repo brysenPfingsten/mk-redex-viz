@@ -1,11 +1,12 @@
 #lang racket
 (require redex/reduction-semantics
          "../core-definitions.rkt"
-         "../core-judgment-forms.rkt")
+         "../wf-core.rkt"
+         "./step-utils.rkt")
 
 (check-redundancy #t)
 
-(provide -->cfg -->cfg/base -->cfg/whole step-once -->*e)
+(provide -->cfg step-once -->*e)
 
 (module+ examples)
 
@@ -15,14 +16,8 @@
 
 ;; Term -> [Listof [List String Term]]
 (define (step-once prog)
-  (apply-reduction-relation/tag-with-names -->cfg/whole (term ,prog)))
-
-(define -->cfg/whole
-  (reduction-relation
-    Core
-
-    [--> (Γ (σ ...) (⊤ σ_new))
-         (Γ (σ ... σ_new) (empty-tree))]))
+  (dedupe-tagged-successors
+   (apply-reduction-relation/tag-with-names -->cfg (term ,prog))))
 
 (define -->e
   (reduction-relation
@@ -44,6 +39,10 @@
          (empty-tree)
          "Prune Failed Conjuncts"]
 
+    [--> ((emit σ_head s_tail) × g c)
+         (emit σ_head (s_tail × g c))
+         "Distribute Conjunction Over Emit"]
+
     [--> ((∃ d g tag) (state sub c trail tag_1))
          ((subst-goal g ((x_1 u_1) ...))
           (state sub (u_1 ... ,@(term c)) trail tag_1))
@@ -60,11 +59,28 @@
          (empty-tree)
          (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
           "Unification Fails"]
+
     ))
 
-(define -->*e (compatible-closure -->e Core s))
-(define -->cfg/base (context-closure -->*e Core (Γ ans* hole)))
-(define -->cfg (union-reduction-relations -->cfg/base -->cfg/whole))
+(define -->*e (context-closure -->e Core Es))
+
+(define -->collect
+  (reduction-relation
+   Core
+   #:domain config
+   [--> (Γ (⊤ σ_new) as_old)
+        (Γ (empty-tree) (append-answer as_old σ_new))
+        "Collect Single Answer"]
+   [--> (Γ (emit σ_new s_next) as_old)
+        (Γ s_next (append-answer as_old σ_new))
+        "Collect Emit"]))
+
+(define -->cfg/work (context-closure -->*e Core (Γ hole as)))
+
+(define -->cfg
+  (union-reduction-relations
+   -->cfg/work
+   -->collect))
 
 (module+ examples
   (provide trivial-conjunction-tree)
@@ -122,7 +138,12 @@
                         (state () () () (label "cat")))))
 
   (check-true (judgment-holds (wf-tree? ,trivial-conjunction-tree () ())))
-  (check-true (judgment-holds (wf-tree? ,trivial-conjunction-tree ((r:foo (x:1 x:2 x:3))) ())))
+  (check-true
+   (judgment-holds
+    (wf-tree?
+     ,trivial-conjunction-tree
+     ((r:foo (x:1 x:2 x:3) (succeed (label "ok"))))
+     ())))
 
   (define (progress? cfg)
     (or (final-config? cfg)

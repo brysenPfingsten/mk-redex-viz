@@ -23,26 +23,32 @@ Runs the app-level test suite used for server behavior regression checks.
 raco test racket-server/tests/test-all.rkt
 ```
 
-## Lane C: Legacy Semantics (manual host lane)
+## Lane C: Frontend Compatibility-Gating Logic
 
-Runs legacy Redex semantics and visual smoke tests.
+Runs pure frontend logic tests for compatibility analysis status + Start-button gating behavior.
 
 ```sh
-raco test \
-  racket-server/tests/test-reduction-relations.rkt \
-  racket-server/tests/unit-tests.rkt \
-  racket-server/tests/translator-tests.rkt \
-  racket-server/tests/visual-tests.rkt \
-  racket-server/tests/test-dmitry-and-dmitry.rkt
+npm --prefix frontend test
 ```
 
-Optional interactive stepper:
+## Lane D: Model×Example API-Flow Matrix (automated GUI-proxy)
+
+Runs full model/example compatibility and stepping audit without manual clicking:
+- analyze source (`POST /api/post/analyze`)
+- switch model (`POST /api/post/model`)
+- init (`POST /api/post/init`)
+- step up to 25 or termination (`GET /api/get/next`)
+- assert payload shape each step (`step`, `stepName`, JSON `program`)
+
+Tiering policy:
+- Heavy coverage (`L3/L4` surfaced models): full example matrix.
+- Internal smoke (`L0/L1/L2` hidden models): bounded seam/smoke checks only.
 
 ```sh
-racket racket-server/tests/visual-tests.rkt
+raco test racket-server/tests/model-example-matrix-tests.rkt
 ```
 
 ## Notes
 
-- `translator-tests.rkt` now executes a real suite (`TRANSLATOR-LEGACY`) instead of reporting "No tests run."
-- Keep GUI/manual lane failures separate from headless lane failures when triaging.
+- Deprecated legacy suites are archived under `racket-server/tests/archive/legacy-deprecated/`.
+- Supported lanes are `A`/`B`/`C`/`D` above.

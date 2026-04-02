@@ -1,13 +1,12 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "./l1-calls-delay.rkt")
+         "./l1-calls-delay.rkt"
+         "./l2-left-disjunction.rkt")
 
 (check-redundancy #t)
 
 (provide L3)
 
-;; L3 merges L1 with left-disjunction syntax.
-(define-extended-language L3 L1
-  [g .... (g ∨ g tag)]
-  [s .... (s <-+ s)])
+;; L3 is the syntax union of L1 and L2.
+(define-union-language L3 L1 L2)

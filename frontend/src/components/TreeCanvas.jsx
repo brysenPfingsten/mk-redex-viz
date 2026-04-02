@@ -9,11 +9,9 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: "" });
 
     const goalIdRef = useRef(selectedGoalId);
-    const stateIdRef = useRef(selectedStateId);
 
     useEffect(() => {
         goalIdRef.current = selectedGoalId;
-        stateIdRef.current = selectedStateId;
     }, [selectedGoalId, selectedStateId]);
 
     const clearHighlights = () => {
@@ -37,20 +35,25 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
     }, [selectedGoalId]);
     
     useImperativeHandle(ref, () => ({
-        updateSidebar(sId) {
-        d3.select(svgRef.current)
-            .selectAll('g.node')
-            .filter(d => d.data.stateId === sId)
-            .dispatch('click');
-        }
-    }));
-
-    useImperativeHandle(ref, () => ({
         updateSidebar: (sId) => {
-        d3.select(svgRef.current)
-            .selectAll('g.node')
-            .filter(d => d.data.stateId === sId)
-            .dispatch('click');
+            if (!sId) return;
+            const nodeSel = d3.select(svgRef.current)
+                .selectAll('g.node')
+                .filter(d => d?.data?.stateId === sId);
+
+            if (nodeSel.empty()) return;
+
+            // Prefer a node with concrete state payload when multiple nodes share stateId.
+            const richNodeSel = nodeSel.filter(d =>
+                (Array.isArray(d?.data?.sub) && d.data.sub.length > 0) ||
+                (Array.isArray(d?.data?.trail) && d.data.trail.length > 0) ||
+                d?.data?.reified !== undefined
+            );
+
+            const target = (richNodeSel.empty() ? nodeSel : richNodeSel).node();
+            if (target) {
+                d3.select(target).dispatch('click');
+            }
         },
         redraw: (treeData) => {
             const svg = d3.select(svgRef.current).html('');
@@ -85,7 +88,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             .separation((a, b) => {
                 const padding = 20; 
                 if (a.parent === b.parent) return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding;
-                else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;s
+                else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;
             });
             
             // Compute the layout with adjusted spacing
@@ -143,7 +146,6 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
                 let sId = d.data.stateId;
                 let gId = d.data.id;
                 const prevGoalId = goalIdRef.current;
-                const prevStateId = stateIdRef.current;
 
                 if (event.isTrusted && gId === prevGoalId) {
                     sId = null;

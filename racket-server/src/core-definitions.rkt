@@ -8,7 +8,14 @@
 
 #;(current-traced-metafunctions 'all)
 
-(provide Core unify walk extend occurs? fresh-substitution subst-goal)
+(provide Core
+         unify
+         walk
+         extend
+         occurs?
+         fresh-substitution
+         subst-goal
+         append-answer)
 
 (module+ test
   (require rackunit)
@@ -18,19 +25,17 @@
 
 (define-language Core
   ;--------------------Top Level-------------------------
-  [config (Γ ans* s)]    ; Program
+  [config (Γ s as)] ; Program: active work + produced answer stream
 
   [Γ ((r_!_ d g) ...)]  ; Relation Environment w/ distinct relation names
   [d (x_!_ ...)]        ; Distinct variable declarations
-  [ans* (σ ...)]
 
   ;-------------------Search Trees------------------------
   [s (empty-tree)               ; Empty Tree / Failure
      (g σ)                      ; Goal-State
      (s × g c)                  ; Conjunction, w/vars used so far.
-     (⊤ σ)
-
-     ;; ((⊤ σ) + s)                ; Answer Stream
+     (⊤ σ)                      ; Immediate single answer
+     (emit σ s)                 ; Emit answer, then continue with work tree
 
      ;; (s +-> s)                  ; Right Disjunciton
      ;; (s <-+ s)                  ; Left Disjunction
@@ -76,13 +81,16 @@
   [sub ((u_!_ t) ...)]        ; Substitution, make the vars definitionally distinct
   [maybe-sub sub #f]
   [trail (eq ...)]
-  [end-config (Γ ans* (empty-tree))]
+  [as (empty-stream)
+      (⊤ σ)
+      ((⊤ σ) + as)]
+  [end-config (Γ (empty-tree) as)]
   [c (u_!_ ...)]
   ;-----------------Evaluation Contexts------------------
 
   ; Search Tree
   [Es hole
-      (Es × g)
+      (Es × g c)
       ;; (Es <-+ s)
       ;; (s +-> Es)
   ]
@@ -121,15 +129,32 @@
   (check-true (redex-match? Core s (term (⊤ (state () () () (label "Om"))))))
   (check-true (redex-match? Core s (term ((u:0 =? (sym "a") (label "t")) (state ((u:0 (sym "a"))) (u:0) () (label "σ"))))))
 
-  (check-true (redex-match? Core config (term (() () (empty-tree)))))
+  (check-true (redex-match? Core config (term (() (empty-tree) (empty-stream)))))
 
 )
+
+(define-metafunction Core
+  append-answer : as σ -> as
+  [(append-answer (empty-stream) σ_new)
+   (⊤ σ_new)]
+  [(append-answer (⊤ σ_old) σ_new)
+   ((⊤ σ_old) + (⊤ σ_new))]
+  [(append-answer ((⊤ σ_old) + as_tail) σ_new)
+   ((⊤ σ_old) + (append-answer as_tail σ_new))])
 
 
 (define-metafunction Core
   walk : t sub -> t
   [(walk u (name sub (_ ... [u t] _ ...))) (walk t sub)]
   [(walk t _) t])
+
+;; Pick the least-indexed u:n not already present in `used`.
+(define (fresh-u-symbol used)
+  (let loop ([n 0])
+    (define u (string->symbol (format "u:~a" n)))
+    (if (member u used)
+        (loop (add1 n))
+        u)))
 
 ;; Build ((x u) ...) where each u is fresh w.r.t. c and previously chosen u's.
 (define-metafunction Core
@@ -141,7 +166,7 @@
         (for/fold ([rev-pairs '()]
                    [used used0])
                   ([x (in-list xs)])
-          (define u (variable-not-in (cons 'u: used) 'u:))
+          (define u (fresh-u-symbol used))
           (values (cons (list x u) rev-pairs)
                   (cons u used))))
       (reverse rev-pairs))])
@@ -204,6 +229,10 @@
 
   (check-equal? (term (walk (u:2 : (sym "q")) ((u:2 (sym "p")))))
                 (term (u:2 : (sym "q"))))
+
+  (check-equal?
+   (term (fresh-substitution () (x:0)))
+   (term ((x:0 u:0))))
 
   (define fs-pairs
     (term (fresh-substitution (u:0 u:1) (x:0 x:1 x:2))))

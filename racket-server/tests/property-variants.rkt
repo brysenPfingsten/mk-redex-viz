@@ -11,115 +11,118 @@
 
 (define-test-suite VARIANT-SMOKE
   (test-case "eager vs lazy first-step call expansion differs"
-    (define eager-next (first (apply-reduction-relation Rcall-eager cfg-call)))
-    (define lazy-next (first (apply-reduction-relation Rcall-lazy cfg-call)))
+    (define eager-next (first (apply-reduction-relation Rl1-call-eager cfg-call)))
+    (define lazy-next (first (apply-reduction-relation Rl1-call-lazy cfg-call)))
     ;; eager payload has already substituted away the call
     (check-false (member 'r:id (symbols-in (tree-of eager-next))))
     ;; lazy payload still carries relation call in proceed frame
     (check-not-false (member 'r:id (symbols-in (tree-of lazy-next)))))
 
   (test-case "left disjunction collects left answer first"
-    (define next1 (first (apply-reduction-relation Rdisj-left cfg-disj)))
+    (define next1 (first (apply-reduction-relation Rl2-disj-left cfg-disj)))
     (check-equal?
      next1
-     (term (() ((state () () () (label "a")))
-               (⊤ (state () () () (label "b"))))))
-    (define next2 (first (apply-reduction-relation Rdisj-left next1)))
+     (term (() (emit (state () () () (label "a"))
+                     (⊤ (state () () () (label "b"))))
+               (empty-stream))))
+    (define next2* (apply-reduction-relation Rl2-disj-left next1))
+    (check-equal? (length next2*) 1)
     (check-equal?
-     next2
-     (term (() ((state () () () (label "a"))
-                (state () () () (label "b")))
-               (empty-tree)))))
+     (first next2*)
+     (term (() (⊤ (state () () () (label "b")))
+               (⊤ (state () () () (label "a")))))))
 
   (test-case "Rbase variants can step call and disjunction configs"
-    (check-false (null? (apply-reduction-relation Rbase-e cfg-call)))
-    (check-false (null? (apply-reduction-relation Rbase-l cfg-call)))
-    (check-false (null? (apply-reduction-relation Rbase-e (term (() () ((⊤ ,sigma-a) <-+ (⊤ ,sigma-b)))))))
-    (check-false (null? (apply-reduction-relation Rbase-l (term (() () ((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))))))))
+    (check-false (null? (apply-reduction-relation Rl3-pre-eager cfg-call)))
+    (check-false (null? (apply-reduction-relation Rl3-pre-lazy cfg-call)))
+    (check-false (null? (apply-reduction-relation Rl3-pre-eager (term (() ((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
+                                                                      (empty-stream))))))
+    (check-false (null? (apply-reduction-relation Rl3-pre-lazy (term (() ((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
+                                                                     (empty-stream)))))))
 
   (test-case "flip branch keeps left-only disjunction syntax"
-    (define flipped (first (apply-reduction-relation Rflip-e cfg-flip)))
-    (check-true
-     (redex-match? L3 config
-                   (term (() () (delay ((⊤ ,sigma-b) <-+ (empty-tree))))))
-     "expected flip step to swap left-only disjunction branches")
+    (define flipped (first (apply-reduction-relation Rl3-flip-eager cfg-flip)))
+    (check-equal? flipped
+                  (term (() (delay ((⊤ ,sigma-b) <-+ (empty-tree)))
+                            (empty-stream)))
+                  "expected flip step to swap left-only disjunction branches")
     (check-true (redex-match? L3 config flipped)))
 
   (test-case "railroad branch introduces right-pointing syntax"
-    (define railed (first (apply-reduction-relation Rrail-e cfg-rail)))
-    (check-true
-     (redex-match? L4 config
-                   (term (() () (delay ((empty-tree) +-> (⊤ ,sigma-b))))))
-     "expected railroad step to introduce +->")
+    (define railed (first (apply-reduction-relation Rl4-rail-eager cfg-rail)))
+    (check-equal? railed
+                  (term (() (delay ((empty-tree) +-> (⊤ ,sigma-b)))
+                            (empty-stream)))
+                  "expected railroad step to introduce +->")
     (check-true (redex-match? L4 config railed)))
 
   (test-case "delay(proceed(call)) boundary remains deterministic in final variants"
     (define cfg-delay-proceed-call
       (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
-             ()
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s"))))))))
-    (define named-next* (apply-reduction-relation/tag-with-names Rflip-e cfg-delay-proceed-call))
+                (state () () () (label "s")))))
+             (empty-stream))))
+    (define named-next* (apply-reduction-relation/tag-with-names Rl3-flip-eager cfg-delay-proceed-call))
     (check-equal? (length named-next*)
                   1
-                  "expected exactly one next step for Rflip-e on delay/proceed boundary")
+                  "expected exactly one next step for Rl3-flip-eager on delay/proceed boundary")
     (define fired-name (first (first named-next*)))
     (check-true (regexp-match? #rx"^call/" (~a fired-name))
                 (format "expected call-prefixed rule, got ~a" fired-name)))
 
-  (test-case "delay(proceed(call)) boundary deterministic in Rflip-l"
+  (test-case "delay(proceed(call)) boundary deterministic in Rl3-flip-lazy"
     (define cfg-delay-proceed-call
       (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
-             ()
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s"))))))))
-    (define named-next* (apply-reduction-relation/tag-with-names Rflip-l cfg-delay-proceed-call))
+                (state () () () (label "s")))))
+             (empty-stream))))
+    (define named-next* (apply-reduction-relation/tag-with-names Rl3-flip-lazy cfg-delay-proceed-call))
     (check-equal? (length named-next*)
                   1
-                  "expected exactly one next step for Rflip-l on delay/proceed boundary")
+                  "expected exactly one next step for Rl3-flip-lazy on delay/proceed boundary")
     (define fired-name (first (first named-next*)))
     (check-true (regexp-match? #rx"^call/" (~a fired-name))
                 (format "expected call-prefixed rule, got ~a" fired-name)))
 
-  (test-case "delay(proceed(call)) boundary deterministic in Rrail-e"
+  (test-case "delay(proceed(call)) boundary deterministic in Rl4-rail-eager"
     (define cfg-delay-proceed-call
       (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
-             ()
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s"))))))))
-    (define named-next* (apply-reduction-relation/tag-with-names Rrail-e cfg-delay-proceed-call))
+                (state () () () (label "s")))))
+             (empty-stream))))
+    (define named-next* (apply-reduction-relation/tag-with-names Rl4-rail-eager cfg-delay-proceed-call))
     (check-equal? (length named-next*)
                   1
-                  "expected exactly one next step for Rrail-e on delay/proceed boundary")
+                  "expected exactly one next step for Rl4-rail-eager on delay/proceed boundary")
     (define fired-name (first (first named-next*)))
     (check-true (regexp-match? #rx"^call/" (~a fired-name))
                 (format "expected call-prefixed rule, got ~a" fired-name)))
 
-  (test-case "delay(proceed(call)) boundary deterministic in Rrail-l"
+  (test-case "delay(proceed(call)) boundary deterministic in Rl4-rail-lazy"
     (define cfg-delay-proceed-call
       (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
-             ()
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s"))))))))
-    (define named-next* (apply-reduction-relation/tag-with-names Rrail-l cfg-delay-proceed-call))
+                (state () () () (label "s")))))
+             (empty-stream))))
+    (define named-next* (apply-reduction-relation/tag-with-names Rl4-rail-lazy cfg-delay-proceed-call))
     (check-equal? (length named-next*)
                   1
-                  "expected exactly one next step for Rrail-l on delay/proceed boundary")
+                  "expected exactly one next step for Rl4-rail-lazy on delay/proceed boundary")
     (define fired-name (first (first named-next*)))
     (check-true (regexp-match? #rx"^call/" (~a fired-name))
                 (format "expected call-prefixed rule, got ~a" fired-name))))
 
 (define-test-suite VARIANT-INVARIANTS
   (test-case "L1 call variants safety: progress + state wf + shape closure"
-    (for ([rel (in-list (list Rcall-eager Rcall-lazy))])
+    (for ([rel (in-list (list Rl1-call-eager Rl1-call-lazy))])
       (check-true (progress? rel cfg-call))
       (check-true (states-wf? cfg-call))
       (check-true (for/and ([cfg^ (in-list (apply-reduction-relation rel cfg-call))])
@@ -127,21 +130,21 @@
       (check-true (shape-closed/L1? rel cfg-call))))
 
   (test-case "L1 call variants uniqueness"
-    (for ([rel (in-list (list Rcall-eager Rcall-lazy))])
+    (for ([rel (in-list (list Rl1-call-eager Rl1-call-lazy))])
       (check-true (unique-decomposition? rel cfg-call))))
 
   (test-case "L2 disjunction variant safety: progress + state wf + shape closure"
-    (check-true (progress? Rdisj-left cfg-disj))
+    (check-true (progress? Rl2-disj-left cfg-disj))
     (check-true (states-wf? cfg-disj))
-    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rdisj-left cfg-disj))])
+    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rl2-disj-left cfg-disj))])
                   (states-wf? cfg^)))
-    (check-true (shape-closed/L2? Rdisj-left cfg-disj)))
+    (check-true (shape-closed/L2? Rl2-disj-left cfg-disj)))
 
   (test-case "L2 disjunction variant uniqueness"
-    (check-true (unique-decomposition? Rdisj-left cfg-disj)))
+    (check-true (unique-decomposition? Rl2-disj-left cfg-disj)))
 
   (test-case "L3 base variants safety: progress + state wf + shape closure"
-    (for ([rel (in-list (list Rbase-e Rbase-l))])
+    (for ([rel (in-list (list Rl3-pre-eager Rl3-pre-lazy))])
       (check-true (progress? rel cfg-call))
       (check-true (states-wf? cfg-call))
       (check-true (for/and ([cfg^ (in-list (apply-reduction-relation rel cfg-call))])
@@ -149,48 +152,48 @@
       (check-true (shape-closed/L3? rel cfg-call))))
 
   (test-case "L3 base variants uniqueness"
-    (for ([rel (in-list (list Rbase-e Rbase-l))])
+    (for ([rel (in-list (list Rl3-pre-eager Rl3-pre-lazy))])
       (check-true (unique-decomposition? rel cfg-call))))
 
-  (test-case "L3 Rflip-e safety: progress + state wf + shape closure"
-    (check-true (progress? Rflip-e cfg-flip))
+  (test-case "L3 Rl3-flip-eager safety: progress + state wf + shape closure"
+    (check-true (progress? Rl3-flip-eager cfg-flip))
     (check-true (states-wf? cfg-flip))
-    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rflip-e cfg-flip))])
+    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rl3-flip-eager cfg-flip))])
                   (states-wf? cfg^)))
-    (check-true (shape-closed/L3? Rflip-e cfg-flip)))
+    (check-true (shape-closed/L3? Rl3-flip-eager cfg-flip)))
 
-  (test-case "L3 Rflip-e uniqueness"
-    (check-true (unique-decomposition? Rflip-e cfg-flip)))
+  (test-case "L3 Rl3-flip-eager uniqueness"
+    (check-true (unique-decomposition? Rl3-flip-eager cfg-flip)))
 
-  (test-case "L3 Rflip-l safety: progress + state wf + shape closure"
-    (check-true (progress? Rflip-l cfg-flip))
+  (test-case "L3 Rl3-flip-lazy safety: progress + state wf + shape closure"
+    (check-true (progress? Rl3-flip-lazy cfg-flip))
     (check-true (states-wf? cfg-flip))
-    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rflip-l cfg-flip))])
+    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rl3-flip-lazy cfg-flip))])
                   (states-wf? cfg^)))
-    (check-true (shape-closed/L3? Rflip-l cfg-flip)))
+    (check-true (shape-closed/L3? Rl3-flip-lazy cfg-flip)))
 
-  (test-case "L3 Rflip-l uniqueness"
-    (check-true (unique-decomposition? Rflip-l cfg-flip)))
+  (test-case "L3 Rl3-flip-lazy uniqueness"
+    (check-true (unique-decomposition? Rl3-flip-lazy cfg-flip)))
 
-  (test-case "L4 Rrail-e safety: progress + state wf + shape closure"
-    (check-true (progress? Rrail-e cfg-rail))
+  (test-case "L4 Rl4-rail-eager safety: progress + state wf + shape closure"
+    (check-true (progress? Rl4-rail-eager cfg-rail))
     (check-true (states-wf? cfg-rail))
-    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rrail-e cfg-rail))])
+    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rl4-rail-eager cfg-rail))])
                   (states-wf? cfg^)))
-    (check-true (shape-closed/L4? Rrail-e cfg-rail)))
+    (check-true (shape-closed/L4? Rl4-rail-eager cfg-rail)))
 
-  (test-case "L4 Rrail-e uniqueness"
-    (check-true (unique-decomposition? Rrail-e cfg-rail)))
+  (test-case "L4 Rl4-rail-eager uniqueness"
+    (check-true (unique-decomposition? Rl4-rail-eager cfg-rail)))
 
-  (test-case "L4 Rrail-l safety: progress + state wf + shape closure"
-    (check-true (progress? Rrail-l cfg-rail))
+  (test-case "L4 Rl4-rail-lazy safety: progress + state wf + shape closure"
+    (check-true (progress? Rl4-rail-lazy cfg-rail))
     (check-true (states-wf? cfg-rail))
-    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rrail-l cfg-rail))])
+    (check-true (for/and ([cfg^ (in-list (apply-reduction-relation Rl4-rail-lazy cfg-rail))])
                   (states-wf? cfg^)))
-    (check-true (shape-closed/L4? Rrail-l cfg-rail)))
+    (check-true (shape-closed/L4? Rl4-rail-lazy cfg-rail)))
 
-  (test-case "L4 Rrail-l uniqueness"
-    (check-true (unique-decomposition? Rrail-l cfg-rail))))
+  (test-case "L4 Rl4-rail-lazy uniqueness"
+    (check-true (unique-decomposition? Rl4-rail-lazy cfg-rail))))
 
 (define/provide-test-suite PROPERTY-VARIANTS
   #:before (thunk (displayln "Running variant lattice tests..."))

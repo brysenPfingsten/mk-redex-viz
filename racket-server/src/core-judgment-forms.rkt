@@ -209,7 +209,11 @@
   [(core-tree-shape? s)
    (core-goal-shape? g)
    ------------------- "core-conj-tree-shape"
-   (core-tree-shape? (s × g c))])
+   (core-tree-shape? (s × g c))]
+
+  [(core-tree-shape? s_tail)
+   ------------------- "core-answer-stream-shape"
+   (core-tree-shape? ((⊤ σ) + s_tail))])
 
 (define-judgment-form
   Core
@@ -218,7 +222,7 @@
   [(core-goal-shape? g) ...
    (core-tree-shape? s)
    ------------------- "core-config-shape"
-   (core-shape? (((r d g) ...) (σ ...) s))])
+   (core-shape? (((r d g) ...) s))])
 
 (module+ test
   ;; succeed
@@ -352,7 +356,13 @@
    (wf-tree? s ((r d) ...) c_i)
    (wf-goal? g ((r d) ...) () c_i)
    -------------------"conj wf"
-   (wf-tree? (s × g c_i) ((r d) ...) c)])
+   (wf-tree? (s × g c_i) ((r d) ...) c)]
+
+  [(lvars-subset? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-tree? s_tail ((r d) ...) c)
+   -------------------"answer stream wf"
+   (wf-tree? ((⊤ (state sub c_i trail tag)) + s_tail) ((r d) ...) c)])
 
 (define-judgment-form
   Core
@@ -367,10 +377,9 @@
   #:contract (wf-config? config)
   #:mode (wf-config? I)
   [(wf-rel-env? ((r d g) ...))
-   (wf-state? σ) ...
    (wf-tree? s ((r d) ...) ())
    ----------------------- "program-wf"
-   (wf-config? (((r d g) ...) (σ ...) s))]
+   (wf-config? (((r d g) ...) s))]
   )
 
   #;[(wf-tree? s ((r (x ...)) ...))
@@ -492,15 +501,16 @@
   ;; whole program: no states and empty relations
   (check-true
    (judgment-holds
-    (wf-config? (() () (empty-tree)))))
+    (wf-config? (() (empty-tree)))))
 
   ;; whole program: one state and empty relations
   (check-true
    (judgment-holds
     (wf-config?
      (()  ; Γ
-      ((state ((u:0 (sym "a"))) (u:0) (((sym "a") =? u:0 (label "g1"))) (label "σ"))) ; ans*
-      (empty-tree)))))                                ; s
+      ((⊤ (state ((u:0 (sym "a"))) (u:0) (((sym "a") =? u:0 (label "g1"))) (label "σ")))
+       +
+       (empty-tree))))))                                ; s
 
   ;; relation environment well-formedness
   (check-true
@@ -515,14 +525,14 @@
 
   (check-true
    (judgment-holds
-    (core-shape? (() () (empty-tree)))))
+    (core-shape? (() (empty-tree)))))
 
   (check-true
    (judgment-holds
     (core-shape?
-     (() ((state () () () (label "a")))
-         (((succeed (label "ok")) ∧ (succeed (label "ok2")) (label "c"))
-          (state () () () (label "s")))))))
+     (()
+      (((succeed (label "ok")) ∧ (succeed (label "ok2")) (label "c"))
+       (state () () () (label "s")))))))
 
   (define (core-tree-shape-holds? st)
     (with-handlers ([exn:fail? (lambda (_) #f)])
@@ -537,15 +547,16 @@
 
   (check-false
    (core-config-shape-holds?
-    '(() () (proceed ((r:foo (sym "x") (label "t"))
-                      (state () () () (label "s")))))))
+    '(() (proceed ((r:foo (sym "x") (label "t"))
+                   (state () () () (label "s")))))))
 )
 
 (module+ test
   (require rackunit
            redex/reduction-semantics
            racket/list
-           (prefix-in h: "../tests/helpers.rkt"))
+           (prefix-in rt: "random-test-support.rkt")
+           (prefix-in gk: "../tests/generator-kernel.rkt"))
 
   ;; Randomized test tuning constants.
   ;; Edit these values directly when you want different pressure/coverage.
@@ -559,10 +570,10 @@
   (define JUDGMENT-MIN-UNIFY-FAILURES 1)
   (define JUDGMENT-MIN-PAIR-CASES 1)
 
-  (define JUDGMENT-RNG (h:make-seeded-rng JUDGMENT-PROP-SEED))
+  (define JUDGMENT-RNG (rt:make-seeded-rng JUDGMENT-PROP-SEED))
 
   (define (jrandom n)
-    (h:rng-random JUDGMENT-RNG n))
+    (rt:rng-random JUDGMENT-RNG n))
 
   (displayln
    (format "[core-judgment-forms] randomized checks attempts=~a size=~a seed=~a"
@@ -572,9 +583,7 @@
 
   ;; Pool size bounds generated test-data diversity only; it does not bound
   ;; the semantic space of logic variables used by the language.
-  (define U-POOL
-    (for/list ([n (in-range 0 JUDGMENT-U-POOL-SIZE)])
-      (string->symbol (format "u:~a" n))))
+  (define U-POOL (gk:make-u-pool JUDGMENT-U-POOL-SIZE))
 
   (check-true (positive? JUDGMENT-U-POOL-SIZE)
               "JUDGMENT-U-POOL-SIZE must be >= 1.")
@@ -598,7 +607,7 @@
               (if (null? c) '() '(logic-var))
               (if (zero? depth) '() '(pair))))
     (case (list-ref choices (jrandom (length choices)))
-      [(primitive) (h:gen-primitive/rng JUDGMENT-RNG)]
+      [(primitive) (rt:gen-primitive/rng JUDGMENT-RNG)]
       [(logic-var) (list-ref c (jrandom (length c)))]
       [(pair) `(,(gen-wf-term c (sub1 depth)) : ,(gen-wf-term c (sub1 depth)))]))
 
@@ -606,7 +615,7 @@
   ;; the wf-tree antecedent used by the randomized unify checks.
   (define (generate-wf-eq-sample)
     (define c-size (add1 (jrandom JUDGMENT-C-MAX)))
-    (define c (h:random-distinct/rng JUDGMENT-RNG U-POOL c-size))
+    (define c (rt:random-distinct/rng JUDGMENT-RNG U-POOL c-size))
     (define depth JUDGMENT-MAX-DEPTH)
     (define t_1 (gen-wf-term c depth))
     ;; Bias half the time to guaranteed unification success.
@@ -617,14 +626,14 @@
   ;; all bindings map to primitive terms only.
   (define (generate-walk-sample)
     (define c-size (add1 (jrandom JUDGMENT-C-MAX)))
-    (define c (h:random-distinct/rng JUDGMENT-RNG U-POOL c-size))
+    (define c (rt:random-distinct/rng JUDGMENT-RNG U-POOL c-size))
     (define depth JUDGMENT-MAX-DEPTH)
     (define t* (gen-wf-term c depth))
     (define binding-count (jrandom (add1 c-size)))
-    (define dom (h:random-distinct/rng JUDGMENT-RNG c binding-count))
+    (define dom (rt:random-distinct/rng JUDGMENT-RNG c binding-count))
     (define sub*
       (for/list ([u (in-list dom)])
-        (list u (h:gen-primitive/rng JUDGMENT-RNG))))
+        (list u (rt:gen-primitive/rng JUDGMENT-RNG))))
     (list t* sub*))
 
   ;; Deterministic must-hit samples keep minimum-threshold checks stable.

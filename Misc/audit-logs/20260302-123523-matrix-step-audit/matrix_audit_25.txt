@@ -1,0 +1,56 @@
+microKanren-rail | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-rail | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-rail | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+microKanren-rail | fives/fours | stuck | steps=21 | last=core/unify-success | 
+microKanren-rail | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-rail | same | cap | steps=25 | last=call/lazy-expand-on-resume | cap25
+microKanren-rail | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25
+microKanren-noi-flip | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-noi-flip | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-noi-flip | appendoh 2 | stuck | steps=16 | last=call/delay-through-conj | 
+microKanren-noi-flip | fives/fours | stuck | steps=3 | last=call/lazy-suspend-call | 
+microKanren-noi-flip | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-noi-flip | same | stuck | steps=4 | last=call/lazy-suspend-call | 
+microKanren-noi-flip | div3o | stuck | steps=22 | last=call/lazy-suspend-call | 
+microKanren-dfs-nodelay | appendo | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | appendoh 1 | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | appendoh 2 | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | fives/fours | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | call timing | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | same | incompatible | steps=0 | last= | not-in-domain
+microKanren-dfs-nodelay | div3o | incompatible | steps=0 | last= | not-in-domain
+microKanren-flip | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-flip | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-flip | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+microKanren-flip | fives/fours | cap | steps=25 | last=call/lazy-suspend-call | cap25
+microKanren-flip | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-flip | same | cap | steps=25 | last=call/lazy-expand-on-resume | cap25
+microKanren-flip | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25
+microKanren-rail-eager | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-rail-eager | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-rail-eager | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+microKanren-rail-eager | fives/fours | stuck | steps=21 | last=core/unify-success | 
+microKanren-rail-eager | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-rail-eager | same | cap | steps=25 | last=call/eager-resume-goal | cap25
+microKanren-rail-eager | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25
+microKanren-flip-eager | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-flip-eager | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+microKanren-flip-eager | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+microKanren-flip-eager | fives/fours | cap | steps=25 | last=call/eager-suspend-expanded | cap25
+microKanren-flip-eager | call timing | value | steps=6 | last=core/collect-answer | 
+microKanren-flip-eager | same | cap | steps=25 | last=call/eager-resume-goal | cap25
+microKanren-flip-eager | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25
+dmitry | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+dmitry | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+dmitry | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+dmitry | fives/fours | stuck | steps=21 | last=core/unify-success | 
+dmitry | call timing | value | steps=6 | last=core/collect-answer | 
+dmitry | same | cap | steps=25 | last=call/eager-resume-goal | cap25
+dmitry | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25
+dfs | appendo | cap | steps=25 | last=disj/collect-left-answer | cap25
+dfs | appendoh 1 | cap | steps=25 | last=disj/collect-left-answer | cap25
+dfs | appendoh 2 | cap | steps=25 | last=core/unify-success | cap25
+dfs | fives/fours | stuck | steps=21 | last=core/unify-success | 
+dfs | call timing | value | steps=6 | last=core/collect-answer | 
+dfs | same | cap | steps=25 | last=call/lazy-expand-on-resume | cap25
+dfs | div3o | cap | steps=25 | last=disj/goal-to-tree | cap25

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import "../styles.css";
 import { examplesForModel } from "../utils/example_programs.js";
 
@@ -8,38 +8,35 @@ export default function CodeHeader({
   onProgramChange,
   modelValue,
   modelOptions = [],
-  onModelChange,
+  onModelChangeRequest,
   isFrozen,
+  analysisStatus = "idle",
+  compatWarning = null,
+  onSwitchCompatibleModel = () => {},
 }) {
   const availableExamples = examplesForModel(modelValue);
 
-  useEffect(() => {
-    const stillAvailable = availableExamples.some((opt) => opt.value === programText);
-    if (!stillAvailable) onProgramChange("");
-  }, [availableExamples, programText, onProgramChange]);
-
-  const renderOptions = (opts) =>
+  const renderExampleOptions = (opts) =>
     opts.map(({ value, label }) => (
       <option key={value} value={value}>
         {label}
       </option>
     ));
 
-  // TODO: Maybe add some error handling here
+  const renderModelOptions = (opts) =>
+    opts.map(({ value, label }) => (
+      <option key={value} value={value}>
+        {label}
+      </option>
+    ));
+
   const changeModel = async (newModel) => {
     try {
-      const response = await fetch('api/post/model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ model: newModel})
-      });
-      if (response.ok) {
-        onModelChange(newModel);
-      }
+      await onModelChangeRequest(newModel);
     } catch (_) {
       // Keep current model selection when request fails.
     }
-  }
+  };
 
   return (
     <div className="code-header">
@@ -53,7 +50,7 @@ export default function CodeHeader({
         onChange={(e) => onProgramChange(e.target.value)}
         disabled={isFrozen}
       >
-        {renderOptions(availableExamples)}
+        {renderExampleOptions(availableExamples)}
       </select>
 
       <select
@@ -62,7 +59,44 @@ export default function CodeHeader({
         onChange={(e) => changeModel(e.target.value)}
         disabled={isFrozen}
       >
-        {renderOptions(modelOptions)}
+        {renderModelOptions(modelOptions)}
       </select>
+
+      {analysisStatus === "analyzing" && !isFrozen ? (
+        <div style={{ marginLeft: "10px", fontSize: "0.85rem" }}>
+          Analyzing...
+        </div>
+      ) : null}
+
+      {compatWarning ? (
+        <div
+          style={{
+            marginLeft: "10px",
+            padding: "8px 10px",
+            border: "1px solid #b55",
+            borderRadius: "6px",
+            background: "#fff5f5",
+            color: "#622",
+            maxWidth: "560px",
+          }}
+        >
+          <div style={{ marginBottom: "6px" }}>{compatWarning.message}</div>
+          {compatWarning.reasons && compatWarning.reasons.length > 0 ? (
+            <div style={{ marginBottom: "6px", fontSize: "0.85rem" }}>
+              {compatWarning.reasons.join("; ")}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              type="button"
+              onClick={onSwitchCompatibleModel}
+              disabled={isFrozen || !compatWarning.canSwitchModel}
+            >
+              Switch to Compatible Model
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
-  ); }
+  );
+}

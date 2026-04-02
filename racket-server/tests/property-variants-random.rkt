@@ -5,7 +5,8 @@
          racket/format
          racket/list
          redex/reduction-semantics
-         (prefix-in h: "./helpers.rkt")
+         (prefix-in rt: "../src/random-test-support.rkt")
+         (prefix-in gk: "./generator-kernel.rkt")
          "./variant-test-support.rkt"
          "../src/extensions/variant-languages.rkt"
          "../src/reduction-relations/extensions/variant-relations.rkt")
@@ -34,23 +35,15 @@
 (define VR-MIN-FLIP-RULE-HITS 2)
 (define VR-MIN-RAIL-RULE-HITS 2)
 
-(define (require-positive who n)
-  (unless (positive? n)
-    (error 'property-variants-random (format "~a must be >= 1, got ~a" who n))))
-
-(define (require-nonnegative who n)
-  (unless (>= n 0)
-    (error 'property-variants-random (format "~a must be >= 0, got ~a" who n))))
-
-(require-positive 'VR-ATTEMPTS VR-ATTEMPTS)
-(require-positive 'VR-MAX-DEPTH VR-MAX-DEPTH)
-(require-positive 'VR-U-POOL-SIZE VR-U-POOL-SIZE)
-(require-positive 'VR-X-POOL-SIZE VR-X-POOL-SIZE)
-(require-positive 'VR-R-POOL-SIZE VR-R-POOL-SIZE)
-(require-positive 'VR-C-MAX VR-C-MAX)
-(require-positive 'VR-EXPECTED-ANTE-HITS VR-EXPECTED-ANTE-HITS)
-(require-positive 'VR-K-STEP-DEPTH VR-K-STEP-DEPTH)
-(require-nonnegative 'VR-C-EXTRA-MAX VR-C-EXTRA-MAX)
+(gk:require-positive 'VR-ATTEMPTS VR-ATTEMPTS 'property-variants-random)
+(gk:require-positive 'VR-MAX-DEPTH VR-MAX-DEPTH 'property-variants-random)
+(gk:require-positive 'VR-U-POOL-SIZE VR-U-POOL-SIZE 'property-variants-random)
+(gk:require-positive 'VR-X-POOL-SIZE VR-X-POOL-SIZE 'property-variants-random)
+(gk:require-positive 'VR-R-POOL-SIZE VR-R-POOL-SIZE 'property-variants-random)
+(gk:require-positive 'VR-C-MAX VR-C-MAX 'property-variants-random)
+(gk:require-positive 'VR-EXPECTED-ANTE-HITS VR-EXPECTED-ANTE-HITS 'property-variants-random)
+(gk:require-positive 'VR-K-STEP-DEPTH VR-K-STEP-DEPTH 'property-variants-random)
+(gk:require-nonnegative 'VR-C-EXTRA-MAX VR-C-EXTRA-MAX 'property-variants-random)
 (unless (<= VR-C-MAX VR-U-POOL-SIZE)
   (error 'property-variants-random
          (format "VR-C-MAX must be <= VR-U-POOL-SIZE, got ~a > ~a"
@@ -61,50 +54,30 @@
                  VR-EXPECTED-ANTE-HITS VR-ATTEMPTS)))
 
 (define U-POOL
-  (for/list ([i (in-range VR-U-POOL-SIZE)])
-    (string->symbol (format "u:~a" i))))
+  (gk:make-u-pool VR-U-POOL-SIZE))
 
 (define X-POOL
-  (for/list ([i (in-range VR-X-POOL-SIZE)])
-    (string->symbol (format "x:~a" i))))
+  (gk:make-x-pool VR-X-POOL-SIZE))
 
 (define R-POOL
-  (for/list ([i (in-range VR-R-POOL-SIZE)])
-    (string->symbol (format "r:~a" i))))
+  (gk:make-r-pool VR-R-POOL-SIZE))
 
 (struct gopts (calls? disj-goal? left-tree? exists?) #:transparent)
 
 (define (vrandom rng n)
-  (h:rng-random rng n))
+  (rt:rng-random rng n))
 
 (define (pick-one rng xs)
-  (list-ref xs (vrandom rng (length xs))))
+  (gk:pick-one/rng rng xs))
 
 (define (make-label rng prefix)
-  `(label ,(format "~a-~a" prefix (vrandom rng 1000000))))
+  (gk:make-label/rng rng prefix))
 
 (define (extend-c/rng rng c max-extra)
-  (define unused
-    (filter (lambda (u) (not (member u c))) U-POOL))
-  (define room (- VR-C-MAX (length c)))
-  (define extra-limit (min max-extra room (length unused)))
-  (define extra-count (vrandom rng (add1 extra-limit)))
-  (append c (h:random-distinct/rng rng unused extra-count)))
+  (gk:extend-c/rng rng c U-POOL VR-C-MAX max-extra))
 
 (define (gen-term/rng rng x-env c depth)
-  (define options
-    (append '(primitive)
-            (if (null? c) '() '(logic-var))
-            (if (null? x-env) '() '(lex-var))
-            (if (zero? depth) '() '(pair))))
-  (case (pick-one rng options)
-    [(primitive) (h:gen-primitive/rng rng)]
-    [(logic-var) (pick-one rng c)]
-    [(lex-var) (pick-one rng x-env)]
-    [(pair)
-     `(,(gen-term/rng rng x-env c (sub1 depth))
-       :
-       ,(gen-term/rng rng x-env c (sub1 depth)))]))
+  (gk:gen-term/rng rng x-env c depth))
 
 (define (gen-eq-goal/rng rng x-env c depth)
   `(,(gen-term/rng rng x-env c depth)
@@ -113,10 +86,7 @@
     ,(make-label rng "eq")))
 
 (define (fresh-x-list/rng rng x-env)
-  (define available (filter (lambda (x) (not (member x x-env))) X-POOL))
-  (h:random-distinct/rng rng
-                         available
-                         (vrandom rng (add1 (min 2 (length available))))))
+  (gk:fresh-x-list/rng rng x-env X-POOL))
 
 (define (gen-goal/rng rng x-env c depth rel-sig opts)
   (define call-enabled? (and (gopts-calls? opts) (pair? rel-sig)))
@@ -141,7 +111,7 @@
            `(succeed ,(make-label rng "ok"))
            `(,(car d)
              =?
-             ,(h:gen-primitive/rng rng)
+             ,(rt:gen-primitive/rng rng)
              ,(make-label rng "eq"))))
      `(∃
        ,d
@@ -194,14 +164,14 @@
     (if calls?
         (add1 (vrandom rng 3))
         (vrandom rng 3)))
-  (for/list ([r (in-list (h:random-distinct/rng rng R-POOL count))])
+  (for/list ([r (in-list (rt:random-distinct/rng rng R-POOL count))])
     (cons r (vrandom rng 3))))
 
 (define (gen-rel-def/rng rng rel-ar rel-sig opts)
   (define r (car rel-ar))
   (define arity (cdr rel-ar))
   (define d
-    (take (h:random-distinct/rng rng X-POOL arity) arity))
+    (take (rt:random-distinct/rng rng X-POOL arity) arity))
   ;; Relation bodies are restricted to core-goal forms because subst-goal in
   ;; core-definitions currently covers succeed/eq/conj/exists only.
   (define core-opts (gopts #f #f #f #t))
@@ -216,142 +186,115 @@
      (gen-rel-def/rng rng ra rel-sig opts))
    rel-sig))
 
-(define (gen-answers/rng rng)
-  (define count (vrandom rng 3))
-  (for/list ([_ (in-range count)])
-    (gen-state/rng rng (extend-c/rng rng '() VR-C-EXTRA-MAX))))
-
 (define (gen-config-user/rng rng opts)
   (define-values (gamma rel-sig) (gen-rel-env/rng rng opts))
-  (define ans* (gen-answers/rng rng))
   (define c0 (extend-c/rng rng '() VR-C-EXTRA-MAX))
   (define s (gen-tree-user/rng rng c0 VR-MAX-DEPTH rel-sig opts))
-  `(,gamma ,ans* ,s))
+  `(,gamma ,s (empty-stream)))
 
-(define (gen-config-flip-admin/rng rng)
+(define (gen-config-delay-left-disj-admin/rng rng)
   (define opts (gopts #t #t #t #t))
   (define-values (gamma rel-sig) (gen-rel-env/rng rng opts))
-  (define ans* (gen-answers/rng rng))
   (define c0 (extend-c/rng rng '() VR-C-EXTRA-MAX))
   (define s1 (gen-tree-user/rng rng c0 VR-MAX-DEPTH rel-sig opts))
   (define s2 (gen-tree-user/rng rng c0 VR-MAX-DEPTH rel-sig opts))
-  `(,gamma ,ans* ((delay ,s1) <-+ ,s2)))
-
-(define (gen-config-rail-admin/rng rng)
-  (define opts (gopts #t #t #t #t))
-  (define-values (gamma rel-sig) (gen-rel-env/rng rng opts))
-  (define ans* (gen-answers/rng rng))
-  (define c0 (extend-c/rng rng '() VR-C-EXTRA-MAX))
-  (define s1 (gen-tree-user/rng rng c0 VR-MAX-DEPTH rel-sig opts))
-  (define s2 (gen-tree-user/rng rng c0 VR-MAX-DEPTH rel-sig opts))
-  `(,gamma ,ans* ((delay ,s1) <-+ ,s2)))
+  `(,gamma ((delay ,s1) <-+ ,s2) (empty-stream)))
 
 (define (state-c-size st)
   (match st
     [`(state ,_ ,c ,_ ,_) (length c)]
     [_ 0]))
 
-(define (goal-flags g)
+(define (goal-flags g [call? #f] [disj? #f] [exists? #f] [conj? #f])
   (match g
-    [`(succeed ,_) (values #f #f #f #f)]
-    [`(,_ =? ,_ ,_) (values #f #f #f #f)]
+    [`(succeed ,_) (values call? disj? exists? conj?)]
+    [`(,_ =? ,_ ,_) (values call? disj? exists? conj?)]
     [`(∃ ,_ ,g2 ,_)
-     (define-values (hc hd he hj) (goal-flags g2))
-     (values hc hd #t (or #t hj))]
+     (goal-flags g2 call? disj? #t (or #t conj?))]
     [`(,g1 ∧ ,g2 ,_)
-     (define-values (hc1 hd1 he1 hj1) (goal-flags g1))
-     (define-values (hc2 hd2 he2 hj2) (goal-flags g2))
-     (values (or hc1 hc2) (or hd1 hd2) (or he1 he2) #t)]
+     (define-values (call1 disj1 exists1 _conj1)
+       (goal-flags g1 call? disj? exists? #t))
+     (goal-flags g2 call1 disj1 exists1 #t)]
     [`(,g1 ∨ ,g2 ,_)
-     (define-values (hc1 hd1 he1 hj1) (goal-flags g1))
-     (define-values (hc2 hd2 he2 hj2) (goal-flags g2))
-     (values (or hc1 hc2) #t (or he1 he2) (or hj1 hj2))]
+     (define-values (call1 _disj1 exists1 conj1)
+       (goal-flags g1 call? #t exists? conj?))
+     (goal-flags g2 call1 #t exists1 conj1)]
     [`(,r ,_ ... ,_)
      (if (and (symbol? r)
               (regexp-match? #rx"^r:" (symbol->string r)))
-         (values #t #f #f #f)
-         (values #f #f #f #f))]
-    [_ (values #f #f #f #f)]))
+         (values #t disj? exists? conj?)
+         (values call? disj? exists? conj?))]
+    [_ (values call? disj? exists? conj?)]))
 
-(define (tree-flags s)
+(define (tree-flags s
+                    [call? #f]
+                    [disj? #f]
+                    [exists? #f]
+                    [conj? #f]
+                    [left? #f]
+                    [delay? #f]
+                    [right? #f]
+                    [cmax 0])
   (match s
-    [`(empty-tree) (values #f #f #f #f #f #f #f 0)]
+    [`(empty-tree) (values call? disj? exists? conj? left? delay? right? cmax)]
     [`(⊤ ,st)
-     (values #f #f #f #f #f #f #f (state-c-size st))]
+     (values call? disj? exists? conj? left? delay? right?
+             (max cmax (state-c-size st)))]
+    [`(emit ,st ,s2)
+     (tree-flags s2
+                 call?
+                 disj?
+                 exists?
+                 conj?
+                 left?
+                 delay?
+                 right?
+                 (max cmax (state-c-size st)))]
     [`(,g ,st)
-     (define-values (hc hd he hj) (goal-flags g))
-     (values hc hd he hj #f #f #f (state-c-size st))]
+     (define-values (call1 disj1 exists1 conj1)
+       (goal-flags g call? disj? exists? conj?))
+     (values call1 disj1 exists1 conj1 left? delay? right?
+             (max cmax (state-c-size st)))]
     [`(,s1 × ,g ,c)
-     (define-values (hc1 hd1 he1 hj1 hl1 hdl1 hr1 cm1) (tree-flags s1))
-     (define-values (hc2 hd2 he2 hj2) (goal-flags g))
-     (define csz (length c))
-     (values (or hc1 hc2)
-             (or hd1 hd2)
-             (or he1 he2)
-             (or hj1 hj2)
-             hl1
-             hdl1
-             hr1
-             (max cm1 csz))]
+     (define-values (call1 disj1 exists1 conj1 left1 delay1 right1 cmax1)
+       (tree-flags s1 call? disj? exists? conj? left? delay? right? cmax))
+     (define-values (call2 disj2 exists2 conj2)
+       (goal-flags g call1 disj1 exists1 conj1))
+     (values call2 disj2 exists2 conj2 left1 delay1 right1
+             (max cmax1 (length c)))]
     [`(delay ,s1)
-     (define-values (hc hd he hj hl hdl hr cm) (tree-flags s1))
-     (values hc hd he hj hl #t hr cm)]
+     (tree-flags s1 call? disj? exists? conj? left? #t right? cmax)]
     [`(proceed (,g ,_σ))
-     (define-values (hc hd he hj) (goal-flags g))
-     (values hc hd he hj #f #f #f 0)]
+     (define-values (call1 disj1 exists1 conj1)
+       (goal-flags g call? disj? exists? conj?))
+     (values call1 disj1 exists1 conj1 left? delay? right? cmax)]
     [`(proceed ((,r ,_ ... ,_) ,_σ))
      (if (and (symbol? r)
               (regexp-match? #rx"^r:" (symbol->string r)))
-         (values #t #f #f #f #f #f #f 0)
-         (values #f #f #f #f #f #f #f 0))]
+         (values #t disj? exists? conj? left? delay? right? cmax)
+         (values call? disj? exists? conj? left? delay? right? cmax))]
     [`(,s1 <-+ ,s2)
-     (define-values (hc1 hd1 he1 hj1 hl1 hdl1 hr1 cm1) (tree-flags s1))
-     (define-values (hc2 hd2 he2 hj2 hl2 hdl2 hr2 cm2) (tree-flags s2))
-     (values (or hc1 hc2)
-             (or hd1 hd2)
-             (or he1 he2)
-             (or hj1 hj2)
-             #t
-             (or hdl1 hdl2)
-             (or hr1 hr2)
-             (max cm1 cm2))]
+     (define-values (call1 disj1 exists1 conj1 left1 delay1 right1 cmax1)
+       (tree-flags s1 call? disj? exists? conj? #t delay? right? cmax))
+     (tree-flags s2 call1 disj1 exists1 conj1 #t delay1 right1 cmax1)]
     [`(,s1 +-> ,s2)
-     (define-values (hc1 hd1 he1 hj1 hl1 hdl1 hr1 cm1) (tree-flags s1))
-     (define-values (hc2 hd2 he2 hj2 hl2 hdl2 hr2 cm2) (tree-flags s2))
-     (values (or hc1 hc2)
-             (or hd1 hd2)
-             (or he1 he2)
-             (or hj1 hj2)
-             (or hl1 hl2)
-             (or hdl1 hdl2)
-             #t
-             (max cm1 cm2))]
-    [_ (values #f #f #f #f #f #f #f 0)]))
+     (define-values (call1 disj1 exists1 conj1 left1 delay1 right1 cmax1)
+       (tree-flags s1 call? disj? exists? conj? left? delay? #t cmax))
+     (tree-flags s2 call1 disj1 exists1 conj1 left1 delay1 #t cmax1)]
+    [_ (values call? disj? exists? conj? left? delay? right? cmax)]))
 
 (define (config-flags cfg)
   (match cfg
-    [`(,gamma ,ans* ,s)
-     (define call? #f)
-     (define disj? #f)
-     (define exists? #f)
-     (define conj? #f)
-     (define left-tree? #f)
-     (define delay? #f)
-     (define right-tree? #f)
-     (define max-c 0)
-
-     (for ([rel (in-list gamma)])
-       (match rel
-         [`(,_ ,_ ,g)
-          (define-values (hc hd he hj) (goal-flags g))
-          (when hc (set! call? #t))
-          (when hd (set! disj? #t))
-          (when he (set! exists? #t))
-          (when hj (set! conj? #t))]
-         [_ (void)]))
-
-     (for ([st (in-list ans*)])
-       (set! max-c (max max-c (state-c-size st))))
+    [`(,gamma ,s ,_as)
+     (define-values (call? disj? exists? conj?)
+       (for/fold ([call? #f]
+                  [disj? #f]
+                  [exists? #f]
+                  [conj? #f])
+                 ([rel (in-list gamma)])
+         (match rel
+           [`(,_ ,_ ,g) (goal-flags g call? disj? exists? conj?)]
+           [_ (values call? disj? exists? conj?)])))
 
      (define-values (hc hd he hj hl hdelay hr cmax-tree) (tree-flags s))
      (values (or call? hc)
@@ -361,7 +304,27 @@
              hl
              hdelay
              hr
-             (max max-c cmax-tree))]
+             cmax-tree)]
+    [`(,gamma ,s)
+     (define-values (call? disj? exists? conj?)
+       (for/fold ([call? #f]
+                  [disj? #f]
+                  [exists? #f]
+                  [conj? #f])
+                 ([rel (in-list gamma)])
+         (match rel
+           [`(,_ ,_ ,g) (goal-flags g call? disj? exists? conj?)]
+           [_ (values call? disj? exists? conj?)])))
+
+     (define-values (hc hd he hj hl hdelay hr cmax-tree) (tree-flags s))
+     (values (or call? hc)
+             (or disj? hd)
+             (or exists? he)
+             (or conj? hj)
+             hl
+             hdelay
+             hr
+             cmax-tree)]
     [_ (values #f #f #f #f #f #f #f 0)]))
 
 (define (tree-contains-left? s)
@@ -389,10 +352,13 @@
                    [(string? name) name]
                    [else (format "~a" name)])))
 
+(define (step-names-for rel cfg)
+  (map first (apply-reduction-relation/tag-with-names rel cfg)))
+
 ;; Check theorem-style consequents up to k steps:
 ;; if cfg is wf, then it stays in-language, remains wf, progresses unless final,
 ;; and (optionally) has unique decomposition at each explored node.
-(define (k-step-consequent-failure rel shape-match? cfg k require-unique?)
+(define (k-step-consequent-failure rel shape-match? cfg k require-unique? require-progress?)
   (define (loop cfg fuel)
     (cond
       [(not (shape-match? cfg))
@@ -402,21 +368,194 @@
       [else
        (define next* (apply-reduction-relation rel cfg))
        (cond
-         [(and (not (final-config? cfg)) (null? next*))
-          (list 'progress cfg)]
+         [(and require-progress?
+               (not (final-config? cfg))
+               (null? next*))
+          (list 'progress
+                cfg
+                (step-names-for rel cfg))]
          [(and require-unique?
                (if (final-config? cfg)
                    (not (null? next*))
                    (not (= (length next*) 1))))
-          (list 'unique cfg (length next*))]
+          (list 'unique
+                cfg
+                (length next*)
+                (step-names-for rel cfg))]
          [(zero? fuel) #f]
          [else
           (for/or ([cfg^ (in-list next*)])
             (loop cfg^ (sub1 fuel)))])]))
   (loop cfg k))
 
+(define metric-count-keys
+  '(fail-count
+    ante-hits
+    call-gen-hits
+    disj-gen-hits
+    left-tree-hits
+    delay-hits
+    right-tree-hits
+    right-next-hits
+    call-rule-hits
+    disj-rule-hits
+    flip-rule-hits
+    rail-rule-hits
+    max-c-seen
+    k-shape-fails
+    k-state-wf-fails
+    k-progress-fails
+    k-unique-fails))
+
+(define (metrics-empty)
+  (for/fold ([m (hasheq 'fail-samples '())])
+            ([k (in-list metric-count-keys)])
+    (hash-set m k 0)))
+
+(define (metrics-ref m key)
+  (hash-ref m key 0))
+
+(define (metrics-inc m key [delta 1])
+  (hash-update m key (lambda (v) (+ v delta)) 0))
+
+(define (metrics-max m key n)
+  (hash-set m key (max (metrics-ref m key) n)))
+
+(define (metrics-inc-if m key pred?)
+  (if pred? (metrics-inc m key) m))
+
+(define (metrics-add-fail m sample)
+  (define m+ (metrics-inc m 'fail-count))
+  (define fail-samples (hash-ref m+ 'fail-samples '()))
+  (if (< (length fail-samples) 3)
+      (hash-set m+ 'fail-samples (cons sample fail-samples))
+      m+))
+
+(define (metrics-inc-rule-prefixes m name)
+  (define m1 (metrics-inc-if m 'call-rule-hits (name-has-prefix? name "call/")))
+  (define m2 (metrics-inc-if m1 'disj-rule-hits (name-has-prefix? name "disj/")))
+  (define m3 (metrics-inc-if m2 'flip-rule-hits (name-has-prefix? name "flip/")))
+  (metrics-inc-if m3 'rail-rule-hits (name-has-prefix? name "rail/")))
+
+(define (metrics-inc-k-fail m fail-info)
+  (match fail-info
+    [(list 'shape _) (metrics-inc m 'k-shape-fails)]
+    [(list 'state-wf _) (metrics-inc m 'k-state-wf-fails)]
+    [(list 'progress _ _) (metrics-inc m 'k-progress-fails)]
+    [(list 'unique _ _ _) (metrics-inc m 'k-unique-fails)]
+    [_ m]))
+
+(define (record-config-coverage m cfg)
+  (define-values (has-call has-disj _has-exists _has-conj has-left has-delay has-right cmax)
+    (config-flags cfg))
+  (define tree (second cfg))
+  (metrics-max
+   (metrics-inc-if
+    (metrics-inc-if
+     (metrics-inc-if
+      (metrics-inc-if
+       (metrics-inc-if m 'call-gen-hits has-call)
+       'disj-gen-hits has-disj)
+      'left-tree-hits (or has-left (tree-contains-left? tree)))
+     'delay-hits (or has-delay (tree-contains-delay? tree)))
+    'right-tree-hits (or has-right (tree-contains-right? tree)))
+   'max-c-seen
+   cmax))
+
+(define (record-rule-coverage m rel cfg)
+  (for/fold ([m* m])
+            ([item (in-list (apply-reduction-relation/tag-with-names rel cfg))])
+    (match item
+      [(list name cfg-next)
+       (define m+ (metrics-inc-rule-prefixes m* name))
+       (metrics-inc-if m+
+                       'right-next-hits
+                       (tree-contains-right? (second cfg-next)))]
+      [_ m*])))
+
+(define (record-k-step-consequent m rel shape-match? cfg k-depth require-unique? require-progress?)
+  (if (and (shape-match? cfg) (states-wf? cfg))
+      (let* ([m+ (metrics-inc m 'ante-hits)]
+             [fail-info (k-step-consequent-failure rel
+                                                   shape-match?
+                                                   cfg
+                                                   k-depth
+                                                   require-unique?
+                                                   require-progress?)])
+        (if fail-info
+            (metrics-add-fail
+             (metrics-inc-k-fail m+ fail-info)
+             (list 'k-step-consequent-fail fail-info cfg))
+            m+))
+      m))
+
+(define (record-shape-closure m rel shape-closed? cfg)
+  (if (shape-closed? rel cfg)
+      m
+      (metrics-add-fail m (list 'shape-closed cfg))))
+
+(define (record-attempt m rel shape-match? shape-closed? cfg
+                        k-depth require-unique? require-progress?)
+  (define m1
+    (if (shape-match? cfg)
+        m
+        (metrics-add-fail m (list 'shape cfg))))
+  (define m2 (record-config-coverage m1 cfg))
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (metrics-add-fail
+           m2
+           (list 'exception (exn-message e) cfg)))])
+    (define m3 (record-rule-coverage m2 rel cfg))
+    (define m4
+      (record-k-step-consequent m3
+                                rel
+                                shape-match?
+                                cfg
+                                k-depth
+                                require-unique?
+                                require-progress?))
+    (record-shape-closure m4 rel shape-closed? cfg)))
+
+(define (run-random-seed rel shape-match? shape-closed? cfg-generator seed
+                         k-depth require-unique? require-progress?)
+  (define rng (rt:make-seeded-rng seed))
+  (for/fold ([m (metrics-empty)])
+            ([_ (in-range VR-ATTEMPTS)])
+    (record-attempt m
+                    rel
+                    shape-match?
+                    shape-closed?
+                    (cfg-generator rng)
+                    k-depth
+                    require-unique?
+                    require-progress?)))
+
+(define (metrics->view metrics)
+  (define (m key) (metrics-ref metrics key))
+  (values (m 'fail-count)
+          (hash-ref metrics 'fail-samples '())
+          (m 'ante-hits)
+          (m 'call-gen-hits)
+          (m 'disj-gen-hits)
+          (m 'left-tree-hits)
+          (m 'delay-hits)
+          (m 'right-tree-hits)
+          (m 'right-next-hits)
+          (m 'call-rule-hits)
+          (m 'disj-rule-hits)
+          (m 'flip-rule-hits)
+          (m 'rail-rule-hits)
+          (m 'max-c-seen)
+          (m 'k-shape-fails)
+          (m 'k-state-wf-fails)
+          (m 'k-progress-fails)
+          (m 'k-unique-fails)))
+
 (define (run-random-variant label rel shape-match? shape-closed? cfg-generator
                             #:require-unique? [require-unique? #t]
+                            #:require-progress? [require-progress? #t]
                             #:expected-ante-hits [expected-ante-hits VR-EXPECTED-ANTE-HITS]
                             #:min-call-gen [min-call-gen 0]
                             #:min-disj-gen [min-disj-gen 0]
@@ -430,98 +569,34 @@
                             #:min-rail-rules [min-rail-rules 0]
                             #:k-depth [k-depth VR-K-STEP-DEPTH])
   (for ([seed (in-list VR-SEEDS)])
-    (define rng (h:make-seeded-rng seed))
-    (define fail-count 0)
-    (define fail-samples '())
-    (define ante-hits 0)
-    (define call-gen-hits 0)
-    (define disj-gen-hits 0)
-    (define left-tree-hits 0)
-    (define delay-hits 0)
-    (define right-tree-hits 0)
-    (define right-next-hits 0)
-    (define call-rule-hits 0)
-    (define disj-rule-hits 0)
-    (define flip-rule-hits 0)
-    (define rail-rule-hits 0)
-    (define max-c-seen 0)
-    (define k-shape-fails 0)
-    (define k-state-wf-fails 0)
-    (define k-progress-fails 0)
-    (define k-unique-fails 0)
-
-    (for ([_ (in-range VR-ATTEMPTS)])
-      (define cfg (cfg-generator rng))
-      (unless (shape-match? cfg)
-        (set! fail-count (add1 fail-count))
-        (when (< (length fail-samples) 3)
-          (set! fail-samples (cons (list 'shape cfg) fail-samples))))
-
-      (define-values (has-call has-disj has-exists has-conj has-left has-delay has-right cmax)
-        (config-flags cfg))
-      (define tree (third cfg))
-      (when has-call (set! call-gen-hits (add1 call-gen-hits)))
-      (when has-disj (set! disj-gen-hits (add1 disj-gen-hits)))
-      (when (or has-left (tree-contains-left? tree))
-        (set! left-tree-hits (add1 left-tree-hits)))
-      (when (or has-delay (tree-contains-delay? tree))
-        (set! delay-hits (add1 delay-hits)))
-      (when (or has-right (tree-contains-right? tree))
-        (set! right-tree-hits (add1 right-tree-hits)))
-      (set! max-c-seen (max max-c-seen cmax))
-      (with-handlers
-          ([exn:fail?
-            (lambda (e)
-              (set! fail-count (add1 fail-count))
-              (when (< (length fail-samples) 3)
-                (set! fail-samples
-                      (cons (list 'exception (exn-message e) cfg) fail-samples)))
-              #f)])
-        (define steps-named (apply-reduction-relation/tag-with-names rel cfg))
-        (for ([item (in-list steps-named)])
-          (define name (first item))
-          (when (name-has-prefix? name "call/")
-            (set! call-rule-hits (add1 call-rule-hits)))
-          (when (name-has-prefix? name "disj/")
-            (set! disj-rule-hits (add1 disj-rule-hits)))
-          (when (name-has-prefix? name "flip/")
-            (set! flip-rule-hits (add1 flip-rule-hits)))
-          (when (name-has-prefix? name "rail/")
-            (set! rail-rule-hits (add1 rail-rule-hits)))
-          (match item
-            [(list _ cfg-next)
-             (when (tree-contains-right? (third cfg-next))
-               (set! right-next-hits (add1 right-next-hits)))]
-            [_ (void)]))
-
-        (when (and (shape-match? cfg) (states-wf? cfg))
-          (set! ante-hits (add1 ante-hits))
-          (define fail-info
-            (k-step-consequent-failure rel
-                                       shape-match?
-                                       cfg
-                                       k-depth
-                                       require-unique?))
-          (when fail-info
-            (match fail-info
-              [(list 'shape _)
-               (set! k-shape-fails (add1 k-shape-fails))]
-              [(list 'state-wf _)
-               (set! k-state-wf-fails (add1 k-state-wf-fails))]
-              [(list 'progress _)
-               (set! k-progress-fails (add1 k-progress-fails))]
-              [(list 'unique _ _)
-               (set! k-unique-fails (add1 k-unique-fails))]
-              [_ (void)])
-            (set! fail-count (add1 fail-count))
-            (when (< (length fail-samples) 3)
-              (set! fail-samples
-                    (cons (list 'k-step-consequent-fail fail-info cfg) fail-samples)))))
-
-        (unless (shape-closed? rel cfg)
-          (set! fail-count (add1 fail-count))
-          (when (< (length fail-samples) 3)
-            (set! fail-samples (cons (list 'shape-closed cfg) fail-samples))))))
+    (define metrics
+      (run-random-seed rel
+                       shape-match?
+                       shape-closed?
+                       cfg-generator
+                       seed
+                       k-depth
+                       require-unique?
+                       require-progress?))
+    (define-values (fail-count
+                    fail-samples
+                    ante-hits
+                    call-gen-hits
+                    disj-gen-hits
+                    left-tree-hits
+                    delay-hits
+                    right-tree-hits
+                    right-next-hits
+                    call-rule-hits
+                    disj-rule-hits
+                    flip-rule-hits
+                    rail-rule-hits
+                    max-c-seen
+                    k-shape-fails
+                    k-state-wf-fails
+                    k-progress-fails
+                    k-unique-fails)
+      (metrics->view metrics))
 
     (displayln
      (format "[property-variants-random] ~a seed=~a attempts=~a ante-hits=~a fails=~a k-fails(shape/state/progress/unique)=~a/~a/~a/~a gen(call/disj/left/delay/right)=~a/~a/~a/~a/~a next-right=~a rule(call/disj/flip/rail)=~a/~a/~a/~a max-c=~a"
@@ -563,10 +638,11 @@
                   0
                   (format "~a seed=~a: k-step state-wf preservation failures: ~a"
                           label seed k-state-wf-fails))
-    (check-equal? k-progress-fails
-                  0
-                  (format "~a seed=~a: k-step progress failures: ~a"
-                          label seed k-progress-fails))
+    (when require-progress?
+      (check-equal? k-progress-fails
+                    0
+                    (format "~a seed=~a: k-step progress failures: ~a"
+                            label seed k-progress-fails)))
     (when require-unique?
       (check-equal? k-unique-fails
                     0
@@ -604,10 +680,10 @@
                         label seed rail-rule-hits min-rail-rules))))
 
 (define-test-suite VARIANT-RANDOM-PROPERTIES
-  (test-case "L1 Rcall-eager randomized"
+  (test-case "L1 Rl1-call-eager randomized"
     (define opts (gopts #t #f #f #t))
-    (run-random-variant "Rcall-eager"
-                        Rcall-eager
+    (run-random-variant "Rl1-call-eager"
+                        Rl1-call-eager
                         (lambda (cfg) (redex-match? L1 config cfg))
                         shape-closed/L1?
                         (lambda (rng) (gen-config-user/rng rng opts))
@@ -616,10 +692,10 @@
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS))
 
-  (test-case "L1 Rcall-lazy randomized"
+  (test-case "L1 Rl1-call-lazy randomized"
     (define opts (gopts #t #f #f #t))
-    (run-random-variant "Rcall-lazy"
-                        Rcall-lazy
+    (run-random-variant "Rl1-call-lazy"
+                        Rl1-call-lazy
                         (lambda (cfg) (redex-match? L1 config cfg))
                         shape-closed/L1?
                         (lambda (rng) (gen-config-user/rng rng opts))
@@ -628,10 +704,10 @@
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS))
 
-  (test-case "L2 Rdisj-left randomized"
+  (test-case "L2 Rl2-disj-left randomized"
     (define opts (gopts #f #t #f #f))
-    (run-random-variant "Rdisj-left"
-                        Rdisj-left
+    (run-random-variant "Rl2-disj-left"
+                        Rl2-disj-left
                         (lambda (cfg) (redex-match? L2 config cfg))
                         shape-closed/L2?
                         (lambda (rng) (gen-config-user/rng rng opts))
@@ -640,40 +716,42 @@
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
 
-  (test-case "L3 Rbase-e randomized"
+  (test-case "L3 Rl3-pre-eager randomized"
     (define opts (gopts #t #t #f #t))
-    (run-random-variant "Rbase-e"
-                        Rbase-e
+    (run-random-variant "Rl3-pre-eager"
+                        Rl3-pre-eager
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
                         (lambda (rng) (gen-config-user/rng rng opts))
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
-                        #:require-unique? #t
+                        #:require-unique? #f
+                        #:require-progress? #f
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS
                         #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
 
-  (test-case "L3 Rbase-l randomized"
+  (test-case "L3 Rl3-pre-lazy randomized"
     (define opts (gopts #t #t #f #t))
-    (run-random-variant "Rbase-l"
-                        Rbase-l
+    (run-random-variant "Rl3-pre-lazy"
+                        Rl3-pre-lazy
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
                         (lambda (rng) (gen-config-user/rng rng opts))
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
-                        #:require-unique? #t
+                        #:require-unique? #f
+                        #:require-progress? #f
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS
                         #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
 
-  (test-case "L3 Rflip-e randomized admin-fragment"
-    (run-random-variant "Rflip-e"
-                        Rflip-e
+  (test-case "L3 Rl3-flip-eager randomized admin-fragment"
+    (run-random-variant "Rl3-flip-eager"
+                        Rl3-flip-eager
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
-                        gen-config-flip-admin/rng
+                        gen-config-delay-left-disj-admin/rng
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
@@ -681,12 +759,12 @@
                         #:min-delay VR-MIN-DELAY-HITS
                         #:min-flip-rules VR-MIN-FLIP-RULE-HITS))
 
-  (test-case "L3 Rflip-l randomized admin-fragment"
-    (run-random-variant "Rflip-l"
-                        Rflip-l
+  (test-case "L3 Rl3-flip-lazy randomized admin-fragment"
+    (run-random-variant "Rl3-flip-lazy"
+                        Rl3-flip-lazy
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
-                        gen-config-flip-admin/rng
+                        gen-config-delay-left-disj-admin/rng
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
@@ -694,12 +772,12 @@
                         #:min-delay VR-MIN-DELAY-HITS
                         #:min-flip-rules VR-MIN-FLIP-RULE-HITS))
 
-  (test-case "L4 Rrail-e randomized admin-fragment"
-    (run-random-variant "Rrail-e"
-                        Rrail-e
+  (test-case "L4 Rl4-rail-eager randomized admin-fragment"
+    (run-random-variant "Rl4-rail-eager"
+                        Rl4-rail-eager
                         (lambda (cfg) (redex-match? L4 config cfg))
                         shape-closed/L4?
-                        gen-config-rail-admin/rng
+                        gen-config-delay-left-disj-admin/rng
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
@@ -709,12 +787,12 @@
                         #:min-right-next VR-MIN-RIGHT-TREE-HITS
                         #:min-rail-rules VR-MIN-RAIL-RULE-HITS))
 
-  (test-case "L4 Rrail-l randomized admin-fragment"
-    (run-random-variant "Rrail-l"
-                        Rrail-l
+  (test-case "L4 Rl4-rail-lazy randomized admin-fragment"
+    (run-random-variant "Rl4-rail-lazy"
+                        Rl4-rail-lazy
                         (lambda (cfg) (redex-match? L4 config cfg))
                         shape-closed/L4?
-                        gen-config-rail-admin/rng
+                        gen-config-delay-left-disj-admin/rng
                         #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS

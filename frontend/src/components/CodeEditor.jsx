@@ -46,7 +46,6 @@ const CodeEditor = forwardRef(({
   codeText, setCodeText, 
   isFrozen, isDark,
   goalId, onTagClick,
-  predefinedCodeText,
 }, ref) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -57,20 +56,13 @@ const CodeEditor = forwardRef(({
   // Memoize parsed results
   const { plain, segments } = useMemo(() => 
     isFrozen ? parseTaggedText(codeText) : { plain: codeText, segments: [] },
-    [isFrozen]
+    [isFrozen, codeText]
   );
 
   // Keep segments reference updated
   useEffect(() => {
     segmentsRef.current = segments;
   }, [segments]);
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.setValue(predefinedCodeText);
-    }, [predefinedCodeText]);
-
 
   const handleEditorWillMount = (monaco) => {
     monaco.languages.register({ id: 'minikanren' });
@@ -160,7 +152,7 @@ const CodeEditor = forwardRef(({
   useEffect(() => {
       updateDecorations()
     },
-    [goalId]);
+    [goalId, plain, isFrozen]);
 
   useEffect(() => {
     return () => {

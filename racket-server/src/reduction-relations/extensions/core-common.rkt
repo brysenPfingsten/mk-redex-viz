@@ -7,9 +7,8 @@
 (check-redundancy #t)
 
 (provide core-redex/core
-         whole-cfg/core
          extend-core-redex
-         extend-whole-cfg)
+         make-core-collector)
 
 ;; Shared core stepping rules over the base Core syntax.
 (define core-redex/core
@@ -28,6 +27,9 @@
     [--> ((empty-tree) × g c)
          (empty-tree)
          "core/conj-prune-fail"]
+    [--> ((emit σ_head s_tail) × g c)
+         (emit σ_head (s_tail × g c))
+         "core/conj-distribute-emit"]
     [--> ((∃ d g tag) (state sub c trail tag_1))
          (g_new
           (state sub (u_1 ... ,@(term c)) trail tag_1))
@@ -44,19 +46,19 @@
     [--> ((t_1 =? t_2 tag) (state sub c trail tag_2))
          (empty-tree)
          (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
-         "core/unify-fail"]))
-
-;; Shared answer-collection rule over base Core syntax.
-(define whole-cfg/core
-  (reduction-relation
-    Core
-    #:domain config
-    [--> (Γ (σ ...) (⊤ σ_new))
-         (Γ (σ ... σ_new) (empty-tree))
-         "core/collect-answer"]))
+         "core/unify-fail"]
+    ))
 
 (define-syntax-rule (extend-core-redex lang)
   (extend-reduction-relation core-redex/core lang))
 
-(define-syntax-rule (extend-whole-cfg lang)
-  (extend-reduction-relation whole-cfg/core lang))
+(define-syntax-rule (make-core-collector lang)
+  (reduction-relation
+   lang
+   #:domain config
+   [--> (Γ (⊤ σ_new) as_old)
+        (Γ (empty-tree) (append-answer as_old σ_new))
+        "core/collect-single-answer"]
+   [--> (Γ (emit σ_new s_next) as_old)
+        (Γ s_next (append-answer as_old σ_new))
+        "core/collect-emit"]))

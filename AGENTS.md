@@ -37,3 +37,17 @@ Guidelines:
 - Convert list -> set/hash only when you reuse that conversion enough times to justify it.
 - In review, remove helper state that does not simplify logic or improve complexity in a measurable way.
 - Prefer the smallest coherent change over speculative optimization.
+
+## Naming discipline (no alias stubs)
+
+Avoid rinky-dink alias definitions whose only job is renaming, e.g.:
+
+```racket
+(define new-name old-name)
+```
+
+Guidelines:
+
+- Prefer renaming call sites/imports/exports directly over introducing bridge aliases.
+- If a compatibility name is truly required, keep it at module boundaries via `provide`/`require` renaming rather than internal runtime aliases.
+- When an alias appears during refactor, treat it as temporary and remove it before check-in unless there is a documented compatibility need.

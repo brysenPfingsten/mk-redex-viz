@@ -3,26 +3,30 @@
          web-server/http
          net/url-structs
          net/uri-codec
-         json)
+         json
+         racket/string)
 
-(require "metafunctions.rkt"
+(require "canonical-json.rkt"
          "transpiler.rkt"
+         "capability-analysis.rkt"
          "syntax-checking.rkt"
          "zipper.rkt"
          "model-registry.rkt"
-         "legacy-variant-adapter.rkt")
+         "model-surface-policy.rkt")
 
 (provide step! back! reset! init! init-session! 
          make-stepper step step-name 
          session session-zipper session-stepper session-nqv
-         switch-model! list-models!)
+         switch-model! analyze! list-models!)
 
 (define-struct step (name prog) #:transparent)
 (define-struct session 
   ([zipper #:mutable] 
    [stepper #:mutable]
-   [nqv #:mutable])
-  #:transparent)
+   [nqv #:mutable]
+   [model-id #:mutable #:auto])
+  #:transparent
+  #:auto-value default-model-id)
 (define session-table (make-hash))
 
 
@@ -32,13 +36,7 @@
   (let ([z (session-zipper s)])
     (zipper-init! z)
     (zipper-add! z (step "Initialize Program" p))
-    (set-session-nqv! s (num-query-vars (canonical-config->legacy-program p)))))
-
-
-;; program->display-prog: program -> legacy-program
-;; Purpose: Keep existing JSON/transpiler view logic while stepping L4 configs.
-(define (program->display-prog prog)
-  (canonical-config->legacy-program prog))
+    (set-session-nqv! s (num-query-vars/canonical p))))
 
 
 ;; step->response: step nat nat-> response
@@ -47,7 +45,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step a-idx
-                            'program (to-json (program->display-prog prog) nqv))])
+                            'program (to-json/canonical prog nqv))])
       (response/jsexpr response #:mime-type #"application/json; charset=utf-8"))))
 
 
@@ -57,7 +55,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step 0
-                            'program (to-json (program->display-prog prog) nqv))])
+                            'program (to-json/canonical prog nqv))])
       (response/jsexpr response
                        #:mime-type #"application/json; charset=utf-8"
                        #:headers (list (make-header #"X-Is-Last" #"true"))))))
@@ -69,7 +67,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step 0
-                            'program (to-json (program->display-prog prog) nqv)
+                            'program (to-json/canonical prog nqv)
                             'htmlGuids tagged-prog)])
       (response/jsexpr response
                        #:mime-type #"application/json; charset=utf-8"
@@ -103,7 +101,7 @@
 ;; step!: session -> response
 ;; Purpose: Applies one reduction step and sends the new JSON data of that tree
 (define (step! ses) 
-  (match-let ([(session zip step nqv) ses])
+  (match-let ([(session zip step nqv _) ses])
     (step zip nqv)))
 
 
@@ -123,14 +121,25 @@
   (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))        ;; Get the program from that JSON
   (check-syntax-capture-error raw-prog)                               ;; Check for syntax errors
   (define sexpr-prog (read-all (open-input-string raw-prog)))         ;; Read the program into sexpressions
-  (define-values (legacy-prog html-prog) (parse-prog sexpr-prog))      ;; Parse the sexpressions
-  (check-well-formed legacy-prog)                                      ;; Legacy parser/wf gate
-  (define model-prog (legacy-program->canonical-config legacy-prog))   ;; Target syntax migration
-  (unless (canonical-config? model-prog)
+  (define model-id (session-model-id ses))
+  (define maybe-spec (lookup-model-spec model-id))
+  (unless maybe-spec
+    (error 'init! (format "Unknown model selected for session: ~a" model-id)))
+  (define requirements (ast->requirements (parse-prog->ast sexpr-prog)))
+  (define reasons
+    (incompatible-reasons requirements (model-spec-capabilities maybe-spec)))
+  (unless (null? reasons)
+    (error 'init!
+           (format "Program is incompatible with selected model ~a: ~a"
+                   model-id
+                   (string-join reasons "; "))))
+  (define-values (model-prog html-prog) (parse-prog/canonical sexpr-prog)) ;; Parse directly to canonical target
+  (unless (canonical-target-in-domain? model-prog canonical-parser-target-id)
     (error 'init! (format "transpiler produced a program outside canonical target ~a"
-                          canonical-target-id)))
+                          canonical-parser-target-id)))
+  (check-canonical-well-formed model-prog canonical-parser-target-id)
   (init-session! ses model-prog)                                       ;; Initialize all state variables
-  (match-define (session zip _ nqv) ses)                              ;; Get zipper and number query vars
+  (match-define (session zip _ nqv _) ses)                             ;; Get zipper and number query vars
   (define init-step (zipper-curr zip))                                ;; Get the initial program
   (step/html/cookie->response init-step html-prog ses-id nqv))        ;; Send the initial program and HTML
 
@@ -138,7 +147,7 @@
 ;; reset!: session hash string -> response
 ;; Purpose: Resets the given session to the initial state of its program
 (define (reset! ses ses-table ses-id)
-  (match-let ([(session zip _ nqv) ses])
+  (match-let ([(session zip _ nqv _) ses])
     (define response (match zip
                        [(zipper prev _ _ _) 
                         #:when (cons? prev)
@@ -167,25 +176,72 @@
       [_ (step->response maybe-back idx nqv)])))
 
 
-;; switch-model!: session request -> response
-;; Purpose: Switches the model that is being used to step with
-(define (switch-model! ses req)
+;; switch-model!: session request string -> response
+;; Purpose: Switches the model used by this session and refreshes cookie binding.
+(define (switch-model! ses req ses-id)
   (define json-data (request-post-data/raw req))
   (define new-model (hash-ref (bytes->jsexpr json-data) 'model #f))
-  (define maybe-step-once (lookup-model-step-once new-model))
+  (define maybe-spec (lookup-model-spec new-model))
+  (define maybe-step-once (and maybe-spec (model-spec-step-once maybe-spec)))
   (if maybe-step-once
       (begin
+        (set-session-model-id! ses (model-spec-id maybe-spec))
         (set-session-stepper! ses (make-stepper maybe-step-once))
-        (response/jsexpr (hasheq 'model new-model) #:code 200))
+        (response/jsexpr
+         (hasheq 'model (model-spec-id maybe-spec))
+         #:code 200
+         #:headers
+         (list
+          (make-header
+           #"Set-Cookie"
+           (string->bytes/utf-8
+            (format "session-id=~a; Path=/; SameSite=Lax" ses-id))))))
       (response/jsexpr (hasheq 'error (format "Unknown model: ~a" new-model))
                        #:code 400)))
+
+;; analyze!: session request -> response
+;; Purpose: Analyze source capabilities and model compatibility without executing.
+(define (analyze! _ses req)
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (response/jsexpr
+           (hasheq 'validSyntax #f
+                   'error (exn-message e))
+           #:mime-type #"application/json; charset=utf-8"
+           #:code 400))])
+    (define json-data (request-post-data/raw req))
+    (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))
+    (define analysis (analyze-source-capabilities raw-prog))
+    (define requirements (hash-ref analysis 'requirements '()))
+    (define compatible-ids (compatible-model-ids requirements surfaced-model-specs))
+    (define incompatible-specs
+      (for/list ([spec (in-list surfaced-model-specs)]
+                 #:unless (member (model-spec-id spec) compatible-ids))
+        spec))
+    (define incompatible-ids (map model-spec-id incompatible-specs))
+    (define incompat-reasons
+      (for/hash ([spec (in-list incompatible-specs)])
+        ;; Use symbol keys so response/jsexpr can encode object fields reliably.
+        (values (string->symbol (model-spec-id spec))
+                (incompatible-reasons requirements
+                                      (model-spec-capabilities spec)))))
+    (response/jsexpr
+     (hasheq 'validSyntax #t
+             'requirements requirements
+             'compatibleModelIds compatible-ids
+             'incompatibleModelIds incompatible-ids
+             'incompatReasonsByModel incompat-reasons
+             'analysisVersion (hash-ref analysis 'analysisVersion ANALYSIS-VERSION))
+     #:mime-type #"application/json; charset=utf-8"
+     #:code 200)))
 
 
 ;; list-models!: -> response
 ;; Purpose: Returns known backend model ids and metadata for UI dispatch.
 (define (list-models!)
   (response/jsexpr
-   (for/list ([spec (in-list all-model-specs)])
+   (for/list ([spec (in-list surfaced-model-specs)])
      (model-spec->jsexpr spec))
    #:mime-type #"application/json; charset=utf-8"
    #:code 200))
@@ -240,7 +296,8 @@
       ["post/init"  (init! session req session-id)]
       ["post/reset" (reset! session session-table session-id)]
       ["post/back"  (back! session)]
-      ["post/model" (switch-model! session req)])))
+      ["post/model" (switch-model! session req session-id)]
+      ["post/analyze" (analyze! session req)])))
 
 (define (handled-dispatcher req)
   (with-handlers

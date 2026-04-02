@@ -1,12 +1,21 @@
 #lang racket
 (require racket/struct
          racket/generic
+         racket/set
          redex/reduction-semantics
          syntax/to-string
-         racket/pretty
-         "definitions.rkt")
+         racket/pretty)
 
-(provide parse-prog)
+(provide parse-prog
+         parse-prog/canonical
+         parse-prog->ast
+         REQ-CORE
+         REQ-RELCALL
+         REQ-DISJUNCTION
+         REQ-FRESH
+         ast->requirements
+         canonical-parser-profile
+         canonical-parser-target-id)
 
 ;-----------------Structures-------------------
 (struct prog (relations query) #:transparent)
@@ -26,6 +35,48 @@
 (struct defrel (name lop goal) #:transparent)
 (struct run (n q goal) #:transparent)
 ;-----------------------------------------------
+
+;; Canonical parser target for backend stepping.
+(define canonical-parser-profile "surface->l4")
+(define canonical-parser-target-id "L4/config")
+
+;; Capability requirements (used for model compatibility checks).
+(define REQ-CORE "req/core")
+(define REQ-RELCALL "req/relcall")
+(define REQ-DISJUNCTION "req/disjunction")
+(define REQ-FRESH "req/fresh")
+
+(define (goal->requirements g)
+  (match g
+    [(fresh _ goal)
+     (set-add (goal->requirements goal) REQ-FRESH)]
+    [(conde clauses)
+     (for/fold ([acc (set REQ-DISJUNCTION)])
+               ([clause (in-list clauses)])
+       (set-union acc (goal->requirements clause)))]
+    [(disj g1 g2)
+     (set-union (set REQ-DISJUNCTION)
+                (goal->requirements g1)
+                (goal->requirements g2))]
+    [(conj g1 g2)
+     (set-union (goal->requirements g1)
+                (goal->requirements g2))]
+    [(relcall _ _)
+     (set REQ-RELCALL)]
+    [_ (set)]))
+
+(define (ast->requirements ast)
+  (match ast
+    [(prog rels (run _ _ query-goal))
+     (define reqs-from-rels
+       (for/fold ([acc (set REQ-CORE)])
+                 ([rel (in-list rels)])
+         (match rel
+           [(defrel _ _ goal) (set-union acc (goal->requirements goal))]
+           [_ acc])))
+     (sort (set->list (set-union reqs-from-rels (goal->requirements query-goal)))
+           string<?)]
+    [_ (list REQ-CORE)]))
 
 ;; map/fold: (T A -> (values R A)) (listof T) A -> (values (listof R) A)
 ;; Purpose: Like map, but threads an accumulator state through each call.
@@ -139,8 +190,8 @@
      (define-values (tt2 count3 guids2) (transpile t2 count2))
      (values `(,tt1 =? ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
 
-    [(succeed) #:when (succeed? expr) (values (term ⊤) count '())]
-    [(fail)    #:when (fail? expr)    (values (term ⊥) count '())]
+    [(succeed) #:when (succeed? expr) (values '⊤ count '())]
+    [(fail)    #:when (fail? expr)    (values '⊥ count '())]
 
     [(relcall name terms)
      #:when (relcall? expr)
@@ -150,7 +201,7 @@
        (map/fold-with-guids transpile terms count2))
      (values `(,tname ,@tterms ,id) count3 (cons id (append guids1 guids2)))]
 
-    [(nil) #:when (nil? expr) (values (term empty) count '())]
+    [(nil) #:when (nil? expr) (values 'empty count '())]
     
     [(konst k) #:when (konst? expr) (values (konst->term expr) count '())]
     
@@ -396,9 +447,6 @@
     [`(run ,n (,q ..1) . ,gs) (run n (map var q) (conj-goals (map parse-goal gs)))]
     [`(run* (,q ..1) . ,gs) (run +inf.0 (map var q) (conj-goals (map parse-goal gs)))]))
 
-(define (parse-relation-defs a-lor)
-  (map parse-relation-def a-lor))
-
 (define (parse-relation-def a-relation)
   (match a-relation
     [`(defrel (,r . ,params) . ,gs) (defrel
@@ -462,7 +510,7 @@
 ;; defrels run -> model program
 ;; Translate the relation definitions and run query of a minikanren
 ;; program into our redex syntax
-(define (parse-prog lst)
+(define (parse-prog->ast lst)
   (define-values (defrels run)
     (let ([result
            (foldl
@@ -478,20 +526,172 @@
             lst)])
       (values (reverse (car result)) (cdr result))))
 
+  (prog (map parse-relation-def defrels)
+        (parse-run run)))
+
+(define (parse-prog lst)
   ;; Parse AST
-  (define AST
-    (prog (parse-relation-defs defrels)
-          (parse-run run)))
+  (define ast (parse-prog->ast lst))
 
   ;; Transpile AST to redex program and collect generated GUIDs
   (define-values (REDEX-PROG counter guid-list)
-    (transpile AST 0))
+    (transpile ast 0))
 
   ;; Tag AST with guids
-  (define-values (GUID-PROG _) (add-guids AST 0 guid-list))
+  (define-values (GUID-PROG _) (add-guids ast 0 guid-list))
 
   ;; Return both programs
   (values REDEX-PROG GUID-PROG))
+
+;; ---------- Canonical parser projection ----------
+
+(define (id->label id)
+  `(label ,id))
+
+(define (konst->canonical-term const)
+  (match const
+    [(konst s) #:when (symbol? s) `(sym ,(symbol->string s))]
+    [(konst s) #:when (string? s) `(str ,s)]
+    [(konst b) #:when (boolean? b) b]
+    [(konst n) #:when (number? n) `(nat ,n)]))
+
+(define (unwrap-symbolish v who)
+  (cond
+    [(symbol? v) v]
+    [(var? v) (unwrap-symbolish (var-v v) who)]
+    [else (error who "expected symbol-like value, got ~a" v)]))
+
+(define (transpile-canonical expr count)
+  (match expr
+    [(prog rels q)
+     #:when (prog? expr)
+     (define-values (trs count1 guids1)
+       (map/fold-with-guids transpile-canonical rels count))
+     (define-values (tq count2 guids2)
+       (transpile-canonical q count1))
+     (values `(,trs ,tq (empty-stream)) count2 (append guids1 guids2))]
+
+    [(fresh vars goal)
+     #:when (fresh? expr)
+     (define-values (id count1) (next-g-id "f" count))
+     (define-values (tvars count2 guids1)
+       (map/fold-with-guids transpile-canonical vars count1))
+     (define-values (tgoal count3 guids2)
+       (transpile-canonical goal count2))
+     (values `(∃ ,tvars ,tgoal ,(id->label id))
+             count3
+             (cons id (append guids1 guids2)))]
+
+    [(conde clauses)
+     #:when (conde? expr)
+     (define-values (id count1) (next-g-id "d" count))
+     (struct acc (expr count guids))
+     (define final-acc
+       (foldr
+        (λ (clause accum)
+          (define-values (t-clause new-count new-guids)
+            (transpile-canonical clause (acc-count accum)))
+          (acc (if (null? (acc-expr accum))
+                   t-clause
+                   `(,t-clause ∨ ,(acc-expr accum) ,(id->label id)))
+               new-count
+               (append new-guids (acc-guids accum))))
+        (acc '() count1 '())
+        clauses))
+     (define final-expr (acc-expr final-acc))
+     (define final-count (acc-count final-acc))
+     (define final-guids (acc-guids final-acc))
+     (values final-expr final-count (cons id final-guids))]
+
+    [(conj g1 g2)
+     #:when (conj? expr)
+     (define-values (id count1) (next-g-id "c" count))
+     (define-values (tg1 count2 guids1) (transpile-canonical g1 count1))
+     (define-values (tg2 count3 guids2) (transpile-canonical g2 count2))
+     (values `(,tg1 ∧ ,tg2 ,(id->label id))
+             count3
+             (cons id (append guids1 guids2)))]
+
+    [(unify t1 t2)
+     #:when (unify? expr)
+     (define-values (id count1) (next-g-id "u" count))
+     (define-values (tt1 count2 guids1) (transpile-canonical t1 count1))
+     (define-values (tt2 count3 guids2) (transpile-canonical t2 count2))
+     (values `(,tt1 =? ,tt2 ,(id->label id))
+             count3
+             (cons id (append guids1 guids2)))]
+
+    [(succeed)
+     #:when (succeed? expr)
+     (values `(succeed (label "succeed")) count '())]
+
+    [(fail)
+     #:when (fail? expr)
+     (error 'transpile-canonical "unsupported goal: fail")]
+
+    [(relcall name terms)
+     #:when (relcall? expr)
+     (define-values (id count1) (next-g-id "r" count))
+     (define-values (tname count2 guids1) (transpile-canonical name count1))
+     (define-values (tterms count3 guids2)
+       (map/fold-with-guids transpile-canonical terms count2))
+     (values `(,tname ,@tterms ,(id->label id))
+             count3
+             (cons id (append guids1 guids2)))]
+
+    [(nil) #:when (nil? expr) (values 'empty count '())]
+
+    [(konst _)
+     #:when (konst? expr)
+     (values (konst->canonical-term expr) count '())]
+
+    [(kons a d)
+     #:when (kons? expr)
+     (define-values (ta count1 guids1) (transpile-canonical a count))
+     (define-values (td count2 guids2) (transpile-canonical d count1))
+     (values `(,ta : ,td) count2 (append guids1 guids2))]
+
+    [(var v)
+     #:when (var? expr)
+     (define v* (unwrap-symbolish v 'transpile-canonical))
+     (values (string->symbol (string-append "x:" (symbol->string v*)))
+             count
+             '())]
+
+    [(relname name)
+     #:when (relname? expr)
+     (define name* (unwrap-symbolish name 'transpile-canonical))
+     (values (string->symbol (string-append "r:" (symbol->string name*)))
+             count
+             '())]
+
+    [(defrel name lop goal)
+     #:when (defrel? expr)
+     (define-values (tname count1 guids1) (transpile-canonical name count))
+     (define-values (tlop count2 guids2)
+       (map/fold-with-guids transpile-canonical lop count1))
+     (define-values (tgoal count3 guids3) (transpile-canonical goal count2))
+     (values `(,tname ,tlop ,tgoal)
+             count3
+             (append guids1 guids2 guids3))]
+
+    [(run _n qs goal)
+     #:when (run? expr)
+     (define-values (id count1) (next-g-id "f" count))
+     (define-values (tq count2 guids1)
+       (map/fold-with-guids transpile-canonical qs count1))
+     (define-values (tg count3 guids2) (transpile-canonical goal count2))
+     (values `((∃ ,tq ,tg ,(id->label id))
+               (state () () () (label "s")))
+             count3
+             (cons id (append guids1 guids2)))]))
+
+(define (parse-prog/canonical lst)
+  (define ast (parse-prog->ast lst))
+  (define-values (canonical-prog _counter guid-list)
+    (transpile-canonical ast 0))
+  (define-values (html-prog _rest) (add-guids ast 0 guid-list))
+  (values canonical-prog html-prog))
 
  
 #;(parse-prog
@@ -565,18 +765,18 @@
 
   (check-equal?
    model-prog
-   '(prog ()
-          ((∃ (x:q)
-              (∃ ()
-                 (((((sym "dog1") =? (sym "cat") "u5")
-                    ∧ ((sym "bear1") =? x:lion "u6") "c4")
-                   ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
-                  ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
-           (state () 0 () "s"))))
+   '(((∃ (x:q)
+       (∃ ()
+          (((((sym "dog1") =? (sym "cat") "u5")
+             ∧ ((sym "bear1") =? x:lion "u6") "c4")
+            ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
+           ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
+      (state () 0 () "s"))
+     ()))
 
   (check-equal?
    html-prog
-   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== dog1 cat)[[/u5]]\n  [[u6]](== bear1 lion)[[/u6]][[/c4]]\n  [[u7]](== dog cat)[[/u7]][[/c3]]\n  [[u8]](== bear lion)[[/u8]][[/c2]])[[/f1]])[[/f0]]"
+   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== 'dog1 'cat)[[/u5]]\n  [[u6]](== 'bear1 lion)[[/u6]][[/c4]]\n  [[u7]](== 'dog 'cat)[[/u7]][[/c3]]\n  [[u8]](== 'bear 'lion)[[/u8]][[/c2]])[[/f1]])[[/f0]]"
    )
 
   )

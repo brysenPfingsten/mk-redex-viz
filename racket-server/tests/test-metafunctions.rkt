@@ -39,10 +39,24 @@
             (check-exn exn:fail? (thunk (num-query-vars PROG4))))
   )
 
+(define-test-suite UNIFY-WALK-SANITY
+  (test-case "unify equal constants preserves substitution"
+    (check-equal? (term (unify "abc" "abc" ((2 "fish"))))
+                  (term ((2 "fish")))))
+
+  (test-case "walk resolves direct variable binding"
+    (check-equal? (term (walk 0 ((1 "cat") (0 "dog"))))
+                  (term "dog")))
+
+  (test-case "walk resolves chained variable binding"
+    (check-equal? (term (walk 0 ((1 "cat") (0 1))))
+                  (term "cat"))))
+
 (define/provide-test-suite METAFUNCTIONS
   #:before (thunk (displayln "Running tests for metafunctions..."))
   #:after (thunk (displayln "Finished running tests for metafunctions."))
   NUM-QUERY-VARS
+  UNIFY-WALK-SANITY
   )
 
 ;(run-tests METAFUNCTIONS)

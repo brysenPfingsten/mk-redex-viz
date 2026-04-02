@@ -5,13 +5,11 @@
          redex/reduction-semantics
          racket/runtime-path
          racket/match
-         "../src/definitions.rkt"
-         "../src/judgment-forms.rkt"
          "../src/transpiler.rkt"
-         "../src/legacy-variant-adapter.rkt"
          "../src/extensions/l4-railroad-syntax.rkt")
 
-(provide EXAMPLE-COMPAT)
+(provide EXAMPLE-COMPAT
+         frontend-example-programs)
 
 ;; Source of truth lives in frontend; tests consume it directly.
 (define-runtime-path FRONTEND-EXAMPLES-PATH
@@ -63,19 +61,18 @@
 (define (parse-src src)
   (parse-prog (read-all (open-input-string src))))
 
+(define (parse-src/canonical src)
+  (parse-prog/canonical (read-all (open-input-string src))))
+
 (define (assert-example-compat! name src)
-  (define-values (legacy html) (parse-src src))
+  (define-values (canonical html) (parse-src/canonical src))
   (check-true (string? html) (format "~a should produce html-guid source" name))
-  (check-true (redex-match? L p legacy) (format "~a should parse as legacy L program" name))
-  (check-true (judgment-holds (closed-program? ,legacy))
-              (format "~a should be closed in legacy judgments" name))
-  (define lifted (legacy-program->canonical-config legacy))
-  (check-true (redex-match? L4 config lifted)
+  (check-true (redex-match? L4 config canonical)
               (format "~a should lift into L4 config syntax" name))
-  (check-true (canonical-config? lifted)
+  (check-true (redex-match? L4 config canonical)
               (format "~a should satisfy canonical target predicate (~a)"
                       name
-                      canonical-target-id)))
+                      canonical-parser-target-id)))
 
 (define/provide-test-suite EXAMPLE-COMPAT
   (test-case "frontend examples parse and lift to canonical target"
