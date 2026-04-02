@@ -54,7 +54,7 @@
 
   (test-case "delay pops do not escape their Freshened wrapper"
     (define scoped-delay
-      (term (Freshened
+      (term (FreshenedTree
              (u:0)
              (delay ((succeed (label "ok"))
                      (state () () (u:0) () (label "s"))))
@@ -67,7 +67,7 @@
       (check-equal? step-name "delay/invoke-delay")
       (check-equal?
        next
-       (term (Freshened
+       (term (FreshenedShell
               (u:0)
               (Bounced
                ((succeed (label "ok"))

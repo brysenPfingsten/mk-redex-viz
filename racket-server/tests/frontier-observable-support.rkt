@@ -1,10 +1,13 @@
 #lang racket
 
-(require redex/reduction-semantics)
+(require redex/reduction-semantics
+         (prefix-in wf: "../src/search-lattice/wf/all.rkt"))
 
 (provide count-bounced
          count-answers
          count-freshened
+         count-freshened-tree
+         count-freshened-shell
          state-c-agrees-with-scope?
          core-c-scope-agreement?
          config-c-scope-agreement?
@@ -14,30 +17,31 @@
          visible-json-trace-wf?
          trace-deterministic)
 
-(define u-rx #px"^u:")
+(define (first-summary holds)
+  (match holds
+    [(list summary) summary]
+    [_ #f]))
 
-(define (logic-var-symbol? v)
-  (and (symbol? v)
-       (regexp-match? u-rx (symbol->string v))))
+(define (safe-summary thunk)
+  (with-handlers ([exn:fail? (lambda (_exn) #f)])
+    (first-summary (thunk))))
 
-(define (distinct? xs)
-  (= (length xs)
-     (length (remove-duplicates xs))))
+(define (summary-for-config cfg)
+  (or (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/rail-calls? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/search-base-calls? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/calls? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/rail? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/search-base? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/disj? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/delay? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/core? ,cfg summary) summary)))))
 
-(define (subset? xs ys)
-  (for/and ([x (in-list xs)])
-    (and (member x ys) #t)))
-
-(define (lvars-in datum [acc '()])
-  (match datum
-    ['() acc]
-    [(? logic-var-symbol? u)
-     (if (member u acc)
-         acc
-         (cons u acc))]
-    [(cons a d)
-     (lvars-in a (lvars-in d acc))]
-    [_ acc]))
+(define (summary-for-frontier cfg scope)
+  (or (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/rail? ,cfg ,scope summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/search-base? ,cfg ,scope summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/disj? ,cfg ,scope summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/delay? ,cfg ,scope summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/core? ,cfg ,scope summary) summary)))))
 
 (define (state-c-agrees-with-scope? st scope)
   (match st
@@ -45,181 +49,46 @@
      (equal? c scope)]
     [_ #f]))
 
-(define (state-lvars-contained? st scope)
-  (match st
-    [`(state ,sub ,dis ,_ ,trail ,_tag)
-     (and (subset? (lvars-in sub) scope)
-          (subset? (lvars-in dis) scope)
-          (subset? (lvars-in trail) scope))]
-    [_ #f]))
-
 (define (core-c-scope-agreement? f [scope '()])
-  (match f
-    ['(empty-tree) #t]
-    [(or (list 'FreshenedTree intro inner _tag)
-         (list 'FreshenedShell intro inner _tag))
-     (and (distinct? intro)
-          (for/and ([u (in-list intro)])
-            (not (member u scope)))
-          (core-c-scope-agreement? inner (append intro scope)))]
-    [(list 'Bounced inner)
-     (core-c-scope-agreement? inner scope)]
-    [(list left '+ right)
-     (and (core-c-scope-agreement? left scope)
-          (core-c-scope-agreement? right scope))]
-    [(list inner '× _ c)
-     (and (equal? c scope)
-          (core-c-scope-agreement? inner scope))]
-    [(list 'delay inner)
-     (core-c-scope-agreement? inner scope)]
-    [(list left '<-+ right)
-     (and (core-c-scope-agreement? left scope)
-          (core-c-scope-agreement? right scope))]
-    [(list left '+-> right)
-     (and (core-c-scope-agreement? left scope)
-          (core-c-scope-agreement? right scope))]
-    [(list '⊤ st)
-     (state-c-agrees-with-scope? st scope)]
-    [(list _g st)
-     #:when (match st
-              [`(state ,_sub ,_dis ,_c ,_trail ,_tag) #t]
-              [_ #f])
-     (state-c-agrees-with-scope? st scope)]
-    [_ #f]))
-
-(define (core-lvars-contained? f [scope '()])
-  (match f
-    ['(empty-tree) #t]
-    [(or (list 'FreshenedTree intro inner _tag)
-         (list 'FreshenedShell intro inner _tag))
-     (and (distinct? intro)
-          (for/and ([u (in-list intro)])
-            (not (member u scope)))
-          (core-lvars-contained? inner (append intro scope)))]
-    [(list 'Bounced inner)
-     (core-lvars-contained? inner scope)]
-    [(list left '+ right)
-     (and (core-lvars-contained? left scope)
-          (core-lvars-contained? right scope))]
-    [(list inner '× g c)
-     (and (equal? c scope)
-          (subset? (lvars-in g) scope)
-          (core-lvars-contained? inner scope))]
-    [(list 'delay inner)
-     (core-lvars-contained? inner scope)]
-    [(list left '<-+ right)
-     (and (core-lvars-contained? left scope)
-          (core-lvars-contained? right scope))]
-    [(list left '+-> right)
-     (and (core-lvars-contained? left scope)
-          (core-lvars-contained? right scope))]
-    [(list '⊤ st)
-     (state-lvars-contained? st scope)]
-    [(list g st)
-     #:when (match st
-              [`(state ,_sub ,_dis ,_c ,_trail ,_tag) #t]
-              [_ #f])
-     (and (state-lvars-contained? st scope)
-          (subset? (lvars-in g) scope))]
-    [_ #f]))
+  (and (summary-for-frontier f scope) #t))
 
 (define (core-exact-scope? f [scope '()])
-  (and (core-c-scope-agreement? f scope)
-       (core-lvars-contained? f scope)))
+  (and (summary-for-frontier f scope) #t))
 
 (define (config-c-scope-agreement? cfg)
-  (or (core-c-scope-agreement? cfg)
-      (match cfg
-        [(list gamma f)
-         #:when (and (list? gamma)
-                     (core-c-scope-agreement? f))
-         #t]
-        [_ #f])))
+  (and (summary-for-config cfg) #t))
 
 (define (config-exact-scope? cfg)
-  (or (core-exact-scope? cfg)
-      (match cfg
-        [(list gamma f)
-         #:when (and (list? gamma)
-                     (core-exact-scope? f))
-         #t]
-        [_ #f])))
+  (and (summary-for-config cfg) #t))
 
 (define (count-bounced datum)
-  (match datum
-    ['() 0]
-    [(list gamma f) #:when (list? gamma)
-     (count-bounced f)]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
-     (count-bounced inner)]
-    [(list 'Bounced inner)
-     (add1 (count-bounced inner))]
-    [(list left '+ right)
-     (+ (count-bounced left)
-        (count-bounced right))]
-    [(list inner '× _ _)
-     (count-bounced inner)]
-    [(list 'delay inner)
-     (count-bounced inner)]
-    [(list left '<-+ right)
-     (+ (count-bounced left)
-        (count-bounced right))]
-    [(list left '+-> right)
-     (+ (count-bounced left)
-        (count-bounced right))]
+  (match (summary-for-config datum)
+    [summary #:when summary
+             (wf:summary-bounced-count/host summary)]
     [_ 0]))
 
 (define (count-answers datum)
-  (match datum
-    ['() 0]
-    [(list gamma f) #:when (list? gamma)
-     (count-answers f)]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
-     (count-answers inner)]
-    [(list 'Bounced inner)
-     (count-answers inner)]
-    [(list left '+ right)
-     (+ (count-answers left)
-        (count-answers right))]
-    [(list '⊤ _)
-     1]
-    [(list inner '× _ _)
-     (count-answers inner)]
-    [(list 'delay inner)
-     (count-answers inner)]
-    [(list left '<-+ right)
-     (+ (count-answers left)
-        (count-answers right))]
-    [(list left '+-> right)
-     (+ (count-answers left)
-        (count-answers right))]
+  (match (summary-for-config datum)
+    [summary #:when summary
+             (wf:summary-answer-count/host summary)]
     [_ 0]))
 
 (define (count-freshened datum)
-  (match datum
-    ['() 0]
-    [(list gamma f) #:when (list? gamma)
-     (count-freshened f)]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
-     (add1 (count-freshened inner))]
-    [(list 'Bounced inner)
-     (count-freshened inner)]
-    [(list left '+ right)
-     (+ (count-freshened left)
-        (count-freshened right))]
-    [(list inner '× _ _)
-     (count-freshened inner)]
-    [(list 'delay inner)
-     (count-freshened inner)]
-    [(list left '<-+ right)
-     (+ (count-freshened left)
-        (count-freshened right))]
-    [(list left '+-> right)
-     (+ (count-freshened left)
-        (count-freshened right))]
+  (match (summary-for-config datum)
+    [summary #:when summary
+             (wf:summary-freshened-count/host summary)]
+    [_ 0]))
+
+(define (count-freshened-tree datum)
+  (match (summary-for-config datum)
+    [summary #:when summary
+             (wf:summary-freshened-tree-count/host summary)]
+    [_ 0]))
+
+(define (count-freshened-shell datum)
+  (match (summary-for-config datum)
+    [summary #:when summary
+             (wf:summary-freshened-shell-count/host summary)]
     [_ 0]))
 
 (define (trace-deterministic rel cfg [step-cap 64])
