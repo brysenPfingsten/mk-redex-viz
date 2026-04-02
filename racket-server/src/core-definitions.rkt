@@ -13,6 +13,7 @@
          walk
          extend
          occurs?
+         invalid?
          fresh-substitution
          subst-goal
          append-answer)
@@ -35,7 +36,6 @@
      (g σ)                      ; Goal-State
      (s × g c)                  ; Conjunction, w/vars used so far.
      (⊤ σ)                      ; Immediate single answer
-     (emit σ s)                 ; Emit answer, then continue with work tree
 
      ;; (s +-> s)                  ; Right Disjunciton
      ;; (s <-+ s)                  ; Left Disjunction
@@ -46,9 +46,12 @@
 
   ;----------------------Goals----------------------------
   [eq (t =? t tag)] ; Syntactic equality w/ tag
+  [neq (t != t tag)] ; Syntactic disequality w/ tag
 
   [g eq
+     neq
      (succeed tag)
+     (fail tag)
      (∃ d g tag)     ; Variable introduction w/ tag
      (g ∧ g tag)     ; Conjunction w/ tag
      ;(r t ... tag)   ; Relation call w/ tag
@@ -77,8 +80,9 @@
   [u (variable-prefix u:)] ; Logic variables, tagged, not raw naturals
   [tag (label string)]
 
-  [σ (state sub c trail tag)] ; State
+  [σ (state sub dis c trail tag)] ; State
   [sub ((u_!_ t) ...)]        ; Substitution, make the vars definitionally distinct
+  [dis ((t t) ...)]
   [maybe-sub sub #f]
   [trail (eq ...)]
   [as (empty-stream)
@@ -91,8 +95,6 @@
   ; Search Tree
   [Es hole
       (Es × g c)
-      ;; (Es <-+ s)
-      ;; (s +-> Es)
   ]
 
   ;---------------------Binding Forms--------------------
@@ -126,8 +128,8 @@
   (check-true (redex-match? Core tag (term (label "t"))))
 
   (check-true (redex-match? Core g (term (u:0 =? (sym "a") (label "t")))))
-  (check-true (redex-match? Core s (term (⊤ (state () () () (label "Om"))))))
-  (check-true (redex-match? Core s (term ((u:0 =? (sym "a") (label "t")) (state ((u:0 (sym "a"))) (u:0) () (label "σ"))))))
+  (check-true (redex-match? Core s (term (⊤ (state () () () () (label "Om"))))))
+  (check-true (redex-match? Core s (term ((u:0 =? (sym "a") (label "t")) (state ((u:0 (sym "a"))) () (u:0) () (label "σ"))))))
 
   (check-true (redex-match? Core config (term (() (empty-tree) (empty-stream)))))
 
@@ -147,6 +149,15 @@
   walk : t sub -> t
   [(walk u (name sub (_ ... [u t] _ ...))) (walk t sub)]
   [(walk t _) t])
+
+(define-metafunction Core
+  invalid? : sub dis -> boolean
+  [(invalid? sub ()) #f]
+  [(invalid? sub ((t_1 t_2) (t_3 t_4) ...))
+   #t
+   (where sub (unify (walk t_1 sub) (walk t_2 sub) sub))]
+  [(invalid? sub ((t_1 t_2) (t_3 t_4) ...))
+   (invalid? sub ((t_3 t_4) ...))])
 
 ;; Pick the least-indexed u:n not already present in `used`.
 (define (fresh-u-symbol used)
@@ -200,11 +211,18 @@
   subst-goal : g ((x t) ...) -> g
   [(subst-goal (succeed tag) ((x_1 t_1) ...))
    (succeed tag)]
+  [(subst-goal (fail tag) ((x_1 t_1) ...))
+   (fail tag)]
   [(subst-goal (t_1 =? t_2 tag) ((x_1 t_1_sub) ...))
    ((subst-t t_1 ((x_1 t_1_sub) ...))
     =?
     (subst-t t_2 ((x_1 t_1_sub) ...)
     )
+    tag)]
+  [(subst-goal (t_1 != t_2 tag) ((x_1 t_1_sub) ...))
+   ((subst-t t_1 ((x_1 t_1_sub) ...))
+    !=
+    (subst-t t_2 ((x_1 t_1_sub) ...))
     tag)]
   [(subst-goal (g_1 ∧ g_2 tag) ((x_1 t_1_sub) ...))
    ((subst-goal g_1 ((x_1 t_1_sub) ...))

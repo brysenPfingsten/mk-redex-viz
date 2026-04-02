@@ -4,7 +4,7 @@
          redex/reduction-semantics
          rackunit)
 
-(require "../src/reduction-relations/dmitry-and-dmitry.rkt")
+(require "../../../src/reduction-relations/archive/legacy-deprecated/dmitry-and-dmitry.rkt")
 
 (module+ test
   (define eq-prog

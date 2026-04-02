@@ -26,12 +26,22 @@
          sigma-b
          cfg-core
          cfg-call
+         cfg-call-source-delay
          cfg-disj
          cfg-flip
          cfg-rail)
 
+(define (final-answer-stream? as)
+  (match as
+    ['(empty-stream) #t]
+    [`(⊤ ,_) #t]
+    [`((⊤ ,_) + ,rest) (final-answer-stream? rest)]
+    [_ #f]))
+
 (define (final-config? cfg)
-  (redex-match? Core end-config cfg))
+  (match cfg
+    [`(,_gamma (empty-tree) ,as) (final-answer-stream? as)]
+    [_ #f]))
 
 (define (wf-config-term? cfg)
   (judgment-holds (wf-config? ,cfg)))
@@ -85,7 +95,7 @@
 
 (define (states-in datum [acc '()])
   (match datum
-    [`(state ,_sub ,_c ,_trail ,_tag) (cons datum acc)]
+    [`(state ,_sub ,_dis ,_c ,_trail ,_tag) (cons datum acc)]
     ['() acc]
     [(cons a d) (states-in a (states-in d acc))]
     [_ acc]))
@@ -95,15 +105,13 @@
     (judgment-holds (wf-state? ,st))))
 
 (define (shape-closed? lang-id rel cfg)
-  (define cfg-in-lang?
-    (case lang-id
-      [(L1) (lambda (cfg^) (redex-match? L1 config cfg^))]
-      [(L2) (lambda (cfg^) (redex-match? L2 config cfg^))]
-      [(L3) (lambda (cfg^) (redex-match? L3 config cfg^))]
-      [(L4) (lambda (cfg^) (redex-match? L4 config cfg^))]
-      [else (lambda (_cfg^) #f)]))
   (for/and ([cfg^ (in-list (apply-reduction-relation rel cfg))])
-    (cfg-in-lang? cfg^)))
+    (case lang-id
+      [(L1) (redex-match? L1 config cfg^)]
+      [(L2) (redex-match? L2 config cfg^)]
+      [(L3) (redex-match? L3 config cfg^)]
+      [(L4) (redex-match? L4 config cfg^)]
+      [else #f])))
 
 (define (shape-closed/L1? rel cfg)
   (shape-closed? 'L1 rel cfg))
@@ -117,53 +125,60 @@
 (define (shape-closed/L4? rel cfg)
   (shape-closed? 'L4 rel cfg))
 
-(define (symbols-in d)
+(define (symbols-in d [acc '()])
   (match d
-    ['() '()]
-    [(? symbol?) (list d)]
-    [(cons a b) (append (symbols-in a) (symbols-in b))]
-    [_ '()]))
+    ['() acc]
+    [(? symbol?) (cons d acc)]
+    [(cons a b) (symbols-in a (symbols-in b acc))]
+    [_ acc]))
 
 (define (tree-of cfg)
   (second cfg))
 
 (define sigma-a
-  (term (state () () () (label "a"))))
+  (term (state () () () () (label "a"))))
 
 (define sigma-b
-  (term (state () () () (label "b"))))
+  (term (state () () () () (label "b"))))
 
 (define cfg-core
-  (term (() (⊤ (state () () () (label "s"))) (empty-stream))))
+  (term (() (⊤ (state () () () () (label "s"))) (empty-stream))))
 
 (define cfg-call
   (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
          ((r:id (sym "ok") (label "call"))
-          (state () () () (label "s")))
+          (state () () () () (label "s")))
+         (empty-stream))))
+
+(define cfg-call-source-delay
+  (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
+         ((sdelay (r:id (sym "ok") (label "call")) (label "delay"))
+          (state () () () () (label "s")))
          (empty-stream))))
 
 (define cfg-disj
-  (term (() ((⊤ (state () () () (label "a")))
+  (term (() ((⊤ (state () () () () (label "a")))
              <-+
-             (⊤ (state () () () (label "b"))))
+             (⊤ (state () () () () (label "b"))))
          (empty-stream))))
 
 (define cfg-flip
   (term (() ((delay (empty-tree))
              <-+
-             (⊤ (state () () () (label "b"))))
+             (⊤ (state () () () () (label "b"))))
          (empty-stream))))
 
 (define cfg-rail
   (term (() ((delay (empty-tree))
              <-+
-             (⊤ (state () () () (label "b"))))
+             (⊤ (state () () () () (label "b"))))
          (empty-stream))))
 
 ;; Shared seam corpus for bounded smoke/determinism checks at relation boundaries.
 (define seam-config-candidates
   (list cfg-core
         cfg-call
+        cfg-call-source-delay
         cfg-disj
         cfg-flip
         cfg-rail))

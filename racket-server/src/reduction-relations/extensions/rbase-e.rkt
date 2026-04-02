@@ -15,10 +15,18 @@
     #:domain config
     ;; Stage 1 (inside active branch): call contexts from L1.
     ;; Stage 2 (outside): left-disjunction scheduler contexts.
+    [--> (Γ (in-hole Kleft (in-hole Kcore ((name goal-src g) σ))) as)
+         (Γ (in-hole Kleft (in-hole Kcore s_new)) as)
+         (where s_new ,(bridge-source-delay/eager-host (term Γ)
+                                                       (term goal-src)
+                                                       (term σ)))
+         (side-condition (not (equal? (term s_new) #f)))
+         "source-delay/bridge"]
+
     [--> (Γ (in-hole Kleft (in-hole Kcore ((r t ... tag) σ))) as)
-         (Γ (in-hole Kleft (in-hole Kcore (delay (proceed (g_new σ))))) as)
+         (Γ (in-hole Kleft (in-hole Kcore (g_new σ))) as)
          (where g_new ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-         "call/eager-suspend-expanded"]
+         "call/eager-expand"]
 
     [--> (Γ (in-hole Kdelay (delay (proceed (g σ)))) as)
          (Γ (in-hole Kdelay (proceed (g σ))) as)
@@ -32,13 +40,8 @@
          (Γ (in-hole Kleft (in-hole Kcore (delay (s_1 × g c)))) as)
          "call/delay-through-conj"]))
 
-(define call+core-l3/eager
-  (union-reduction-relations
-   call-eager-extra/l3
-   core-cfg/l3))
-
 (define disj-extra/l3
-  (make-disj-extra/l3 call+core-l3/eager))
+  (make-disj-extra/l3))
 
 (define Rbase-e
   (union-reduction-relations

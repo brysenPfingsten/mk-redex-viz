@@ -1,6 +1,7 @@
 #lang racket
 
 (require redex/reduction-semantics
+         "../../core-definitions.rkt"
          "./context-l2.rkt"
          "./core-l2.rkt")
 
@@ -23,18 +24,17 @@
    [--> (Γ (in-hole Kleft (in-hole Kcore ((s_1 <-+ s_2) × g c))) as)
         (Γ (in-hole Kleft (in-hole Kcore ((s_1 × g c) <-+ (s_2 × g c)))) as)
         "dfsn/distribute-over-conj"]
-   [--> (Γ (in-hole Kleft ((emit σ_new s_left_tail) <-+ s_right)) as)
-        (Γ (in-hole Kleft (emit σ_new (s_left_tail <-+ s_right))) as)
-        (side-condition (not (redex-match? L2/K (empty-tree) (term s_left_tail))))
-        "dfsn/promote-left-stream"]
-   [--> (Γ (in-hole Kleft ((emit σ_new (empty-tree)) <-+ s_right)) as)
-        (Γ (in-hole Kleft (emit σ_new s_right)) as)
-        "dfsn/promote-left-singleton-stream"]
-   [--> (Γ (in-hole Kleft ((⊤ σ_new) <-+ s_right)) as)
-        (Γ (in-hole Kleft (emit σ_new s_right)) as)
+   [--> (Γ (in-hole Kleft (((⊤ σ_new) <-+ s_mid) <-+ s_right)) as)
+        (Γ (in-hole Kleft ((⊤ σ_new) <-+ (s_mid <-+ s_right))) as)
+        "dfsn/bubble-left-answer"]
+   [--> (Γ ((⊤ σ_new) <-+ s_right) as)
+        (Γ s_right (append-answer as σ_new))
         "dfsn/promote-left-answer"]
-   [--> (Γ (in-hole Kleft ((empty-tree) <-+ s_right)) as)
-        (Γ (in-hole Kleft s_right) as)
+   [--> (Γ (in-hole Kleft (((empty-tree) <-+ s_mid) <-+ s_right)) as)
+        (Γ (in-hole Kleft ((empty-tree) <-+ (s_mid <-+ s_right))) as)
+        "dfsn/bubble-left-fail"]
+   [--> (Γ ((empty-tree) <-+ s_right) as)
+        (Γ s_right as)
         "dfsn/skip-left-fail"]))
 
 (define Rdfs-nodelay

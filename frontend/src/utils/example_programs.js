@@ -1,5 +1,3 @@
-import { ALL_MODEL_IDS } from "./model_ids.js";
-
 const appendo = `(defrel (appendo l s out)
   (conde
     [(== l '())
@@ -20,7 +18,7 @@ const appendoh1 = `(defrel (appendoh l s out)
       (== out (cons a res))
       (appendoh d s out))]))
 
-(run* (q) (appendoh '(dog) q '(dog cat)))`
+(run* (q) (appendoh '(dog) q '(dog cat)))`;
 
 const appendoh2 = `(defrel (appendoh l s out)
   (conde
@@ -30,7 +28,7 @@ const appendoh2 = `(defrel (appendoh l s out)
       (== l (cons a d))
       (== out (cons a res)))]))
 
-(run* (q r s) (appendoh q r s))`
+(run* (q r s) (appendoh q r s))`;
 
 const same = `(defrel (same x y)
   (== x y))
@@ -41,7 +39,7 @@ const same = `(defrel (same x y)
        [(same q 'turtle)]
        [(same q 'cat)]
        [(== q 'dog)])]
-    [(same q 'fish)]))`
+    [(same q 'fish)]))`;
 
 const div3o = `(defrel (same-counto bn)
   (conde
@@ -78,7 +76,7 @@ const div3o = `(defrel (same-counto bn)
    [(== bn '())]
    [(same-counto bn)]))
 
-(run* (q) (multiple-of-threeo q))`
+(run* (q) (multiple-of-threeo q))`;
 
 const fivesFours = `(defrel (fives x)
   (conde
@@ -93,28 +91,61 @@ const fivesFours = `(defrel (fives x)
 (run 8 (q)
   (conde
     [(fives q)]
-    [(fours q)]))`
+    [(fours q)]))`;
 
 const coreFreshConjUnify = `(run* (q)
   (fresh (x y)
     (== x (cons 'ok '()))
     (== y (cons 'ok '()))
     (== q x)
-    (== q y)))`
+    (== q y)))`;
 
-export const exampleProgs = [
-  { value: "", label: "Examples", models: ALL_MODEL_IDS },
-  { value: coreFreshConjUnify, label: "core/fresh+conj+unify", models: ALL_MODEL_IDS },
-  { value: appendo, label: "appendo", models: ALL_MODEL_IDS },
-  { value: appendoh1, label: "appendoh 1", models: ALL_MODEL_IDS },
-  { value: appendoh2, label: "appendoh 2", models: ALL_MODEL_IDS },
-  { value: fivesFours, label: "fives/fours", models: ALL_MODEL_IDS },
-  { value: same, label: "same", models: ALL_MODEL_IDS },
-  { value: div3o, label: "div3o", models: ALL_MODEL_IDS },
-];
+export const semanticExamples = Object.freeze([
+  Object.freeze({
+    id: "core-fresh-conj-unify",
+    label: "core/fresh+conj+unify",
+    miniSource: coreFreshConjUnify,
+  }),
+  Object.freeze({
+    id: "appendo",
+    label: "appendo",
+    miniSource: appendo,
+  }),
+  Object.freeze({
+    id: "appendoh-1",
+    label: "appendoh 1",
+    miniSource: appendoh1,
+  }),
+  Object.freeze({
+    id: "appendoh-2",
+    label: "appendoh 2",
+    miniSource: appendoh2,
+  }),
+  Object.freeze({
+    id: "fives-fours",
+    label: "fives/fours",
+    miniSource: fivesFours,
+  }),
+  Object.freeze({
+    id: "same",
+    label: "same",
+    miniSource: same,
+  }),
+  Object.freeze({
+    id: "div3o",
+    label: "div3o",
+    miniSource: div3o,
+  }),
+]);
 
-export function examplesForModel(model) {
-  // Compatibility is computed dynamically via backend analysis.
-  // Keep all examples selectable so users can choose model-first or example-first.
-  return exampleProgs;
+export function exampleById(exampleId) {
+  return semanticExamples.find(({ id }) => id === exampleId) ?? null;
+}
+
+export function exampleOptions() {
+  return [
+    { value: "", label: "Examples" },
+    ...semanticExamples
+      .map(({ id, label }) => ({ value: id, label })),
+  ];
 }

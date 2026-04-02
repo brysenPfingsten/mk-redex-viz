@@ -10,27 +10,27 @@
 (provide PROPERTY-VARIANTS)
 
 (define-test-suite VARIANT-SMOKE
-  (test-case "eager vs lazy first-step call expansion differs"
+  (test-case "eager and lazy first-step plain call expansion both inline the relation body"
     (define eager-next (first (apply-reduction-relation Rl1-call-eager cfg-call)))
     (define lazy-next (first (apply-reduction-relation Rl1-call-lazy cfg-call)))
-    ;; eager payload has already substituted away the call
     (check-false (member 'r:id (symbols-in (tree-of eager-next))))
-    ;; lazy payload still carries relation call in proceed frame
-    (check-not-false (member 'r:id (symbols-in (tree-of lazy-next)))))
+    (check-false (member 'r:id (symbols-in (tree-of lazy-next))))
+    (check-equal? eager-next lazy-next))
 
   (test-case "left disjunction collects left answer first"
     (define next1 (first (apply-reduction-relation Rl2-disj-left cfg-disj)))
     (check-equal?
      next1
-     (term (() (emit (state () () () (label "a"))
-                     (⊤ (state () () () (label "b"))))
-               (empty-stream))))
+     (term (() (⊤ (state () () () () (label "b")))
+               (⊤ (state () () () () (label "a"))))))
     (define next2* (apply-reduction-relation Rl2-disj-left next1))
     (check-equal? (length next2*) 1)
     (check-equal?
      (first next2*)
-     (term (() (⊤ (state () () () (label "b")))
-               (⊤ (state () () () (label "a")))))))
+     (term (() (empty-tree)
+               ((⊤ (state () () () () (label "a")))
+                +
+                (⊤ (state () () () () (label "b"))))))))
 
   (test-case "Rbase variants can step call and disjunction configs"
     (check-false (null? (apply-reduction-relation Rl3-pre-eager cfg-call)))
@@ -62,7 +62,7 @@
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s")))))
+                (state () () () () (label "s")))))
              (empty-stream))))
     (define named-next* (apply-reduction-relation/tag-with-names Rl3-flip-eager cfg-delay-proceed-call))
     (check-equal? (length named-next*)
@@ -78,7 +78,7 @@
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s")))))
+                (state () () () () (label "s")))))
              (empty-stream))))
     (define named-next* (apply-reduction-relation/tag-with-names Rl3-flip-lazy cfg-delay-proceed-call))
     (check-equal? (length named-next*)
@@ -94,7 +94,7 @@
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s")))))
+                (state () () () () (label "s")))))
              (empty-stream))))
     (define named-next* (apply-reduction-relation/tag-with-names Rl4-rail-eager cfg-delay-proceed-call))
     (check-equal? (length named-next*)
@@ -110,7 +110,7 @@
              (delay
               (proceed
                ((r:id (sym "ok") (label "call"))
-                (state () () () (label "s")))))
+                (state () () () () (label "s")))))
              (empty-stream))))
     (define named-next* (apply-reduction-relation/tag-with-names Rl4-rail-lazy cfg-delay-proceed-call))
     (check-equal? (length named-next*)

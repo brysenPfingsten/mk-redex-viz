@@ -1,11 +1,14 @@
 #lang racket
 (require redex)
-(require "../src/metafunctions.rkt"
-         "../src/definitions.rkt"
-         "../src/reduction-relations/reduction-relations.rkt")
+(require "../../../../src/archive/legacy-deprecated/legacy-stack/metafunctions.rkt"
+         "../../../../src/archive/legacy-deprecated/legacy-stack/definitions.rkt"
+         "../../../../src/archive/legacy-deprecated/legacy-stack/reduction-relations/reduction-relations.rkt")
+(require (only-in "../../../../src/reduction-relations/archive/legacy-deprecated/dmitry-and-dmitry.rkt"
+                  red-tree))
 (require rackunit rackunit/text-ui)
 
-(stepper red
+(module+ main
+  (stepper red
   '(((∃
     (x:q)
     (r:reverseo
@@ -152,10 +155,10 @@
        "r16")
       "c12")
      "f11")
-    "d10"))))))
+    "d10")))))))
 
-
-(apply-reduction-relation red-tree (car '(((((((sym "dog")
+(module+ main
+  (apply-reduction-relation red-tree (car '(((((((sym "dog")
       :
       ((sym "cat")
        :
@@ -267,4 +270,4 @@
        "r16")
       "c12")
      "f11")
-    "d10"))))))
+    "d10")))))))

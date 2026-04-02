@@ -68,15 +68,16 @@
 ;; (ListOf Symbol) Nat (PairOf Term Term) -> (List Symbol Term Term)
 ;; Purpose: Creates a quoted equation unifying the given pair
 (define (make-unify-clause query-vars n pair)
-  (let* ([l      (car pair)]
-         [r      (cadr pair)]
-         [lhs    (if (< l n)
-                     (list-ref query-vars l)
-                     (underscore-symbol l))]
-         [rhs    (if (and (number? r) (< r n))
-                     (list-ref query-vars r)
-                     (term (term->mk ,r)))])
-    `(== ,lhs ,rhs)))
+  (match-define (list l r) pair)
+  (define lhs
+    (if (< l n)
+        (list-ref query-vars l)
+        (underscore-symbol l)))
+  (define rhs
+    (if (and (number? r) (< r n))
+        (list-ref query-vars r)
+        (term (term->mk ,r))))
+  `(== ,lhs ,rhs))
 
 
 ;; -> Namespace

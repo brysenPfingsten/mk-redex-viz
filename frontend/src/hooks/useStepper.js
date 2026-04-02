@@ -1,17 +1,18 @@
-import { useState, React } from 'react';
+import { useState } from 'react';
+import { buildInitOptions } from '../utils/source_defaults.js';
 
 export default function useStepper({ onSuccess = () => {}} = {}) {
   const initialTree = { name: "Empty", children: [] };
   const [tree, setTree] = useState(initialTree);
   const [stepInfo, setStep] = useState({ step: 0, stepName: '' });
   
-  const send = async (method, url, body) => {
+  const send = async (method, url, payload) => {
     let res;
     try {
       res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        ...(body && { body: JSON.stringify({ text: body }) }),
+        ...(payload && { body: JSON.stringify(payload) }),
         credentials: "include",
       });
       
@@ -61,8 +62,12 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
   return {
     tree,
     stepInfo,
-    init: async (codeText) => {
-      const result = await send('POST', '/api/post/init', codeText);
+    init: async (codeText, sourceMode, compileProfile, model) => {
+      const result = await send(
+        'POST',
+        '/api/post/init',
+        buildInitOptions(codeText, sourceMode, compileProfile, model),
+      );
       if (result.success) onSuccess();
       if (!result.success) return [result.success, result.error];
       return [result.success, result.prog];
@@ -84,4 +89,3 @@ export default function useStepper({ onSuccess = () => {}} = {}) {
     }
   };
 }
-

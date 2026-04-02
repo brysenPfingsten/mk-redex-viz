@@ -1,7 +1,7 @@
 export function addColors(tree) {
 
     const ACTIVE_INDEX = { Conjunction: 0, "<-+": 0, "+->": 1 };
-    const TERMINALS1   = new Set(["Answer", "Succeed", "Empty", "Delay"]);
+    const TERMINALS1   = new Set(["Answer", "Succeed", "Empty", "Delay", "Goal-Delay"]);
     const TERMINALS2   = new Set(["Answer", "Succeed"]);
     const DISJ         = new Set(["<-+", "+->"]);
 
@@ -52,6 +52,7 @@ export function addColors(tree) {
             addColors(children[0]);
             break;
         case "Delay":
+        case "Goal-Delay":
             return tree;
         case "Answer":
             if (children) {
@@ -63,38 +64,4 @@ export function addColors(tree) {
     }
 
     return tree;
-}
-
-
-export function flattenGoalConj(tree) {
-    // Helper function to recursively flatten `Goal-Conj`
-    function processNode(node) {
-        // Check if the current node is a `Goal-Conj`
-        if (node.name === "Goal-Conj" && Array.isArray(node.children)) {
-            // Collect children that are also `Goal-Conj`
-            let flattenedChildren = [];
-            for (let child of node.children) {
-                if (child.name === "Goal-Conj" && Array.isArray(child.children)) {
-                    // Merge the child's children into `flattenedChildren`
-                    flattenedChildren.push(...child.children);
-                } else {
-                    // Add non-Goal-Conj children directly
-                    flattenedChildren.push(child);
-                }
-            }
-            // Update this node's children with the flattened children
-            node.children = flattenedChildren;
-        }
-        
-        // Recursively process all children
-        if (Array.isArray(node.children)) {
-            for (let child of node.children) {
-                processNode(child);
-            }
-        }
-    }
-    
-    // Start processing the tree
-    processNode(tree);
-    return tree; // Return the modified tree
 }

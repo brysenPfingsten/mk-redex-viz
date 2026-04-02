@@ -23,13 +23,17 @@
   (reduction-relation
     Core
 
-    [--> ((g_1 ∧ g_2 tag) (state sub c trail tag_1))
-         ((g_1 (state sub c trail tag_1)) × g_2 c)
+    [--> ((g_1 ∧ g_2 tag) (state sub dis c trail tag_1))
+         ((g_1 (state sub dis c trail tag_1)) × g_2 c)
          "Distribute State Over Conjunction"]
 
     [--> ((succeed tag) σ)
          (⊤ σ)
          "(succeed) succeeds"]
+
+    [--> ((fail tag) σ)
+         (empty-tree)
+         "(fail) fails"]
 
     [--> ((⊤ σ) × g c)
          (g σ)
@@ -39,26 +43,41 @@
          (empty-tree)
          "Prune Failed Conjuncts"]
 
-    [--> ((emit σ_head s_tail) × g c)
-         (emit σ_head (s_tail × g c))
-         "Distribute Conjunction Over Emit"]
-
-    [--> ((∃ d g tag) (state sub c trail tag_1))
+    [--> ((∃ d g tag) (state sub dis c trail tag_1))
          ((subst-goal g ((x_1 u_1) ...))
-          (state sub (u_1 ... ,@(term c)) trail tag_1))
+          (state sub dis (u_1 ... ,@(term c)) trail tag_1))
          (where ((x_1 u_1) ...)
                 (fresh-substitution c d))
          "Substitute Fresh Variables"]
 
-    [--> ((t_1 =? t_2 tag) (state sub c ((t_3 =? t_4 tag_1) ...) tag_2))
-         (⊤ (state sub_1 c ((t_3 =? t_4 tag_1) ... (t_1 =? t_2 tag)) tag_2))
+    [--> ((t_1 =? t_2 tag) (state sub dis c ((t_3 =? t_4 tag_1) ...) tag_2))
+         (⊤ (state sub_1 dis c ((t_3 =? t_4 tag_1) ... (t_1 =? t_2 tag)) tag_2))
          (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+         (where #f (invalid? sub_1 dis))
          "Unification Succeeds"]
 
-    [--> ((t_1 =? t_2 tag) (state sub c trail tag_2))
+    [--> ((t_1 =? t_2 tag) (state sub dis c ((t_3 =? t_4 tag_1) ...) tag_2))
+         (empty-tree)
+         (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+         (where #t (invalid? sub_1 dis))
+         "Unification Violates Disequality"]
+
+    [--> ((t_1 =? t_2 tag) (state sub dis c trail tag_2))
          (empty-tree)
          (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
           "Unification Fails"]
+
+    [--> ((t_1 != t_2 tag) (state sub dis c trail tag_2))
+         (⊤ (state sub dis_1 c trail tag_2))
+         (where dis_1 ((t_1 t_2) ,@(term dis)))
+         (where #f (invalid? sub dis_1))
+         "Disequality Succeeds"]
+
+    [--> ((t_1 != t_2 tag) (state sub dis c trail tag_2))
+         (empty-tree)
+         (where dis_1 ((t_1 t_2) ,@(term dis)))
+         (where #t (invalid? sub dis_1))
+         "Disequality Fails"]
 
     ))
 
@@ -70,10 +89,7 @@
    #:domain config
    [--> (Γ (⊤ σ_new) as_old)
         (Γ (empty-tree) (append-answer as_old σ_new))
-        "Collect Single Answer"]
-   [--> (Γ (emit σ_new s_next) as_old)
-        (Γ s_next (append-answer as_old σ_new))
-        "Collect Emit"]))
+        "Collect Single Answer"]))
 
 (define -->cfg/work (context-closure -->*e Core (Γ hole as)))
 
@@ -86,18 +102,18 @@
   (provide trivial-conjunction-tree)
 
   (define trivial-conjunction-tree
-    (term (((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse")) (state () () () (label "cat")))))
+    (term (((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse")) (state () () () () (label "cat")))))
 )
 
 (module+ test
   (require (submod ".." examples))
-  (check-true (redex-match? Core σ (term (state () () () (label "cat")))))
+  (check-true (redex-match? Core σ (term (state () () () () (label "cat")))))
   (check-true (redex-match? Core g (term ((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse")))))
-  (check-true (redex-match? Core s (term (((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse")) (state () () () (label "cat"))))))
+  (check-true (redex-match? Core s (term (((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse")) (state () () () () (label "cat"))))))
 
   (check-equal?
    (apply-reduction-relation -->*e trivial-conjunction-tree)
-   '((((succeed (label "fish")) (state () () () (label "cat")))
+   '((((succeed (label "fish")) (state () () () () (label "cat")))
       ×
       (succeed (label "dog"))
       ())))
@@ -135,7 +151,7 @@
   (check-equal? (map bind-name binds) '(s))
   (check-equal? (map bind-exp binds)
                 (list '(((succeed (label "fish")) ∧ (succeed (label "dog")) (label "horse"))
-                        (state () () () (label "cat")))))
+                        (state () () () () (label "cat")))))
 
   (check-true (judgment-holds (wf-tree? ,trivial-conjunction-tree () ())))
   (check-true

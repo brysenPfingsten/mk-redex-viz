@@ -18,14 +18,14 @@ function arrayToString(arr) {
 }
 
 function nonListTermToString(t) {
-    if (term.var) { return `${term.var}`; }   
-    if (term.sym) { return `'${term.sym}`; } 
-    if (typeof term === "object" && "num" in term) { return `${term.num}`; }
-    if (Array.isArray(term)) { return arrayToString(term); }
-    if (term === 'empty') { return "'()"}
-    if (typeof term === "string" && !term.includes('_.')) { return `"${term}"`}
-    if (typeof term === "number") { return `#(${term})`}
-    return term
+    if (t.var) { return `${t.var}`; }
+    if (t.sym) { return `'${t.sym}`; }
+    if (typeof t === "object" && "num" in t) { return `${t.num}`; }
+    if (Array.isArray(t)) { return arrayToString(t); }
+    if (t === 'empty') { return "'()"; }
+    if (typeof t === "string" && !t.includes('_.')) { return `"${t}"`; }
+    if (typeof t === "number") { return `#(${t})`; }
+    return t;
 }
 
 export function termToString(term) {
@@ -47,11 +47,17 @@ function trailToString(trail) {
     return trail ? trail.map(crumb => `(== ${termToString(crumb.left)} ${termToString(crumb.right)})`).join("\n") : "\n";
 }
 
+function disequalitiesToString(disequalities) {
+    return disequalities
+        ? disequalities.map(clause => `(=/= ${termToString(clause.left)} ${termToString(clause.right)})`).join("\n")
+        : "\n";
+}
+
 function reificationToString(reification) {
     if (!reification) { return ''; }
     return termToString(reification)
 }
 
-export function toString(sub, trail, reification) {
-    return `Substitutions:\n${subToString(sub)}\nTrail:\n${trailToString(trail)}\nCurrent Answer:\n${reificationToString(reification)}`
+export function toString(sub, trail, reification, disequalities = []) {
+    return `Substitutions:\n${subToString(sub)}\nTrail:\n${trailToString(trail)}\nDisequalities:\n${disequalitiesToString(disequalities)}\nCurrent Answer:\n${reificationToString(reification)}`
 }

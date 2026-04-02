@@ -1,6 +1,7 @@
 #lang racket
 
 (require redex/reduction-semantics
+         "../../core-definitions.rkt"
          "./context-l3.rkt")
 
 (check-redundancy #t)
@@ -39,17 +40,9 @@
          (Γ (in-hole Ksched (delay (s_2 <-+ s_1))) as)
          "rail/return-left"]
 
-    [--> (Γ (in-hole K (s_left +-> (emit σ_new s_right_tail))) as)
-         (Γ (in-hole K (emit σ_new (s_left +-> s_right_tail))) as)
-         (side-condition (not (redex-match? L4/K (empty-tree) (term s_right_tail))))
-         "rail/promote-right-stream"]
-
-    [--> (Γ (in-hole K (s_left +-> (emit σ_new (empty-tree)))) as)
-         (Γ (in-hole K (emit σ_new s_left)) as)
-         "rail/promote-right-singleton-stream"]
-
     [--> (Γ (in-hole K (s_left +-> (⊤ σ_new))) as)
-         (Γ (in-hole K (emit σ_new s_left)) as)
+         (Γ (in-hole K s_left)
+            (append-answer as σ_new))
          "rail/promote-right-answer"]
 
     [--> (Γ (in-hole K (s_left +-> (empty-tree))) as)

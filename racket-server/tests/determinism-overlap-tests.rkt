@@ -16,6 +16,7 @@
          "../src/model-surface-policy.rkt"
          "../src/capability-analysis.rkt"
          "../src/transpiler.rkt"
+         "../src/sexpr-read.rkt"
          "./example-compat-tests.rkt"
          "./variant-test-support.rkt")
 
@@ -29,12 +30,6 @@
 
 (define-runtime-path EXTENSIONS-DIR
   "../src/reduction-relations/extensions")
-
-(define (read-all port)
-  (let ([expr (read port)])
-    (if (eof-object? expr)
-        '()
-        (cons expr (read-all port)))))
 
 (define (model-id->relation model-id)
   (case (string->symbol model-id)
@@ -73,7 +68,7 @@
     [else #f]))
 
 (define (parse-src/canonical src)
-  (parse-prog/canonical (read-all (open-input-string src))))
+  (parse-prog/canonical (read-all-sexprs (open-input-string src))))
 
 (define (trace-overlap-events rel-name rel cfg0)
   (let loop ([cfg cfg0] [step-index 0] [acc '()])
@@ -195,7 +190,7 @@
       (term
        (()
         ((empty-tree)
-         +-> (⊤ (state () () () (label "XAfR"))))
+         +-> (⊤ (state () () () () (label "XAfR"))))
         (empty-stream))))
     (define tagged-next*
       (apply-reduction-relation/tag-with-names Rl4-rail-lazy cfg))

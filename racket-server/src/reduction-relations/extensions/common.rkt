@@ -5,7 +5,9 @@
          "../../core-definitions.rkt")
 
 (provide instantiate-call-host
-         subst-goal-host)
+         subst-goal-host
+         bridge-source-delay/lazy-host
+         bridge-source-delay/eager-host)
 
 ;; Relation call helper shared by eager/lazy variants.
 (define (x-symbol? s)
@@ -34,12 +36,18 @@
   (match g
     [`(succeed ,tag)
      `(succeed ,tag)]
+    [`(fail ,tag)
+     `(fail ,tag)]
     [`(,t1 =? ,t2 ,tag)
      `(,(subst-t-host t1 subs) =? ,(subst-t-host t2 subs) ,tag)]
+    [`(,t1 != ,t2 ,tag)
+     `(,(subst-t-host t1 subs) != ,(subst-t-host t2 subs) ,tag)]
     [`(,g1 ∧ ,g2 ,tag)
      `(,(subst-goal-host g1 subs) ∧ ,(subst-goal-host g2 subs) ,tag)]
     [`(,g1 ∨ ,g2 ,tag)
      `(,(subst-goal-host g1 subs) ∨ ,(subst-goal-host g2 subs) ,tag)]
+    [`(sdelay ,g* ,tag)
+     `(sdelay ,(subst-goal-host g* subs) ,tag)]
     [`(∃ ,d ,g* ,tag)
      `(∃ ,d ,(subst-goal-host g* (drop-subst-for-host d subs)) ,tag)]
     [`(,r ,args ... ,tag)
@@ -64,3 +72,22 @@
            (length d)
            (length ts)))
   (subst-goal-host g (map list d ts)))
+
+(define (bridge-source-delay/lazy-host _gamma goal sigma)
+  (match goal
+    [`(sdelay (,r ,ts ... ,tag-call) ,_tag-delay)
+     #:when (r-symbol? r)
+     `(delay (proceed ((,r ,@ts ,tag-call) ,sigma)))]
+    [`(sdelay ,inner ,_tag-delay)
+     `(delay (,inner ,sigma))]
+    [_ #f]))
+
+(define (bridge-source-delay/eager-host gamma goal sigma)
+  (match goal
+    [`(sdelay (,r ,ts ... ,_tag-call) ,_tag-delay)
+     #:when (r-symbol? r)
+     (define g-new (instantiate-call-host gamma r ts))
+     `(delay (proceed (,g-new ,sigma)))]
+    [`(sdelay ,inner ,_tag-delay)
+     `(delay (,inner ,sigma))]
+    [_ #f]))

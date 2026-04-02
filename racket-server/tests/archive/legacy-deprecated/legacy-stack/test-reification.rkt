@@ -1,7 +1,7 @@
 #lang racket
 
-(require "../src/definitions.rkt"
-         "../src/reification.rkt")
+(require "../../../../src/archive/legacy-deprecated/legacy-stack/definitions.rkt"
+         "../../../../src/archive/legacy-deprecated/legacy-stack/reification.rkt")
 (require redex rackunit)
 (require rackunit/text-ui)
 

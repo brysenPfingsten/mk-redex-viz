@@ -13,7 +13,8 @@
 
 ;; L1 adds relation calls and delay/proceed administrative nodes.
 (define-extended-language L1 L0
-  [g .... (r t ... tag)]
+  [g .... (r t ... tag)
+     (sdelay g tag)]
   [pr ((r t ... tag) σ)
       (g σ)]
   [s .... (delay s)

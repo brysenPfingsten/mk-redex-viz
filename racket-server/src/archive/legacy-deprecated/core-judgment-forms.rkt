@@ -1,7 +1,7 @@
 #lang racket
 (require rackunit
          redex/reduction-semantics
-         "core-definitions.rkt")
+         "../../core-definitions.rkt")
 
 (check-redundancy #t)
 
@@ -555,8 +555,8 @@
   (require rackunit
            redex/reduction-semantics
            racket/list
-           (prefix-in rt: "random-test-support.rkt")
-           (prefix-in gk: "../tests/generator-kernel.rkt"))
+           (prefix-in rt: "../../random-test-support.rkt")
+           (prefix-in gk: "../../../tests/generator-kernel.rkt"))
 
   ;; Randomized test tuning constants.
   ;; Edit these values directly when you want different pressure/coverage.

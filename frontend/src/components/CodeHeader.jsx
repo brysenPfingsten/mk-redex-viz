@@ -1,42 +1,35 @@
 import React from "react";
 import "../styles.css";
-import { examplesForModel } from "../utils/example_programs.js";
+import { exampleOptions } from "../utils/example_programs.js";
 
 export default function CodeHeader({
   logoSrc,
-  programText,
-  onProgramChange,
+  exampleValue,
+  onExampleChange,
+  sourceModeValue,
+  sourceModeOptions = [],
+  onSourceModeChange,
+  compileProfile,
+  conjAssocOptions = [],
+  disjAssocOptions = [],
+  delayPlacementOptions = [],
+  onCompileProfileChange,
   modelValue,
   modelOptions = [],
-  onModelChangeRequest,
+  onModelChange,
   isFrozen,
   analysisStatus = "idle",
   compatWarning = null,
   onSwitchCompatibleModel = () => {},
 }) {
-  const availableExamples = examplesForModel(modelValue);
+  const availableExamples = exampleOptions();
 
-  const renderExampleOptions = (opts) =>
+  const renderOptions = (opts) =>
     opts.map(({ value, label }) => (
       <option key={value} value={value}>
         {label}
       </option>
     ));
-
-  const renderModelOptions = (opts) =>
-    opts.map(({ value, label }) => (
-      <option key={value} value={value}>
-        {label}
-      </option>
-    ));
-
-  const changeModel = async (newModel) => {
-    try {
-      await onModelChangeRequest(newModel);
-    } catch (_) {
-      // Keep current model selection when request fails.
-    }
-  };
 
   return (
     <div className="code-header">
@@ -44,26 +37,82 @@ export default function CodeHeader({
         <img src={logoSrc} alt="Logo" className="logo"/>
       </a>
 
-      <select
-        className="select"
-        value={programText}
-        onChange={(e) => onProgramChange(e.target.value)}
-        disabled={isFrozen}
-      >
-        {renderExampleOptions(availableExamples)}
-      </select>
+      <div className="header-controls">
+        <label className="select-group">
+          <span className="select-label">Example</span>
+          <select
+            className="select"
+            value={exampleValue}
+            onChange={(e) => onExampleChange(e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(availableExamples)}
+          </select>
+        </label>
 
-      <select
-        className="select"
-        value={modelValue}
-        onChange={(e) => changeModel(e.target.value)}
-        disabled={isFrozen}
-      >
-        {renderModelOptions(modelOptions)}
-      </select>
+        <label className="select-group">
+          <span className="select-label">Source</span>
+          <select
+            className="select"
+            value={sourceModeValue}
+            onChange={(e) => onSourceModeChange(e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(sourceModeOptions)}
+          </select>
+        </label>
+
+        <label className="select-group">
+          <span className="select-label">Conj</span>
+          <select
+            className="select"
+            value={compileProfile.conjAssoc}
+            onChange={(e) => onCompileProfileChange("conjAssoc", e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(conjAssocOptions)}
+          </select>
+        </label>
+
+        <label className="select-group">
+          <span className="select-label">Disj</span>
+          <select
+            className="select"
+            value={compileProfile.disjAssoc}
+            onChange={(e) => onCompileProfileChange("disjAssoc", e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(disjAssocOptions)}
+          </select>
+        </label>
+
+        <label className="select-group">
+          <span className="select-label">Delay</span>
+          <select
+            className="select"
+            value={compileProfile.delayPlacement}
+            onChange={(e) => onCompileProfileChange("delayPlacement", e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(delayPlacementOptions)}
+          </select>
+        </label>
+
+        <label className="select-group">
+          <span className="select-label">Model</span>
+          <select
+            className="select"
+            value={modelValue}
+            onChange={(e) => onModelChange(e.target.value)}
+            disabled={isFrozen}
+          >
+            {renderOptions(modelOptions)}
+          </select>
+        </label>
+      </div>
 
       {analysisStatus === "analyzing" && !isFrozen ? (
-        <div style={{ marginLeft: "10px", fontSize: "0.85rem" }}>
+        <div style={{ fontSize: "0.85rem" }}>
           Analyzing...
         </div>
       ) : null}
@@ -71,7 +120,7 @@ export default function CodeHeader({
       {compatWarning ? (
         <div
           style={{
-            marginLeft: "10px",
+            flexBasis: "100%",
             padding: "8px 10px",
             border: "1px solid #b55",
             borderRadius: "6px",

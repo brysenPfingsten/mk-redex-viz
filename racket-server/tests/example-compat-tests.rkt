@@ -6,6 +6,7 @@
          racket/runtime-path
          racket/match
          "../src/transpiler.rkt"
+         "../src/sexpr-read.rkt"
          "../src/extensions/l4-railroad-syntax.rkt")
 
 (provide EXAMPLE-COMPAT
@@ -19,7 +20,7 @@
   #px"const\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*`((?:\\\\`|[^`])*)`\\s*;?")
 
 (define ARRAY-ENTRY-RX
-  #px"\\{\\s*value:\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*,\\s*label:\\s*\"([^\"]+)\"")
+  #px"\\{\\s*id:\\s*\"([^\"]+)\"\\s*,\\s*label:\\s*\"([^\"]+)\"\\s*,\\s*miniSource:\\s*([A-Za-z_][A-Za-z0-9_]*)")
 
 (define (decode-template-literal s)
   ;; Frontend examples currently use escaped backticks inside template literals.
@@ -37,13 +38,13 @@
   (for/list ([m (in-list (regexp-match* ARRAY-ENTRY-RX
                                         js-src
                                         #:match-select values))])
-    (list (second m) (third m))))
+    (list (second m) (third m) (fourth m))))
 
 (define (frontend-example-programs)
   (define js-src (file->string FRONTEND-EXAMPLES-PATH))
   (define templates (extract-template-map js-src))
   (for/list ([entry (in-list (extract-example-refs js-src))])
-    (match-define (list value-var label) entry)
+    (match-define (list _id label value-var) entry)
     (define maybe-src (hash-ref templates value-var #f))
     (unless maybe-src
       (error 'frontend-example-programs
@@ -52,17 +53,14 @@
                      label)))
     (cons label maybe-src)))
 
-(define (read-all port)
-  (let ([expr (read port)])
-    (if (eof-object? expr)
-        '()
-        (cons expr (read-all port)))))
-
 (define (parse-src src)
-  (parse-prog (read-all (open-input-string src))))
+  (parse-prog (read-all-sexprs (open-input-string src))))
 
 (define (parse-src/canonical src)
-  (parse-prog/canonical (read-all (open-input-string src))))
+  (parse-prog/canonical (read-all-sexprs (open-input-string src))))
+
+(define (render-src/micro src)
+  (render-micro-source (read-all-sexprs (open-input-string src))))
 
 (define (assert-example-compat! name src)
   (define-values (canonical html) (parse-src/canonical src))
@@ -81,7 +79,19 @@
                 "frontend/src/utils/example_programs.js did not yield runnable examples")
     (for ([pr (in-list examples)])
       (match-define (cons label src) pr)
-      (assert-example-compat! label src))))
+      (assert-example-compat! label src)))
+
+  (test-case "frontend examples render to direct micro source and lift through micro parser"
+    (for ([pr (in-list (frontend-example-programs))])
+      (match-define (cons label src) pr)
+      (define micro-src (render-src/micro src))
+      (define-values (canonical html)
+        (parse-prog/canonical (read-all-sexprs (open-input-string micro-src))
+                              #:source-mode "micro"))
+      (check-true (string? html)
+                  (format "~a rendered micro should produce html-guid source" label))
+      (check-true (redex-match? L4 config canonical)
+                  (format "~a rendered micro should lift into L4 config syntax" label)))))
 
 (module+ test
   (run-tests EXAMPLE-COMPAT))

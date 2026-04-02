@@ -55,7 +55,7 @@ npm --prefix frontend test
 ### **4) Model×Example API-flow matrix lane**
 
 Automates model selection + example execution checks across the full cross-product
-using backend endpoints (analyze/model/init/step), up to 25 steps or termination.
+using backend endpoints (analyze/init-with-model/step), up to 25 steps or termination.
 
 ```sh
 raco test racket-server/tests/model-example-matrix-tests.rkt
@@ -70,10 +70,14 @@ GET /api/get/models
 ```
 
 Each entry includes:
-- `id` (used by `POST /api/post/model`)
+- `id` (used by `POST /api/post/init` payload field `model`)
 - `label` (display name)
 - `parserProfile` (currently `"surface->l4"` for all registered models)
 - `parserTarget` (currently `"L4/config"` for all registered models)
+
+Execution contract:
+- `POST /api/post/init` is the supported way to choose the model for a run.
+- Init payloads should include `text`, `sourceMode`, optional `compileProfile`, and `model`.
 
 ## **LLM Orientation (Minimal)**
 

@@ -132,7 +132,7 @@
        ,(make-label rng "call"))]))
 
 (define (gen-state/rng rng c)
-  `(state () ,c () ,(make-label rng "st")))
+  `(state () () ,c () ,(make-label rng "st")))
 
 (define (gen-tree-user/rng rng c depth rel-sig opts)
   (define options
@@ -202,7 +202,7 @@
 
 (define (state-c-size st)
   (match st
-    [`(state ,_ ,c ,_ ,_) (length c)]
+    [`(state ,_ ,_ ,c ,_ ,_) (length c)]
     [_ 0]))
 
 (define (goal-flags g [call? #f] [disj? #f] [exists? #f] [conj? #f])
@@ -240,16 +240,6 @@
     [`(⊤ ,st)
      (values call? disj? exists? conj? left? delay? right?
              (max cmax (state-c-size st)))]
-    [`(emit ,st ,s2)
-     (tree-flags s2
-                 call?
-                 disj?
-                 exists?
-                 conj?
-                 left?
-                 delay?
-                 right?
-                 (max cmax (state-c-size st)))]
     [`(,g ,st)
      (define-values (call1 disj1 exists1 conj1)
        (goal-flags g call? disj? exists? conj?))

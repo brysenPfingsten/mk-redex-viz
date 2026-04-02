@@ -5,15 +5,23 @@
          json
          web-server/http/request-structs
          web-server/http/response-structs
-         net/url-structs)
+         net/url-structs
+         "../src/model-registry.rkt")
 
 (provide response-body->string
          make-post-request
          make-post-analyze-request
-         make-post-model-request
          make-post-init-request
+         make-post-source-convert-request
+         default-source-options
          assert-step-payload-shape
          assert-analyze-payload-shape)
+
+(define default-source-options
+  (hasheq 'sourceMode "mini"
+          'compileProfile (hasheq 'conjAssoc "left"
+                                  'disjAssoc "right"
+                                  'delayPlacement "relbody")))
 
 (define (response-body->string response)
   (define out (open-output-string))
@@ -35,14 +43,31 @@
    5000
    "127.0.0.1"))
 
-(define (make-post-analyze-request src)
-  (make-post-request "analyze" (hasheq 'text src)))
+(define (make-post-analyze-request src [payload #f])
+  (make-post-request "analyze"
+                     (or payload
+                         (hash-set default-source-options 'text src))))
 
-(define (make-post-model-request model-id)
-  (make-post-request "model" (hasheq 'model model-id)))
+(define (ensure-init-model payload [model-id #f])
+  (cond
+    [model-id (hash-set payload 'model model-id)]
+    [(hash-has-key? payload 'model) payload]
+    [else (hash-set payload 'model default-model-id)]))
 
-(define (make-post-init-request src)
-  (make-post-request "init" (hasheq 'text src)))
+(define (make-post-init-request src [payload #f] #:model [model-id #f])
+  (make-post-request "init"
+                     (ensure-init-model
+                      (or payload
+                          (hash-set default-source-options 'text src))
+                      model-id)))
+
+(define (make-post-source-convert-request src [payload #f])
+  (make-post-request "source-convert"
+                     (or payload
+                         (hasheq 'text src
+                                 'sourceMode "mini"
+                                 'compileProfile (hash-ref default-source-options 'compileProfile)
+                                 'targetSourceMode "micro"))))
 
 (define (nonempty-string? v)
   (and (string? v)

@@ -28,10 +28,21 @@
                           (cons u used)))])
     rev-fresh))
 
-(define (lookup-rel-arity gamma rel-name)
-  (for/first ([defn (in-list gamma)]
-              #:when (equal? (first defn) rel-name))
-    (length (second defn))))
+(define-metafunction L4
+  same-length? : (any ...) (any ...) -> boolean
+  [(same-length? () ()) #t]
+  [(same-length? (any_1 any_rest_1 ...) (any_2 any_rest_2 ...))
+   (same-length? (any_rest_1 ...) (any_rest_2 ...))]
+  [(same-length? () (any_2 any_rest_2 ...)) #f]
+  [(same-length? (any_1 any_rest_1 ...) ()) #f])
+
+(define-metafunction L4
+  relcall-arity-ok? : r (t ...) ((r d g) ...) -> boolean
+  [(relcall-arity-ok? r_call (t ...) ()) #f]
+  [(relcall-arity-ok? r_call (t ...) ((r_call (x ...) g_env) (r_rest d_rest g_rest) ...))
+   (same-length? (t ...) (x ...))]
+  [(relcall-arity-ok? r_call (t ...) ((r_other d_other g_other) (r_rest d_rest g_rest) ...))
+   (relcall-arity-ok? r_call (t ...) ((r_rest d_rest g_rest) ...))])
 
 (define-judgment-form
   L4
@@ -40,6 +51,9 @@
 
   [------------------ "trivial success wf/L4"
    (wf-goal/L4? (succeed tag) ((r d_env g_env) ...) (x_1 ...) c)]
+
+  [------------------ "trivial fail wf/L4"
+   (wf-goal/L4? (fail tag) ((r d_env g_env) ...) (x_1 ...) c)]
 
   [(where (u_old ...) c)
    (where (u_new ...) ,(fresh-lvars/rkt (term (x_1 ...)) (term c)))
@@ -57,18 +71,22 @@
    ---------- "disj-wf/L4"
    (wf-goal/L4? (g_1 ∨ g_2 tag) ((r d_env g_env) ...) (x_1 ...) c)]
 
+  [(wf-goal/L4? g ((r d_env g_env) ...) (x_1 ...) c)
+   ---------- "delay-goal-wf/L4"
+   (wf-goal/L4? (sdelay g tag) ((r d_env g_env) ...) (x_1 ...) c)]
+
   [(wf-term? t_1 (x_1 ...) c)
    (wf-term? t_2 (x_1 ...) c)
    ---------- "==-wf/L4"
    (wf-goal/L4? (t_1 =? t_2 tag) ((r d_env g_env) ...) (x_1 ...) c)]
 
+  [(wf-term? t_1 (x_1 ...) c)
+   (wf-term? t_2 (x_1 ...) c)
+   ---------- "=/=-wf/L4"
+   (wf-goal/L4? (t_1 != t_2 tag) ((r d_env g_env) ...) (x_1 ...) c)]
+
   [(wf-term? t (x_lex ...) c) ...
-   (side-condition
-    ,(let* ([gamma (term ((r_1 d_1 g_1) ...))]
-            [rel-name (term r_call)]
-            [arity (lookup-rel-arity gamma rel-name)])
-       (and arity
-            (= arity (length (term (t ...)))))))
+   (where #t (relcall-arity-ok? r_call (t ...) ((r_1 d_1 g_1) ...)))
    ---------- "relcall-wf/L4"
    (wf-goal/L4? (r_call t ... tag) ((r_1 d_1 g_1) ...) (x_lex ...) c)])
 
@@ -82,26 +100,22 @@
 
   [(lvars-subset? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    ------------------- "single answer/state wf/L4"
-   (wf-tree/L4? (⊤ (state sub c_i trail tag)) ((r d g_env) ...) c)]
+   (wf-tree/L4? (⊤ (state sub dis c_i trail tag)) ((r d g_env) ...) c)]
 
   [(lvars-subset? c c_i)
    (wf-goal/L4? g ((r d g_env) ...) () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    ------------------- "goal/state wf/L4"
-   (wf-tree/L4? (g (state sub c_i trail tag)) ((r d g_env) ...) c)]
+   (wf-tree/L4? (g (state sub dis c_i trail tag)) ((r d g_env) ...) c)]
 
   [(lvars-subset? c c_i)
    (wf-tree/L4? s ((r d g_env) ...) c_i)
    (wf-goal/L4? g ((r d g_env) ...) () c_i)
    ------------------- "conj wf/L4"
    (wf-tree/L4? (s × g c_i) ((r d g_env) ...) c)]
-
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-tree/L4? s_tail ((r d g_env) ...) c)
-   ------------------- "emit wf/L4"
-   (wf-tree/L4? (emit (state sub c_i trail tag) s_tail) ((r d g_env) ...) c)]
 
   [(wf-tree/L4? s_1 ((r d g_env) ...) c)
    (wf-tree/L4? s_2 ((r d g_env) ...) c)
@@ -120,19 +134,21 @@
   [(lvars-subset? c c_i)
    (wf-goal/L4? (r_call t ... tag_call) ((r d g_env) ...) () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    ------------------- "proceed relcall wf/L4"
    (wf-tree/L4?
     (proceed ((r_call t ... tag_call)
-              (state sub c_i trail tag_state)))
+              (state sub dis c_i trail tag_state)))
     ((r d g_env) ...)
     c)]
 
   [(lvars-subset? c c_i)
    (wf-goal/L4? g ((r d g_env) ...) () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    ------------------- "proceed expanded-goal wf/L4"
    (wf-tree/L4?
-    (proceed (g (state sub c_i trail tag_state)))
+    (proceed (g (state sub dis c_i trail tag_state)))
     ((r d g_env) ...)
     c)])
 
@@ -146,14 +162,16 @@
 
   [(lvars-subset? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    ------------------- "single answer stream wf/L4"
-   (wf-answer-stream/L4? (⊤ (state sub c_i trail tag)) c)]
+   (wf-answer-stream/L4? (⊤ (state sub dis c_i trail tag)) c)]
 
   [(lvars-subset? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
    (wf-answer-stream/L4? as_tail c)
    ------------------- "answer stream wf/L4"
-   (wf-answer-stream/L4? ((⊤ (state sub c_i trail tag)) + as_tail) c)])
+   (wf-answer-stream/L4? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
 
 (define-judgment-form
   L4
@@ -225,37 +243,37 @@
   (define cfg-l1
     (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
            (delay (proceed ((r:id (sym "ok") (label "call"))
-                            (state () () () (label "s")))))
+                            (state () () () () (label "s")))))
           (empty-stream))))
 
   (define cfg-l2
     (term (()
-           (((succeed (label "a")) (state () () () (label "sa")))
+           (((succeed (label "a")) (state () () () () (label "sa")))
             <-+
-            ((succeed (label "b")) (state () () () (label "sb"))))
+            ((succeed (label "b")) (state () () () () (label "sb"))))
            (empty-stream))))
 
   (define cfg-l3
     (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
            ((delay (proceed ((r:id (sym "ok") (label "call"))
-                             (state () () () (label "s")))))
+                             (state () () () () (label "s")))))
             <-+
-            ((succeed (label "b")) (state () () () (label "sb"))))
+            ((succeed (label "b")) (state () () () () (label "sb"))))
            (empty-stream))))
 
   (define cfg-l4
     (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
            (((delay (proceed ((r:id (sym "ok") (label "call"))
-                              (state () () () (label "s")))))
+                              (state () () () () (label "s")))))
              <-+
-             ((succeed (label "b")) (state () () () (label "sb"))))
+             ((succeed (label "b")) (state () () () () (label "sb"))))
             +-> (empty-tree))
            (empty-stream))))
 
   (define cfg-bad-arity
     (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
            ((r:id (sym "ok") (sym "extra") (label "call"))
-            (state () () () (label "s")))
+            (state () () () () (label "s")))
            (empty-stream))))
 
   (check-true  (judgment-holds (wf-config/L1? ,cfg-l1)))

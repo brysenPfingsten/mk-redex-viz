@@ -9,6 +9,7 @@
          "../src/app.rkt"
          "../src/zipper.rkt"
          "../src/transpiler.rkt"
+         "../src/sexpr-read.rkt"
          "../src/model-registry.rkt"
          "./test-http-helpers.rkt"
          "./variant-test-support.rkt"
@@ -17,12 +18,6 @@
 (provide CONFIDENCE-GATES)
 
 (define TRACE-STEP-CAP 30)
-
-(define (read-all port)
-  (let ([expr (read port)])
-    (if (eof-object? expr)
-        '()
-        (cons expr (read-all port)))))
 
 (define (example-src label)
   (for/first ([pr (in-list (frontend-example-programs))]
@@ -34,7 +29,7 @@
   (unless src
     (error 'trace-steps (format "missing example label: ~a" label)))
   (define-values (cfg0 _html)
-    (parse-prog/canonical (read-all (open-input-string src))))
+    (parse-prog/canonical (read-all-sexprs (open-input-string src))))
   (define step-once (lookup-model-step-once model-id))
   (unless step-once
     (error 'trace-steps (format "unknown model id: ~a" model-id)))
@@ -74,9 +69,9 @@
    (list "mk-l4-rail-lazy"
          "appendoh 1"
          '("core/fresh-substitute"
-           "call/lazy-suspend-call"
-           "call/lazy-invoke-delay"
-           "call/lazy-expand-on-resume"
+           "call/lazy-expand"
+           "source-delay/bridge"
+           "rail/invoke-delay"
            "disj/goal-to-tree"
            "core/conj-distribute-state"
            "core/unify-fail"
@@ -87,38 +82,38 @@
          "fives/fours"
          '("core/fresh-substitute"
            "disj/goal-to-tree"
-           "call/lazy-suspend-call"
+           "call/lazy-expand"
+           "source-delay/bridge"
            "rail/enter-right"
            "rail/invoke-delay"
-           "call/lazy-suspend-call"
+           "call/lazy-expand"
+           "source-delay/bridge"
            "rail/return-left"
-           "rail/invoke-delay"
-           "call/lazy-expand-on-resume"
-           "disj/goal-to-tree"))
+           "rail/invoke-delay"))
    (list "mk-l3-flip-lazy"
          "fives/fours"
          '("core/fresh-substitute"
            "disj/goal-to-tree"
-           "call/lazy-suspend-call"
+           "call/lazy-expand"
+           "source-delay/bridge"
            "flip/delay-swap-left"
            "flip/invoke-delay"
-           "call/lazy-suspend-call"
+           "call/lazy-expand"
+           "source-delay/bridge"
            "flip/delay-swap-left"
-           "flip/invoke-delay"
-           "call/lazy-expand-on-resume"
-           "disj/goal-to-tree"))
+           "flip/invoke-delay"))
    (list "mk-l3-dfs-lazy"
          "same"
          '("core/fresh-substitute"
            "disj/goal-to-tree"
            "disj/goal-to-tree"
-           "call/lazy-suspend-call"
+           "call/lazy-expand"
+           "source-delay/bridge"
            "dfs/delay-through-left"
            "dfs/delay-through-left"
            "dfs/invoke-delay"
-           "call/lazy-expand-on-resume"
            "core/unify-success"
-           "disj/promote-left-answer"))))
+           "disj/bubble-left-answer"))))
 
 (define/provide-test-suite CONFIDENCE-GATES
   (test-case "golden trace prefixes stay stable and step names are always named"
@@ -160,12 +155,11 @@
         (session (zipper '() #f '() 0)
                  (make-stepper (lookup-model-step-once default-model-id))
                  1))
-      (check-equal? (response-code (switch-model! ses (make-post-model-request model-id) 'shape-id))
-                    200
-                    (format "switch model failed for ~a" model-id))
-      (define init-resp (init! ses (make-post-init-request src) 'shape-id))
+      (define init-resp (init! ses (make-post-init-request src #:model model-id) 'shape-id))
       (check-equal? (response-code init-resp) 200
                     (format "init failed for ~a / ~a" model-id label))
+      (check-equal? (session-model-id ses) model-id
+                    (format "session model binding drifted for ~a / ~a" model-id label))
       (assert-step-payload-shape (string->jsexpr (response-body->string init-resp))
                                  (format "~a / ~a init" model-id label))
       (define seen 0)

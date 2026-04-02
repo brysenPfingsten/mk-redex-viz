@@ -9,8 +9,18 @@ import CustomAlert     from './components/CustomAlert';
 import useStepper      from './hooks/useStepper';
 import Resizable       from './components/Resizable';
 import Sidebar from './components/Sidebar';
-import { MODEL_IDS } from './utils/model_ids.js';
+import { DEFAULT_MODEL_OPTIONS, MODEL_IDS } from './utils/model_ids.js';
 import { analysisStatusForModel, isStartBlockedByAnalysis } from './utils/compatibility.js';
+import { exampleById } from './utils/example_programs.js';
+import {
+  buildSourceOptions,
+  CONJ_ASSOC_OPTIONS,
+  DELAY_PLACEMENT_OPTIONS,
+  DEFAULT_COMPILE_PROFILE,
+  DEFAULT_SOURCE_MODE,
+  DISJ_ASSOC_OPTIONS,
+  SOURCE_MODE_OPTIONS,
+} from './utils/source_defaults.js';
 import './styles.css'
 
 const ANALYSIS_DEBOUNCE_MS = 450;
@@ -18,20 +28,11 @@ const ANALYSIS_DEBOUNCE_MS = 450;
 function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
-  const [predefinedCodeText, setPredefinedCodeText] = useState('');
+  const [selectedExampleId, setSelectedExampleId] = useState('');
+  const [sourceMode, setSourceMode] = useState(DEFAULT_SOURCE_MODE);
+  const [compileProfile, setCompileProfile] = useState(DEFAULT_COMPILE_PROFILE);
   const [model, setModel] = useState(MODEL_IDS.L4_RAIL_LAZY);
-  const [modelOptions, setModelOptions] = useState([
-    { value: MODEL_IDS.L0_CORE, label: "µKanren Core (No RelCall/No Disjunction)" },
-    { value: MODEL_IDS.L1_CALL_LAZY, label: "µKanren L1 Calls (Lazy, No Disjunction)" },
-    { value: MODEL_IDS.L1_CALL_EAGER, label: "µKanren L1 Calls (Eager, No Disjunction)" },
-    { value: MODEL_IDS.L2_DISJ_LEFT, label: "µKanren L2 Disjunction (No RelCall)" },
-    { value: MODEL_IDS.L4_RAIL_LAZY, label: "µKanren (Interleave + Railroad, Lazy)" },
-    { value: MODEL_IDS.L3_DFS_LAZY, label: "µKanren (No Interleave, Lazy)" },
-    { value: MODEL_IDS.L3_FLIP_LAZY, label: "µKanren (Interleave + Flip-Flop, Lazy)" },
-    { value: MODEL_IDS.L4_RAIL_EAGER, label: "µKanren (Interleave + Railroad, Eager)" },
-    { value: MODEL_IDS.L3_DFS_EAGER, label: "µKanren (No Interleave, Eager)" },
-    { value: MODEL_IDS.L3_FLIP_EAGER, label: "µKanren (Interleave + Flip-Flop, Eager)" }
-  ]);
+  const [serverModelOptions, setServerModelOptions] = useState([]);
   const [isFrozen, setFrozen] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const treeRef = useRef();
@@ -55,60 +56,83 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState("idle");
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [isExampleLoading, setIsExampleLoading] = useState(false);
   
   const [ darkMode, setDarkMode ] = useState(false);
   const analysisCacheRef = useRef(new Map());
   const analysisAbortRef = useRef(null);
   const analysisTokenRef = useRef(0);
-
-  const requestModelChange = async (newModel) => {
-    try {
-      const response = await fetch('api/post/model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ model: newModel}),
-        credentials: "include",
-      });
-      if (!response.ok) return false;
-      setModel(newModel);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
+  const programmaticCodeUpdateRef = useRef(false);
 
   const analyzeSource = async (source, { signal } = {}) => {
-    const cached = analysisCacheRef.current.get(source);
+    const requestPayload = buildSourceOptions(source, sourceMode, compileProfile);
+    const cacheKey = JSON.stringify(requestPayload);
+    const cached = analysisCacheRef.current.get(cacheKey);
     if (cached) return cached;
 
     const response = await fetch('api/post/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json'},
-      body: JSON.stringify({ text: source }),
+      body: JSON.stringify(requestPayload),
       credentials: "include",
       signal,
     });
     const text = await response.text();
-    let payload;
+    let responsePayload;
     try {
-      payload = JSON.parse(text);
+      responsePayload = JSON.parse(text);
     } catch (_) {
-      payload = { validSyntax: false, error: "invalid analysis response" };
+      responsePayload = { validSyntax: false, error: "invalid analysis response" };
     }
 
     if (!response.ok) {
-      const failData = (payload && typeof payload === "object")
-        ? payload
+      const failData = (responsePayload && typeof responsePayload === "object")
+        ? responsePayload
         : { validSyntax: false, error: `Analyze failed (${response.status})` };
       // Only cache deterministic syntax failures; avoid pinning transient backend errors.
       if (response.status === 400 && failData.validSyntax === false) {
-        analysisCacheRef.current.set(source, failData);
+        analysisCacheRef.current.set(cacheKey, failData);
       }
       return failData;
     }
 
-    analysisCacheRef.current.set(source, payload);
-    return payload;
+    analysisCacheRef.current.set(cacheKey, responsePayload);
+    return responsePayload;
+  };
+
+  const convertExampleToMicro = async (sourceText, profile = compileProfile) => {
+    const response = await fetch('api/post/source-convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...buildSourceOptions(sourceText, DEFAULT_SOURCE_MODE, profile),
+        targetSourceMode: "micro",
+      }),
+      credentials: "include",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.error || `Unable to convert example (${response.status})`);
+    }
+    return payload.source;
+  };
+
+  const loadExampleSource = async (
+    exampleId,
+    nextSourceMode = sourceMode,
+    nextCompileProfile = compileProfile,
+  ) => {
+    const example = exampleById(exampleId);
+    if (!example) return null;
+    return nextSourceMode === "mini"
+      ? example.miniSource
+      : convertExampleToMicro(example.miniSource, nextCompileProfile);
+  };
+
+  const applyExampleSource = (nextCode, exampleId) => {
+    programmaticCodeUpdateRef.current = true;
+    setSelectedExampleId(exampleId);
+    setCode(nextCode);
   };
 
   const applyAnalysisStatus = (analysis, modelId = model) => {
@@ -148,7 +172,7 @@ function App() {
     }
 
     originalCodeRef.current = code;
-    const [success, progOrError] = await init(code);
+    const [success, progOrError] = await init(code, sourceMode, compileProfile, model);
     if (success) {
       setFrozen(true);
       setCode(progOrError);
@@ -179,6 +203,7 @@ function App() {
   const handleReset = async () => {
     const success = await reset();  
     if (success) {
+      programmaticCodeUpdateRef.current = true;
       setCode(originalCodeRef.current);
       setFrozen(false);
       setDisabled({start: false, reset: true, back: true, step: true});
@@ -193,13 +218,11 @@ function App() {
   }, [tree]);
 
   useEffect(() => {
-    if (!isFrozen) {
-      setCode(predefinedCodeText);
-    }
-  }, [predefinedCodeText, isFrozen]);
-
-  useEffect(() => {
     if (isFrozen) return undefined;
+    if (isExampleLoading) {
+      setAnalysisStatus("analyzing");
+      return undefined;
+    }
     const trimmed = code.trim();
     if (!trimmed) {
       setAnalysisStatus("idle");
@@ -238,7 +261,47 @@ function App() {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [code, model, isFrozen]);
+  }, [code, model, sourceMode, compileProfile, isFrozen, isExampleLoading]);
+
+  useEffect(() => {
+    if (isFrozen || !selectedExampleId) {
+      setIsExampleLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setIsExampleLoading(true);
+
+    const load = async () => {
+      try {
+        const nextCode = await loadExampleSource(
+          selectedExampleId,
+          sourceMode,
+          compileProfile,
+        );
+        if (!active || nextCode == null) return;
+        applyExampleSource(nextCode, selectedExampleId);
+      } catch (err) {
+        if (!active) return;
+        setAlert({
+          isOpen: true,
+          message: err?.message || "Unable to load example.",
+        });
+      } finally {
+        if (active) {
+          setIsExampleLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => { active = false; };
+  }, [selectedExampleId, sourceMode, compileProfile, isFrozen]);
+
+  useEffect(() => {
+    if (programmaticCodeUpdateRef.current) {
+      programmaticCodeUpdateRef.current = false;
+    }
+  }, [code]);
 
   useEffect(() => {
     let active = true;
@@ -253,10 +316,12 @@ function App() {
           .map((m) => ({ value: m.id, label: m.label }));
         if (nextOptions.length === 0) return;
         if (!active) return;
-        setModelOptions(nextOptions);
-        if (!nextOptions.some((opt) => opt.value === model)) {
-          setModel(nextOptions[0].value);
-        }
+        setServerModelOptions(nextOptions);
+        setModel((currentModel) =>
+          nextOptions.some((opt) => opt.value === currentModel)
+            ? currentModel
+            : nextOptions[0].value
+        );
       } catch (_) {
         // Keep local fallback model options on fetch failure.
       }
@@ -265,6 +330,9 @@ function App() {
     return () => { active = false; };
   }, []);
 
+  const modelOptions = serverModelOptions.length > 0
+    ? serverModelOptions
+    : DEFAULT_MODEL_OPTIONS;
   const compatibleModelIds = analysisResult?.compatibleModelIds || [];
   const currentModelReasons = (analysisResult?.incompatReasonsByModel || {})[model] || [];
   const firstCompatibleModel = compatibleModelIds[0] || null;
@@ -287,9 +355,43 @@ function App() {
     start: disabled.start || startBlockedByAnalysis,
   };
 
-  const switchCompatibleModel = async () => {
+  const switchCompatibleModel = () => {
     if (!firstCompatibleModel) return;
-    await requestModelChange(firstCompatibleModel);
+    setModel(firstCompatibleModel);
+  };
+
+  const handleSourceModeChange = (nextSourceMode) => {
+    if (isFrozen) return;
+    if (selectedExampleId) {
+      setIsExampleLoading(true);
+    }
+    setSourceMode(nextSourceMode);
+  };
+
+  const handleCompileProfileChange = (axis, value) => {
+    if (isFrozen) return;
+    if (selectedExampleId && sourceMode === "micro") {
+      setIsExampleLoading(true);
+    }
+    setCompileProfile((current) => ({ ...current, [axis]: value }));
+  };
+
+  const handleExampleChange = (exampleId) => {
+    if (isFrozen) return;
+    setIsExampleLoading(Boolean(exampleId));
+    setSelectedExampleId(exampleId);
+  };
+
+  const handleModelChange = (nextModel) => {
+    if (isFrozen) return;
+    setModel(nextModel);
+  };
+
+  const handleCodeChange = (nextCode) => {
+    if (!programmaticCodeUpdateRef.current) {
+      setSelectedExampleId("");
+    }
+    setCode(nextCode);
   };
 
   return (
@@ -298,11 +400,19 @@ function App() {
         <div className="input-container">
           <CodeHeader
             logoSrc={darkMode ? "/mk_logo_white.png" : "/mk_logo_black.png"}
-            programText={predefinedCodeText}
-            onProgramChange={setPredefinedCodeText}
+            exampleValue={selectedExampleId}
+            onExampleChange={handleExampleChange}
+            sourceModeValue={sourceMode}
+            sourceModeOptions={SOURCE_MODE_OPTIONS}
+            onSourceModeChange={handleSourceModeChange}
+            compileProfile={compileProfile}
+            conjAssocOptions={CONJ_ASSOC_OPTIONS}
+            disjAssocOptions={DISJ_ASSOC_OPTIONS}
+            delayPlacementOptions={DELAY_PLACEMENT_OPTIONS}
+            onCompileProfileChange={handleCompileProfileChange}
             modelValue={model}
             modelOptions={modelOptions}
-            onModelChangeRequest={requestModelChange}
+            onModelChange={handleModelChange}
             isFrozen={isFrozen}
             analysisStatus={analysisStatus}
             compatWarning={compatWarning}
@@ -311,7 +421,7 @@ function App() {
           <div className="editor-area">
             <CodeEditor 
               codeText={code} 
-              setCodeText={setCode} 
+              setCodeText={handleCodeChange}
               isFrozen={isFrozen} 
               isDark={darkMode}
               goalId={goalId}

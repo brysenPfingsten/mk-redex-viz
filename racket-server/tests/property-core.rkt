@@ -150,7 +150,7 @@
        ,(make-label "ex"))]))
 
 (define (gen-state c)
-  `(state () ,c () ,(make-label "st")))
+  `(state () () ,c () ,(make-label "st")))
 
 (define (max-depth)
   PROPERTY-MAX-DEPTH)
@@ -198,7 +198,7 @@
 
 (define (state-c-size st)
   (match st
-    [`(state ,_ ,c ,_ ,_) (length c)]
+    [`(state ,_ ,_ ,c ,_ ,_) (length c)]
     [_ 0]))
 
 (define (goal-flags g)
@@ -215,13 +215,6 @@
     [`(empty-tree) (values #f #f #f 0)]
     [`(⊤ ,st) (define csz (state-c-size st))
               (values (> csz 0) #f #f csz)]
-    [`(emit ,st ,s2)
-     (define csz (state-c-size st))
-     (define-values (nonempty?2 hex2 hconj2 cmax2) (tree-coverage s2))
-     (values (or (> csz 0) nonempty?2)
-             hex2
-             hconj2
-             (max csz cmax2))]
     [`(,g ,st) (define csz (state-c-size st))
                (define-values (hex hconj) (goal-flags g))
                (values (> csz 0) hex hconj csz)]

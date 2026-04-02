@@ -35,7 +35,8 @@
 (test-case "Core config is accepted by core wf judgment"
   (define core-cfg
     (term (() ((succeed (label "ok"))
-                  (state () () () (label "s"))))))
+               (state () () () () (label "s")))
+              (empty-stream))))
   (check-true (redex-match? Core config core-cfg))
   (check-true (judgment-holds (wf-config? ,core-cfg)))
   (check-true (judgment-holds (core-shape? ,core-cfg))))
@@ -44,6 +45,7 @@
   (define bad-arity
     (term (((r:id (x:0) (x:0 =? (sym "ok") (label "eq"))))
            ((r:id (sym "ok") (sym "extra") (label "call"))
-            (state () () () (label "s"))))))
+            (state () () () () (label "s")))
+           (empty-stream))))
   (check-true (redex-match? L4 config bad-arity))
   (check-false (judgment-holds (wf-config/L4? ,bad-arity))))

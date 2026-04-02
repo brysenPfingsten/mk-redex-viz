@@ -14,10 +14,18 @@
   (reduction-relation
     L1/K
     #:domain config
+    [--> (Γ (in-hole K ((name goal-src g) σ)) as)
+         (Γ (in-hole K s_new) as)
+         (where s_new ,(bridge-source-delay/eager-host (term Γ)
+                                                       (term goal-src)
+                                                       (term σ)))
+         (side-condition (not (equal? (term s_new) #f)))
+         "source-delay/bridge"]
+
     [--> (Γ (in-hole K ((r t ... tag) σ)) as)
-         (Γ (in-hole K (delay (proceed (g_new σ)))) as)
+         (Γ (in-hole K (g_new σ)) as)
          (where g_new ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-         "call/eager-suspend-expanded"]
+         "call/eager-expand"]
 
     [--> (Γ (delay (proceed (g σ))) as)
          (Γ (proceed (g σ)) as)

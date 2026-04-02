@@ -35,8 +35,7 @@ npm --prefix frontend test
 
 Runs full model/example compatibility and stepping audit without manual clicking:
 - analyze source (`POST /api/post/analyze`)
-- switch model (`POST /api/post/model`)
-- init (`POST /api/post/init`)
+- init with selected model (`POST /api/post/init`, payload includes `model`)
 - step up to 25 or termination (`GET /api/get/next`)
 - assert payload shape each step (`step`, `stepName`, JSON `program`)
 

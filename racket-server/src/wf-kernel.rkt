@@ -10,6 +10,7 @@
          lvars-subset?
          wf-term?
          wf-sub?
+         wf-dis?
          fresh-lv
          fresh-lvars
          wf-trail-unify*s-to-sub
@@ -101,6 +102,18 @@
    ------------------ "sub closed under c w/no lexical vars"
    (wf-sub? ([u t] ...) c)])
 
+(define-judgment-form
+  Core
+  #:contract (wf-dis? dis c)
+  #:mode (wf-dis? I I)
+  [------------------ "empty disequality store is wf"
+   (wf-dis? () c)]
+  [(wf-term? t_1 () c)
+   (wf-term? t_2 () c)
+   (wf-dis? ((t_3 t_4) ...) c)
+   ------------------ "disequality pair wf"
+   (wf-dis? ((t_1 t_2) (t_3 t_4) ...) c)])
+
 (define-metafunction Core
   fresh-lv : (u ...) -> u
   [(fresh-lv (u ...)) ,(variable-not-in (cons 'u: (term (u ...))) 'u:)])
@@ -145,8 +158,10 @@
   #:contract (wf-state? σ)
   #:mode (wf-state? I)
   [(wf-sub/wf+equiv-trail? sub c trail)
+   (wf-dis? dis c)
+   (where #f (invalid? sub dis))
    ----------------------- "state wf"
-   (wf-state? (state sub c trail tag))])
+   (wf-state? (state sub dis c trail tag))])
 
 (module+ test
   (check-true (judgment-holds (lvar-member? u:0 (u:0))))
@@ -203,6 +218,7 @@
   (check-false
    (judgment-holds
     (wf-state? (state ((u:1 (sym "b")) (u:0 (sym "a")))
+                      ()
                       (u:0 u:1)
                       ((u:0 =? (sym "a") (label "t1")))
                       (label "σ"))))))

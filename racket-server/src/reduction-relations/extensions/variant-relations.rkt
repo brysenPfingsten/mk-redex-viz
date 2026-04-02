@@ -44,49 +44,5 @@
  Rl3-flip-lazy
  Rl4-rail-eager
  Rl4-rail-lazy
- ;; Canonical step wrappers
- step-once/Rl1-call-eager
- step-once/Rl1-call-lazy
- step-once/Rl2-disj-left
- step-once/Rl3-pre-eager
- step-once/Rl3-pre-lazy
- step-once/Rl3-dfs-eager
- step-once/Rl3-dfs-lazy
- step-once/Rl3-flip-eager
- step-once/Rl3-flip-lazy
- step-once/Rl4-rail-eager
- step-once/Rl4-rail-lazy)
-
-;; Canonical step wrappers.
-(define (step-once/Rl1-call-eager prog)
-  (step-once/by Rl1-call-eager prog))
-
-(define (step-once/Rl1-call-lazy prog)
-  (step-once/by Rl1-call-lazy prog))
-
-(define (step-once/Rl2-disj-left prog)
-  (step-once/by Rl2-disj-left prog))
-
-(define (step-once/Rl3-pre-eager prog)
-  (step-once/by Rl3-pre-eager prog))
-
-(define (step-once/Rl3-pre-lazy prog)
-  (step-once/by Rl3-pre-lazy prog))
-
-(define (step-once/Rl3-dfs-eager prog)
-  (step-once/by Rl3-dfs-eager prog))
-
-(define (step-once/Rl3-dfs-lazy prog)
-  (step-once/by Rl3-dfs-lazy prog))
-
-(define (step-once/Rl3-flip-eager prog)
-  (step-once/by Rl3-flip-eager prog))
-
-(define (step-once/Rl3-flip-lazy prog)
-  (step-once/by Rl3-flip-lazy prog))
-
-(define (step-once/Rl4-rail-eager prog)
-  (step-once/by Rl4-rail-eager prog))
-
-(define (step-once/Rl4-rail-lazy prog)
-  (step-once/by Rl4-rail-lazy prog))
+ ;; Canonical generic step function
+ step-once/by)

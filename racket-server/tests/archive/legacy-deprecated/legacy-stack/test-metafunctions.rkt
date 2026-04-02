@@ -1,7 +1,7 @@
 #lang racket
 (require redex)
-(require "../src/metafunctions.rkt"
-         "../src/definitions.rkt")
+(require "../../../../src/archive/legacy-deprecated/legacy-stack/metafunctions.rkt"
+         "../../../../src/archive/legacy-deprecated/legacy-stack/definitions.rkt")
 (require rackunit rackunit/text-ui)
 
 (provide METAFUNCTIONS)

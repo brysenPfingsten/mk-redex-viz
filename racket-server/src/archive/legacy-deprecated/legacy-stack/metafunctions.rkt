@@ -40,10 +40,10 @@
   (map (λ (v) (term (term->json ,v))) vars))
 
 (define (sub->json sub)
-  (map (λ (p) (let ([var (car p)]
-                    [val (term (term->json ,(cadr p)))])
-                (hasheq 'key var
-                        'value val)))
+  (map (λ (p)
+         (match-define (list var val) p)
+         (hasheq 'key var
+                 'value (term (term->json ,val))))
        sub))
 
 (define (trail->json trail sub)

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } f
 import * as d3 from 'd3';
 import { drawTree, drawLinks, drawNodes } from '../utils/drawing.js';
 import { termToString } from '../utils/strings.js';
-import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
+import { addColors } from '../utils/treeSetup.js'
 
 const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId }, ref) => {
     const svgRef = useRef();
@@ -60,7 +60,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             const g = svg.append('g');
             
             // Create hierarchy and prepare data
-            const root = d3.hierarchy(flattenGoalConj(addColors(treeData)));
+            const root = d3.hierarchy(addColors(treeData));
             
             // First pass: measure node sizes
             const tempSvg = d3.select("body").append("svg")

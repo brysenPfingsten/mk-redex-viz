@@ -10,14 +10,26 @@
          "transpiler.rkt"
          "capability-analysis.rkt"
          "syntax-checking.rkt"
+         "sexpr-read.rkt"
          "zipper.rkt"
          "model-registry.rkt"
          "model-surface-policy.rkt")
 
-(provide step! back! reset! init! init-session! 
-         make-stepper step step-name 
-         session session-zipper session-stepper session-nqv
-         switch-model! analyze! list-models!)
+(provide step! back! reset! init! init-session!
+         make-stepper step step-name
+         session session-zipper session-stepper session-nqv session-model-id
+         analyze! source-convert! list-models!)
+
+(define (request->payload req)
+  (bytes->jsexpr (request-post-data/raw req)))
+
+(define (payload->source-options payload)
+  (define source-mode
+    (normalize-source-mode (hash-ref payload 'sourceMode default-source-mode)))
+  (define compile-profile
+    (normalize-compile-profile (hash-ref payload 'compileProfile #f)
+                               source-mode))
+  (values source-mode compile-profile))
 
 (define-struct step (name prog) #:transparent)
 (define-struct session 
@@ -104,28 +116,32 @@
   (match-let ([(session zip step nqv _) ses])
     (step zip nqv)))
 
-
-;; read-all: port -> ListOf sexpression
-;; Purpose: To read the string program into sexpressions
-(define (read-all port)
-  (let ([expr (read port)])
-    (if (eof-object? expr)
-        '()  ;; Stop when EOF is reached
-        (cons expr (read-all port)))))
-
+(define (bind-session-model! ses model-id)
+  (define maybe-spec (lookup-model-spec model-id))
+  (unless maybe-spec
+    (error 'init! (format "Unknown model selected for init: ~a" model-id)))
+  (set-session-model-id! ses (model-spec-id maybe-spec))
+  (set-session-stepper! ses (make-stepper (model-spec-step-once maybe-spec)))
+  maybe-spec)
 
 ;; init!: session request string -> response
 ;; Purpose: To initialize the given session
 (define (init! ses req ses-id)
-  (define json-data (request-post-data/raw req))                      ;; Get the JSON data from the request
-  (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))        ;; Get the program from that JSON
-  (check-syntax-capture-error raw-prog)                               ;; Check for syntax errors
-  (define sexpr-prog (read-all (open-input-string raw-prog)))         ;; Read the program into sexpressions
-  (define model-id (session-model-id ses))
-  (define maybe-spec (lookup-model-spec model-id))
-  (unless maybe-spec
-    (error 'init! (format "Unknown model selected for session: ~a" model-id)))
-  (define requirements (ast->requirements (parse-prog->ast sexpr-prog)))
+  (define payload (request->payload req))
+  (define raw-prog (hash-ref payload 'text))
+  (define-values (source-mode compile-profile)
+    (payload->source-options payload))
+  (define model-id (hash-ref payload 'model #f))
+  (unless (string? model-id)
+    (error 'init! "Missing model in init payload"))
+  (define maybe-spec (bind-session-model! ses model-id))
+  (when (equal? source-mode "mini")
+    (check-syntax-capture-error raw-prog))
+  (define sexpr-prog (read-all-sexprs (open-input-string raw-prog)))   ;; Read the program into sexpressions
+  (define requirements
+    (ast->requirements (parse-prog->ast sexpr-prog
+                                        #:source-mode source-mode
+                                        #:compile-profile compile-profile)))
   (define reasons
     (incompatible-reasons requirements (model-spec-capabilities maybe-spec)))
   (unless (null? reasons)
@@ -133,7 +149,10 @@
            (format "Program is incompatible with selected model ~a: ~a"
                    model-id
                    (string-join reasons "; "))))
-  (define-values (model-prog html-prog) (parse-prog/canonical sexpr-prog)) ;; Parse directly to canonical target
+  (define-values (model-prog html-prog)
+    (parse-prog/canonical sexpr-prog
+                          #:source-mode source-mode
+                          #:compile-profile compile-profile))
   (unless (canonical-target-in-domain? model-prog canonical-parser-target-id)
     (error 'init! (format "transpiler produced a program outside canonical target ~a"
                           canonical-parser-target-id)))
@@ -176,29 +195,6 @@
       [_ (step->response maybe-back idx nqv)])))
 
 
-;; switch-model!: session request string -> response
-;; Purpose: Switches the model used by this session and refreshes cookie binding.
-(define (switch-model! ses req ses-id)
-  (define json-data (request-post-data/raw req))
-  (define new-model (hash-ref (bytes->jsexpr json-data) 'model #f))
-  (define maybe-spec (lookup-model-spec new-model))
-  (define maybe-step-once (and maybe-spec (model-spec-step-once maybe-spec)))
-  (if maybe-step-once
-      (begin
-        (set-session-model-id! ses (model-spec-id maybe-spec))
-        (set-session-stepper! ses (make-stepper maybe-step-once))
-        (response/jsexpr
-         (hasheq 'model (model-spec-id maybe-spec))
-         #:code 200
-         #:headers
-         (list
-          (make-header
-           #"Set-Cookie"
-           (string->bytes/utf-8
-            (format "session-id=~a; Path=/; SameSite=Lax" ses-id))))))
-      (response/jsexpr (hasheq 'error (format "Unknown model: ~a" new-model))
-                       #:code 400)))
-
 ;; analyze!: session request -> response
 ;; Purpose: Analyze source capabilities and model compatibility without executing.
 (define (analyze! _ses req)
@@ -210,9 +206,14 @@
                    'error (exn-message e))
            #:mime-type #"application/json; charset=utf-8"
            #:code 400))])
-    (define json-data (request-post-data/raw req))
-    (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))
-    (define analysis (analyze-source-capabilities raw-prog))
+    (define payload (request->payload req))
+    (define raw-prog (hash-ref payload 'text))
+    (define-values (source-mode compile-profile)
+      (payload->source-options payload))
+    (define analysis
+      (analyze-source-capabilities raw-prog
+                                   #:source-mode source-mode
+                                   #:compile-profile compile-profile))
     (define requirements (hash-ref analysis 'requirements '()))
     (define compatible-ids (compatible-model-ids requirements surfaced-model-specs))
     (define incompatible-specs
@@ -235,6 +236,27 @@
              'analysisVersion (hash-ref analysis 'analysisVersion ANALYSIS-VERSION))
      #:mime-type #"application/json; charset=utf-8"
      #:code 200)))
+
+(define (source-convert! req)
+  (define payload (request->payload req))
+  (define raw-prog (hash-ref payload 'text))
+  (define target-source-mode
+    (normalize-source-mode (hash-ref payload 'targetSourceMode "micro")))
+  (unless (equal? target-source-mode "micro")
+    (error 'source-convert!
+           (format "unsupported target source mode: ~a" target-source-mode)))
+  (define-values (source-mode compile-profile)
+    (payload->source-options payload))
+  (when (equal? source-mode "mini")
+    (check-syntax-capture-error raw-prog))
+  (define sexpr-prog (read-all-sexprs (open-input-string raw-prog)))
+  (response/jsexpr
+   (hasheq 'source
+           (render-micro-source sexpr-prog
+                                #:source-mode source-mode
+                                #:compile-profile compile-profile))
+   #:mime-type #"application/json; charset=utf-8"
+   #:code 200))
 
 
 ;; list-models!: -> response
@@ -296,7 +318,7 @@
       ["post/init"  (init! session req session-id)]
       ["post/reset" (reset! session session-table session-id)]
       ["post/back"  (back! session)]
-      ["post/model" (switch-model! session req session-id)]
+      ["post/source-convert" (source-convert! req)]
       ["post/analyze" (analyze! session req)])))
 
 (define (handled-dispatcher req)

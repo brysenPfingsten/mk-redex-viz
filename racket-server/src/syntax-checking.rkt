@@ -5,6 +5,7 @@
          racket/sandbox)
 (require "wf-core.rkt"
          "wf-variants.rkt"
+         "sexpr-read.rkt"
          (only-in "core-definitions.rkt" Core))
 (provide canonical-core-shape?
          canonical-well-formed?
@@ -44,15 +45,6 @@
       (error (format "Program failed canonical ~a wf check." target-id))))
 
 
-;; read-all: port -> ListOf sexpression
-;; Purpose: To read the string program into sexpressions
-(define (read-all port)
-  (let ([expr (read port)])
-    (if (eof-object? expr)
-        '()  ;; Stop when EOF is reached
-        (cons expr (read-all port)))))
-
-
 ;; String -> String or Error
 ;; Purpose: Uses syntax-spec to throw static errors in the given program.
 (define (check-syntax-capture-error program-str)
@@ -60,4 +52,4 @@
       (expand (datum->syntax #f
                              `(module syntax-checker racket/base
                                 (require hosted-minikanren)
-                                ,@(read-all (open-input-string program-str)))))))
+                                ,@(read-all-sexprs (open-input-string program-str)))))))
