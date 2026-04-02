@@ -563,3 +563,64 @@ Concrete witness:
   `((((a σ) × b) <-+ (d σ)) × h)`
 - weak/incremental eager hoist forbids that shape, because it must hoist as
   soon as `((((a ∧ b) σ) <-+ (d σ)) × h)` becomes exposed
+
+## Structural Summary Fold
+
+The active `wf-*` stack now has a parallel `wf-summary-*` family.
+
+That summary layer is the structural correctness fold for reachable
+configurations. Each summary has the shape:
+
+`(wf-summary answers bounced freshened-tree freshened-shell)`
+
+The judgment family does two jobs at once:
+
+- it proves the old well-formedness obligations
+- it returns the structural counts that the test/support layer used to compute
+  by separate host recursion
+
+The important invariants are enforced in the judgment, not in postprocessing:
+
+- wrapper-path scope agrees with each state's stored `c`
+- lvars in goals, substitutions, disequalities, and trails stay within the
+  ambient scope
+- `FreshenedTree` and `FreshenedShell` introductions are fresh relative to the
+  outer scope
+- `Bounced` changes only the bounced count; it does not alter scope accounting
+
+Operationally:
+
+- `FreshenedTree` increments the tree-freshened count
+- `FreshenedShell` increments the shell-freshened count
+- `⊤` and promoted answers increment the answer count
+- `Bounced` increments the bounced count
+
+This gives one reusable judgmental source of truth for exact-scope properties,
+freshening accounting, and stepwise monotonicity checks.
+
+## Picture Denotation
+
+Visible tree construction now lives in `search-lattice/picture.rkt`.
+
+There are two denotations over the same machine/configuration states:
+
+- operational picture
+- extensional picture
+
+The operational picture is the current UI contract:
+
+- it preserves `Bounced`
+- it preserves the current visible branch/conjunction/delay structure
+- it renders both `FreshenedTree` and `FreshenedShell` as the same visible
+  `Freshened` wrapper, because the UI distinguishes scope extent but not the
+  internal tree-vs-shell constructor name
+
+The extensional picture erases administrative detail:
+
+- `Bounced` is identity
+- `FreshenedTree` and `FreshenedShell` collapse to the same visible scope
+  wrapper
+
+So the extensional picture forgets scheduler bookkeeping, while the operational
+picture keeps the renderer-facing administrative structure needed for stepping
+and debugging.
