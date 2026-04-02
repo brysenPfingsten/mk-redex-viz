@@ -29,7 +29,8 @@
 (define (drop-subst-for-host d subs)
   (for/list ([(x t*) (in-dict subs)]
              #:unless (member x d))
-    (list x (car t*))))
+    (match-define (list t) t*)
+    (list x t)))
 
 (define (subst-goal-host g subs)
   (match g
@@ -94,70 +95,60 @@
      (answer-head?/host inner)]
     [_ #f]))
 
+(define (lift-bounced-rewrite cfg rewrite-inner rebuild-inner)
+  (match cfg
+    [`(Bounced (,prefix + ,rest))
+     #:when (answer-head?/host prefix)
+     (match (rewrite-inner rest)
+       [#f #f]
+       [rest^ `(Bounced (,prefix + ,rest^))])]
+    [`(Bounced ,inner)
+     (rebuild-inner (rewrite-inner inner))]
+    [_ #f]))
+
+(define (rebuild-bounced-answer result)
+  (match result
+    [#f #f]
+    [`(,left + ,rest)
+     #:when (answer-head?/host left)
+     `(,left + (Bounced ,rest))]
+    [inner^ `(Bounced ,inner^)]))
+
+(define (rebuild-bounced-inner result)
+  (match result
+    [#f #f]
+    [inner^ `(Bounced ,inner^)]))
+
 (define (bubble-left-answer-host cfg)
   (match cfg
     [`((,left <-+ ,mid) <-+ ,right)
      #:when (answer-head?/host left)
      `(,left + (,mid <-+ ,right))]
-    [`(Bounced (,prefix + ,rest))
-     #:when (answer-head?/host prefix)
-     (match (bubble-left-answer-host rest)
-       [#f #f]
-       [rest^ `(Bounced (,prefix + ,rest^))])]
-    [`(Bounced ,inner)
-     (match (bubble-left-answer-host inner)
-       [`(,left + ,rest)
-        #:when (answer-head?/host left)
-        `(,left + (Bounced ,rest))]
-       [inner^ `(Bounced ,inner^)]
-       [_ #f])]
-    [_ #f]))
+    [_ (lift-bounced-rewrite cfg
+                             bubble-left-answer-host
+                             rebuild-bounced-answer)]))
 
 (define (promote-left-answer-host cfg)
   (match cfg
     [`(,left <-+ ,right)
      #:when (answer-head?/host left)
      `(,left + ,right)]
-    [`(Bounced (,prefix + ,rest))
-     #:when (answer-head?/host prefix)
-     (match (promote-left-answer-host rest)
-       [#f #f]
-       [rest^ `(Bounced (,prefix + ,rest^))])]
-    [`(Bounced ,inner)
-     (match (promote-left-answer-host inner)
-       [`(,left + ,rest)
-        #:when (answer-head?/host left)
-        `(,left + (Bounced ,rest))]
-       [inner^ `(Bounced ,inner^)]
-       [_ #f])]
-    [_ #f]))
+    [_ (lift-bounced-rewrite cfg
+                             promote-left-answer-host
+                             rebuild-bounced-answer)]))
 
 (define (bubble-left-fail-host cfg)
   (match cfg
     [`(((empty-tree) <-+ ,mid) <-+ ,right)
      `(,mid <-+ ,right)]
-    [`(Bounced (,prefix + ,rest))
-     #:when (answer-head?/host prefix)
-     (match (bubble-left-fail-host rest)
-       [#f #f]
-       [rest^ `(Bounced (,prefix + ,rest^))])]
-    [`(Bounced ,inner)
-     (match (bubble-left-fail-host inner)
-       [#f #f]
-       [rest `(Bounced ,rest)])]
-    [_ #f]))
+    [_ (lift-bounced-rewrite cfg
+                             bubble-left-fail-host
+                             rebuild-bounced-inner)]))
 
 (define (skip-left-fail-host cfg)
   (match cfg
     [`((empty-tree) <-+ ,right)
      right]
-    [`(Bounced (,prefix + ,rest))
-     #:when (answer-head?/host prefix)
-     (match (skip-left-fail-host rest)
-       [#f #f]
-       [rest^ `(Bounced (,prefix + ,rest^))])]
-    [`(Bounced ,inner)
-     (match (skip-left-fail-host inner)
-       [#f #f]
-       [rest `(Bounced ,rest)])]
-    [_ #f]))
+    [_ (lift-bounced-rewrite cfg
+                             skip-left-fail-host
+                             rebuild-bounced-inner)]))

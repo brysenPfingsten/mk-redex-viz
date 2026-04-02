@@ -64,6 +64,7 @@
   [trail (eq ...)] ;; what about neq?
   [c (u_!_ ...)]
   [c+ (u u_!_ ...)]
+  [summary (wf-summary number number number number)]
 
   ;; Outer committed shell wrappers. L0 owns the shell/tail split, even though
   ;; shell growth first becomes interesting once later layers add more shell
