@@ -1,18 +1,14 @@
 #lang racket
-(require redex redex/gui)
-(require redex/reduction-semantics)
-(require rackunit)
-(check-redundancy #t)
 
-(require "../src/definitions.rkt"
-         "../src/judgment-forms.rkt"
-         "../src/reduction-relations/reduction-relations.rkt")
+(require rackunit
+         rackunit/text-ui
+         "./property-core.rkt")
 
- (redex-check L p
-    (implies (judgment-holds (closed-program? p))
-             (let ([outs (apply-reduction-relation red (term p))])
-               (or (null? outs)
-                   (and (null? (cdr outs))
-                        (closed-program? (car outs))))))
-    #:attempts 100000)
-    ;;500000 when making changes
+;; Legacy entrypoint kept for compatibility.
+;; New property suite lives in property-core.rkt.
+(define-test-suite PROPERTY-TESTS-LEGACY
+  PROPERTY-CORE)
+
+(module+ test
+  (displayln "[property-tests] Delegating to PROPERTY-CORE (legacy wrapper).")
+  (run-tests PROPERTY-TESTS-LEGACY))

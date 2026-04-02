@@ -1,0 +1,70 @@
+                      [==> ((g_1 ∨ g_2 _) (state sub c trail o))
+                           ((g_1 (state sub c trail o)) <-+ (g_2 (state sub c trail ,(symbol->string (gensym)))))
+                           "Distribute State Over Disjunction"]
+
+                      ;; [==> (((⊤ σ) <-+ s) × g)
+                      ;;      (((⊤ σ) × g) <-+ (s × g))
+                      ;;      "Distribute Left Disjunction Answer Over Conjunction"]
+
+                      ;; [==> ((s +-> (⊤ σ)) × g)
+                      ;;      ((s × g) +-> ((⊤ σ) × g))
+                      ;;      "Distribute Right Disjunction Answer Over Conjunction"]
+
+                      ;; [==> (s_2 +-> ((⊤ σ) <-+ s))
+                      ;;      ((⊤ σ) <-+ (s_2 +-> s))
+                      ;;      "Reassociate Right-Left Disjunction"]
+
+                      ;; [==> (s_2 +-> (s +-> (⊤ σ)))
+                      ;;      ((s_2 +-> s) +-> (⊤ σ))
+                      ;;      "Reassociate Right-Right Disjunction"]
+
+                      ;; [==> (((⊤ σ) <-+ s) <-+ s_2)
+                      ;;      ((⊤ σ) <-+ (s <-+ s_2))
+                      ;;      "Reassociate Left-Left Disjunction"]
+
+                      ;; [==> ((s +-> (⊤ σ)) <-+ s_2)
+                      ;;      ((s <-+ s_2) +-> (⊤ σ))
+                      ;;      "Reassociate Left-Right Disjunction"]
+
+                      ;; [==> (() <-+ s)
+                      ;;      s
+                      ;;      "Prune Left Disjunction Failure"]
+
+                      ;; [==> (s +-> ())
+                      ;;      s
+                      ;;      "Prune Right Disjunction Failure"]
+
+                      ;; [--> (in-hole Ev ((⊤ σ) <-+ s))
+                      ;;      (in-hole Ev ((⊤ σ) + s))
+                      ;;      "Promote Left Answer"]
+
+                      ;; [--> (in-hole Ev (s +-> (⊤ σ)))
+                      ;;      (in-hole Ev ((⊤ σ) + s))
+                      ;;      "Promote Right Answer"]
+
+                      ;; [==> ((r_1 t ... o) σ)
+                      ;;      (delay (proceed ((r_1 t ... o) σ)))
+                      ;;      "Relation Call And Add Delay"]
+
+                      ;; [==> ((delay s) × g)
+                      ;;      (delay (s × g))
+                      ;;      "Propagate Delay Through Conjunction"]
+
+                      ;; [==> ((delay s_1) <-+ s_2)
+                      ;;      (delay (s_1 +-> s_2))
+                      ;;      "Propagate Delay Through Left Disjunction And Flip"]
+
+                      ;; [==> (s_2 +-> (delay s_1))
+                      ;;      (delay (s_2 <-+ s_1))
+                      ;;      "Propagate Delay Through Right Disjunction And Flip"]
+
+from red, the main one
+                      ;; [--> ((in-hole Ex (proceed ((r_1 t ... o) σ)))
+                      ;;       ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                      ;;      ((in-hole Ex ((substitute g_1 (x_1 t) ...) σ))
+                      ;;       ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                      ;;      "Substitute Relation Body And Proceed"]
+
+                      ;; [--> ((in-hole Ev (delay s)) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                      ;;      ((in-hole Ev s) ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
+                      ;;      "Invoke Delay"]

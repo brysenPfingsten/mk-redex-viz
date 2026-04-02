@@ -1,0 +1,64 @@
+Does succeed need a tag in the wf?
+How do I make sure that recursive case of wf-trail-unify*s-to-σ? doesn't return #f from unify
+Something seems odd about what I had to do for occurs?, like with the clause ordering. I couldn't figure out how to make them non-overlapping, so order matters apparently
+Say something about the logic vars u and the fresh lexical vars x being the same length --- except for the relcall variables?
+
+Do I want those triangle properties enforced in the wf- check in the model?
+   It may be overkill for the properties we want to demonstrate and make testing more difficult.
+
+
+Design approach:
+
+Language we have to start with:
+
+(define-language Core
+  ;--------------------Top Level-------------------------
+  [config (Γ ans* s)]    ; Program
+  ...
+  ;-------------------Search Trees------------------------
+  [s (empty-tree)               ; Empty Tree / Failure
+     (g σ)                      ; Goal-State
+     (s × g)                    ; Conjunction
+     (⊤ σ)
+  ...
+  ]                 ; Delay
+
+  ;----------------------Goals----------------------------
+  [eq (t =? t tag)] ; Syntactic equality w/ tag
+
+  [g eq
+     (succeed)
+     (∃ d g tag)     ; Variable introduction w/ tag
+     (g ∧ g tag)     ; Conjunction w/ tag
+  ...
+  ]
+  ;----------------------Terms---------------------------
+  [t x u pt (t : t) ]
+  ; Search Tree
+  [Es hole
+      (Es × g)
+  ]
+  ;---------------------Binding Forms--------------------
+  #:binding-forms
+  (∃ (x ...) g #:refers-to (shadow x ...))
+  (s #:refers-to (shadow r ...) ((r (x ...) g #:refers-to (shadow x ...)) ...) #:refers-to (shadow r ...))
+)
+
+So. We need to extend this with
+
+1. relations and relation calls
+2. disjunctions
+3. interleaving.
+
+We can do relations and relation calls with or without delay and proceed.
+
+We can do disjunctions with and without interleaving
+
+We can do interleaving with or without railroad crossings.
+We can have delays without interleaving,
+We can have disjunction without interleaving
+
+We have to have delays and disjunctions to have interleaving
+
+We can have railway sign in the language without
+
