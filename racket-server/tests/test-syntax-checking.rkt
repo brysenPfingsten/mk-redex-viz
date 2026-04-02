@@ -3,7 +3,7 @@
 (require rackunit
          rackunit/text-ui
          redex/reduction-semantics
-         "../src/search-lattice/languages/canonical-core-lang.rkt"
+         "../src/transpiler/ir/canonical-core-lang.rkt"
          "../src/sexpr-read.rkt"
          "../src/syntax-checking.rkt"
          "../src/transpiler.rkt")
@@ -37,7 +37,9 @@
                         (λ () (check-canonical-well-formed bad-canonical))))
 
   (test-case "Canonical gate accepts non-core shape directly"
-             (define non-core-canonical '(() (delay (empty-tree))))
+             (define non-core-canonical
+               '(() (delay ((succeed (label "ok"))
+                            (state () () () () (label "s"))))))
              (check-false (canonical-core-shape? non-core-canonical))
              (check-true (canonical-target-in-domain? non-core-canonical "canonical/config"))
              (check-true (canonical-target-well-formed? non-core-canonical "canonical/config"))

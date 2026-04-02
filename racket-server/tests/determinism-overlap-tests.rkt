@@ -6,6 +6,8 @@
          redex/reduction-semantics
          (prefix-in rt:
                     "../src/random-test-support.rkt")
+         (prefix-in red:
+                    "../src/search-lattice/reduction-relations/all.rkt")
          (prefix-in lang:
                     "../src/search-lattice/languages/all.rkt")
          (prefix-in wf:
@@ -15,6 +17,10 @@
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt"
          "./example-compat-tests.rkt"
+         (only-in "./search-lattice-support.rkt"
+                  sigma-a
+                  sigma-b
+                  sigma-s)
          "./runtime-test-support.rkt")
 
 (provide DETERMINISM-OVERLAP)
@@ -90,13 +96,13 @@
     (parameterize ([current-pseudo-random-generator rng])
       (match normalized
         [(search-strategy "early" "rail")
-         (generate-term lang:rail-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:rail-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" "rail")
-         (generate-term lang:rail-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:rail-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "early" _)
-         (generate-term lang:search-base-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:search-base-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" _)
-         (generate-term lang:search-base-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)])))
+         (generate-term lang:search-base-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)])))
   (cond
     [(strategy-matches-generated? normalized cfg) cfg]
     [else
@@ -156,6 +162,30 @@
         #px"side-condition[^\\]]*apply-reduction-relation/tag-with-names"
         src)
        (format "forbidden rule-name-based precedence fence found in ~a" p))))
+
+  (test-case "explicit counterexample families stay uniquely decomposed"
+    (define pending-disj
+      (term ((((succeed (label "left")) ,sigma-s)
+              <-+
+              ((succeed (label "right")) ,sigma-s))
+             × (succeed (label "k"))
+             ())))
+    (define bounced-branch
+      (term (Bounced (((⊤ ,sigma-a) <-+ (empty-tree))
+                      <-+
+                      (⊤ ,sigma-b)))))
+    (define seq-next*
+      (apply-reduction-relation/tag-with-names red:disj-seq-red pending-disj))
+    (define fused-next*
+      (apply-reduction-relation/tag-with-names red:disj-fused-red pending-disj))
+    (define shell-next*
+      (apply-reduction-relation/tag-with-names red:search-base-fused-red bounced-branch))
+    (check-false (overlap-kind seq-next*))
+    (check-false (overlap-kind fused-next*))
+    (check-false (overlap-kind shell-next*))
+    (check-equal? (tagged-successor-name (first seq-next*)) "disj-seq/distribute-over-conj")
+    (check-equal? (tagged-successor-name (first fused-next*)) "core/succeed")
+    (check-equal? (tagged-successor-name (first shell-next*)) "disj/reassociate-left-answer"))
 
   (test-case "overlap audit: surfaced structured strategies over frontend examples"
     (define events

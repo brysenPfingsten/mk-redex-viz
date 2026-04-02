@@ -1,83 +1,67 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/core-lang.rkt"
-         "../languages/disj-fused-lang.rkt"
-         "./private/common.rkt"
-         "./private/context-pipeline.rkt"
-         "./private/core-common.rkt"
+         "../languages/disj-lang.rkt"
+         "./disj-base-red.rkt"
          "./private/step-utils.rkt")
 
-(provide disj-fused-red
+(provide disj-fused-local/under-QShell
+         disj-fused-red
          step-once)
 
 (check-redundancy #t)
 
-(define core-redex/disj (extend-core-redex disj-fused-lang))
-(define-search-frontier/two-stage/no-collector
-  core-frontier/disj
-  core-redex/disj
-  disj-fused-lang
-  K
-  KCorePath)
-
-(define disj-extra
+(define disj-fused-local/base
   (reduction-relation
-   disj-fused-lang
-   #:domain f
-   [--> (in-hole KScopePath (in-hole K ((g_1 ∨ g_2 tag) σ)))
-        (in-hole KScopePath (in-hole K ((g_1 σ) <-+ (g_2 σ))))
-        "disj-fused/goal-to-tree"]
-   [--> (in-hole KScopePath (in-hole K (((⊤ σ_new) <-+ f_rest) × g c)))
-        (in-hole KScopePath (in-hole K ((g σ_new) <-+ (f_rest × g c))))
+   disj-lang
+   #:domain cfg
+   [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
+        (in-hole KLate
+                 ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
         "disj-fused/continue-left-answer"]
-   [--> (in-hole KScopePath (in-hole K (((empty-tree) <-+ f_rest) × g c)))
-        (in-hole KScopePath (in-hole K (f_rest × g c)))
+   [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
+        (in-hole KLate (search_rest × g c))
         "disj-fused/continue-left-fail"]))
 
-(define disj-frontier-extra
-  (reduction-relation
-   disj-fused-lang
-   #:domain f
-   [--> ((Freshened c_1 tag_1 (head_1 + f_left)) <-+ f_right)
-        ((Freshened c_1 tag_1 head_1)
-         + ((Freshened c_1 tag_1 f_left) <-+ f_right))
-        "disj-fused/preserve-scoped-left-prefix"]
-   [--> ((Freshened c_1 tag_1 (head_1 <-+ f_mid)) <-+ f_right)
-        ((Freshened c_1 tag_1 head_1)
-         + ((Freshened c_1 tag_1 f_mid) <-+ f_right))
-        "disj-fused/bubble-scoped-left-branch"]
-   [--> ((head_1 + f_left) <-+ f_right)
-        (head_1 + (f_left <-+ f_right))
-        (side-condition (not (empty-freshened-head? (term head_1))))
-        "disj-fused/preserve-left-prefix"]
-   [--> ((head_1 <-+ f_mid) <-+ f_right)
-        (head_1 <-+ (f_mid <-+ f_right))
-        (side-condition (not (empty-freshened-head? (term head_1))))
-        "disj-fused/bubble-left-observable"]
-   [--> (head_1 <-+ f_right)
-        (head_1 + f_right)
-        (side-condition (not (empty-freshened-head? (term head_1))))
-        "disj-fused/promote-left-observable"]
-   [--> (((empty-tree) <-+ f_mid) <-+ f_right)
-        ((empty-tree) <-+ (f_mid <-+ f_right))
-        "disj-fused/bubble-left-fail"]
-   [--> ((empty-tree) <-+ f_right)
-        f_right
-        "disj-fused/skip-left-fail"]))
+(define disj-fused-local/under-QShell
+  (context-closure disj-fused-local/base disj-lang QShell))
 
-(define disj-frontier
-  (context-closure disj-frontier-extra disj-fused-lang Q))
+(define lifted-disj-core-local/base
+  (extend-reduction-relation disj-core-local/base disj-lang))
 
-(define disj-local
-  (context-closure disj-extra disj-fused-lang Q))
+(define lifted-disj-core-shell/base
+  (extend-reduction-relation disj-core-shell/base disj-lang))
+
+(define lifted-disj-goal-local/base
+  (extend-reduction-relation disj-goal-local/base disj-lang))
+
+(define lifted-disj-frontier/local-base
+  (extend-reduction-relation disj-frontier/local-base disj-lang))
+
+;; Fused exposes shared local rules under the nested cut QShell ∘ KLate.
+(define disj-core-local/under-late
+  (context-closure lifted-disj-core-local/base disj-lang KLate))
+
+(define disj-goal-local/under-late
+  (context-closure lifted-disj-goal-local/base disj-lang KLate))
+
+(define disj-base-core
+  (context-closure disj-core-local/under-late disj-lang QShell))
+
+(define disj-goal-local/under-QShell
+  (context-closure disj-goal-local/under-late disj-lang QShell))
+
+(define disj-frontier/base
+  (context-closure lifted-disj-frontier/local-base disj-lang QShell))
 
 (define disj-fused-red
   (union-reduction-relations
-   core-frontier/disj
-   disj-local
-   disj-frontier
-   (make-core-collector disj-fused-lang)))
+   lifted-disj-core-shell/base
+   disj-base-core
+   disj-goal-local/under-QShell
+   disj-frontier/base
+   disj-fused-local/under-QShell
+   ))
 
 (define (step-once prog)
   (step-once/deterministic disj-fused-red prog))

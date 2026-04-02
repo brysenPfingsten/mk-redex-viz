@@ -9,6 +9,8 @@
          unique-decomposition?
          states-wf?
          shape-closed?
+         produced-answer-spine-only?
+         invariant-closed?
          tagged-successor-name
          tagged-successor-cfg
          sigma-a
@@ -17,8 +19,13 @@
          gamma-delay
          cfg-disj
          cfg-delay-goal
+         delayed-left-search
+         scoped-delayed-left-search
+         cfg-scoped-delay-through-conj
          cfg-flip
+         cfg-scoped-flip
          cfg-rail
+         cfg-scoped-rail
          cfg-mixed-answer
          cfg-mixed-fail
          cfg-call
@@ -28,10 +35,12 @@
 (define (final-frontier? f)
   (match f
     ['(empty-tree) #t]
-    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
-    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
-    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
-    [`(Bounced + ,rest) (final-frontier? rest)]
+    [`(⊤ ,_) #t]
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
+     (final-frontier? inner)]
+    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 
 (define (final-program? prog)
@@ -59,13 +68,50 @@
     [(cons a d) (states-in a (states-in d acc))]
     [_ acc]))
 
+(define (state-wf? st)
+  (match st
+    [`(state ,sub ,dis ,c ,trail ,tag)
+     (judgment-holds (wf-state? (state ,sub ,dis ,c ,trail ,tag)))]
+    [_ #f]))
+
 (define (states-wf? prog)
   (for/and ([st (in-list (states-in prog))])
-    (judgment-holds (wf-state? ,st))))
+    (state-wf? st)))
 
 (define (shape-closed? matcher rel prog)
   (for/and ([prog^ (in-list (apply-reduction-relation rel prog))])
     (matcher prog^)))
+
+(define (produced-answer-spine-only? prog
+                                    [inside-branch? #f])
+  (match prog
+    [`(,_gamma ,cfg)
+     (produced-answer-spine-only? cfg inside-branch?)]
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
+     (produced-answer-spine-only? inner inside-branch?)]
+    [`(Bounced ,inner)
+     (produced-answer-spine-only? inner inside-branch?)]
+    [`(delay ,inner)
+     (produced-answer-spine-only? inner inside-branch?)]
+    [`(,cfg_i × ,_g ,_c)
+     (produced-answer-spine-only? cfg_i inside-branch?)]
+    [`(,left + ,right)
+     (and (not inside-branch?)
+          (produced-answer-spine-only? left inside-branch?)
+          (produced-answer-spine-only? right inside-branch?))]
+    [`(,left <-+ ,right)
+     (and (produced-answer-spine-only? left #t)
+          (produced-answer-spine-only? right #t))]
+    [`(,left +-> ,right)
+     (and (produced-answer-spine-only? left #t)
+          (produced-answer-spine-only? right #t))]
+    [_ #t]))
+
+(define (invariant-closed? invariant? rel prog)
+  (and (invariant? prog)
+       (for/and ([prog^ (in-list (apply-reduction-relation rel prog))])
+         (invariant? prog^))))
 
 (define (tagged-successor-name succ)
   (match succ
@@ -98,13 +144,36 @@
   (term ((suspend (succeed (label "inner")) (label "delay"))
          ,sigma-s)))
 
+(define delayed-left-search
+  (term (delay ((succeed (label "late")) ,sigma-s))))
+
+(define scoped-delayed-left-search
+  (term (FreshenedTree (u:0)
+                       (delay ((succeed (label "late")) ,sigma-s))
+                       (label "fresh"))))
+
+(define cfg-scoped-delay-through-conj
+  (term (,scoped-delayed-left-search
+         × (succeed (label "k"))
+         ())))
+
 (define cfg-flip
-  (term ((delay (empty-tree))
+  (term (,delayed-left-search
+         <-+
+         (⊤ ,sigma-b))))
+
+(define cfg-scoped-flip
+  (term (,scoped-delayed-left-search
          <-+
          (⊤ ,sigma-b))))
 
 (define cfg-rail
-  (term ((delay (empty-tree))
+  (term (,delayed-left-search
+         <-+
+         (⊤ ,sigma-b))))
+
+(define cfg-scoped-rail
+  (term (,scoped-delayed-left-search
          <-+
          (⊤ ,sigma-b))))
 

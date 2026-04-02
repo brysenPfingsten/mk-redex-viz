@@ -3,9 +3,9 @@
          rackunit/text-ui
          redex/reduction-semantics
          (prefix-in canonical:
-                    "../src/search-lattice/languages/canonical-lang.rkt")
+                    "../src/transpiler/ir/canonical-lang.rkt")
          (prefix-in wf:
-                    "../src/search-lattice/wf/all.rkt")
+                    "../src/transpiler/ir/canonical-wf.rkt")
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt")
 

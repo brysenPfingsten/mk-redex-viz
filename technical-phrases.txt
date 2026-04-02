@@ -1,0 +1,5 @@
+the whole scope event becomes part of the exposed frontier segment
+
+committed shell constructors
+
+every node carries its fresh-frame stack explicitly.

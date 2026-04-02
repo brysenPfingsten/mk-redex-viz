@@ -1,7 +1,6 @@
 {
   "visibleNodeNames": [
     "Answer",
-    "Answer-Freshened",
     "Bounced",
     "Conjunction",
     "Delay",
@@ -9,14 +8,13 @@
     "Empty",
     "Emit",
     "Fail",
-    "Fragment-Freshened",
     "Fresh",
+    "Freshened",
     "Goal-Conj",
     "Goal-Delay",
     "Goal-Disj",
     "Rel-Call",
     "Succeed",
-    "Stream-Freshened",
     "Unify",
     "+->",
     "<-+"
@@ -26,11 +24,10 @@
     "Conjunction",
     "Delay",
     "Emit",
-    "Fragment-Freshened",
+    "Freshened",
     "Goal-Conj",
     "Goal-Delay",
     "Goal-Disj",
-    "Stream-Freshened",
     "+->",
     "<-+"
   ]

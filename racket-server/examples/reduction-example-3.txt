@@ -1,0 +1,33 @@
+(run* (q) (disj (== 'x 'x) (== 'y 'y)))
+
+((fresh (q)
+  (disj (== 'x 'x) (== 'y 'y)))
+ (state () 0))
+
+(freshend 0
+  ((disj (== 'x 'x) (== 'y 'y))
+   (state () 0)))
+
+(freshend 0
+  (((== 'x 'x)
+    (state () 0))
+   <-+
+   ((== 'y 'y)
+    (state () 0))))
+
+(freshend 0
+  ((state () 0)
+   <-+
+   ((== 'y 'y)
+    (state () 0))))
+
+(freshend 0
+  ((state () 0)
+   +
+   ((== 'y 'y)
+    (state () 0))))
+
+(freshend 0
+  ((state () 0)
+   +
+   (state () 0)))

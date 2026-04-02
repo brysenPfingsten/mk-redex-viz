@@ -1,0 +1,72 @@
+
+(run* (q)
+    (disj
+	  (fresh (x)
+		[conj (== x 'left) (== q 'left)])
+	  (fresh (x)
+		[conj (Zzz (== x 'right)) (== q 'right)])))
+
+
+((run* (q)
+    (disj
+	  (fresh (x)
+		[conj (== x 'left) (== q 'left)])
+	  (fresh (x)
+		[conj (Zzz (== x 'right)) (== q 'right)])))
+ (state () . 0))
+
+(freshened 0
+  ((disj
+	  (fresh (x)
+		[conj (== x 'left) (== 0 'left)])
+	  (fresh (x)
+		[conj (Zzz (== x 'right)) (== 0 'right)]))
+   (state () . 1)))
+
+(freshened 0
+  (<-+
+   ((fresh (x)
+	 [conj (== x 'left) (== 0 'left)])
+   (state () . 0))
+   ((fresh (x)
+	 [conj (Zzz (== x 'right)) (== 0 'right)])
+   (state () . 1))))
+
+
+(freshened 0
+  (<-+
+   (freshened 1
+     ([conj (== 1 'left) (== 0 'left)]
+      (state () . 2)))
+   ((fresh (x)
+	 [conj (Zzz (== x 'right)) (== 0 'right)])
+   (state () . 0))))
+
+(freshened 0
+  (<-+
+   (freshened 1
+     (times
+	   ((== 1 'left)
+        (state () . 2))
+	   (== 0 'left)))
+   ((fresh (x)
+	 [conj (Zzz (== x 'right)) (== 0 'right)])
+   (state () . 0))))
+
+...
+
+(freshened 0
+  (<-+
+   (freshened 1
+     (state ((0 . 'left) (1 . 'left)) . 2))
+   ((fresh (x)
+	 [conj (Zzz (== x 'right)) (== 0 'right)])
+   (state () . 0))))
+
+(freshened 0
+  ((freshened 1
+     (state ((0 . 'left) (1 . 'left)) . 2))
+   +
+   ((fresh (x)
+	 [conj (Zzz (== x 'right)) (== 0 'right)])
+   (state () . 0))))

@@ -6,6 +6,10 @@
 
 (provide (all-from-out "./kernel.rkt")
          wf-goal/core?
+         wf-answer/core?
+         wf-resolved/core?
+         wf-work/core?
+         wf-search/core?
          wf-frontier/core?
          wf-cfg/core?)
 
@@ -39,40 +43,79 @@
 
 (define-judgment-form
   core-lang
+  #:contract (wf-answer/core? search c)
+  #:mode (wf-answer/core? I I)
+  [(wf-state/at-scope? (state sub dis c_i trail tag) c)
+   ------------------- "raw answer/state wf/core"
+   (wf-answer/core? (⊤ (state sub dis c_i trail tag)) c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-answer/core? search_tail c_2)
+   ------------------- "answer-wrapper tree-freshened wf/core"
+   (wf-answer/core? (FreshenedTree c_1 search_tail tag_1) c)])
+
+(define-judgment-form
+  core-lang
+  #:contract (wf-resolved/core? search c)
+  #:mode (wf-resolved/core? I I)
+  [------------------- "empty frontier residual is wf/core"
+   (wf-resolved/core? (empty-tree) c)]
+  [(wf-answer/core? search_i c)
+   ------------------- "answer is resolved wf/core"
+   (wf-resolved/core? search_i c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-resolved/core? search_tail c_2)
+   ------------------- "resolved tree-freshened scope wf/core"
+   (wf-resolved/core? (FreshenedTree c_1 search_tail tag_1) c)])
+
+(define-judgment-form
+  core-lang
+  #:contract (wf-work/core? runnable-search c)
+  #:mode (wf-work/core? I I)
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-work/core? runnable-search_tail c_2)
+   ------------------- "work tree-freshened scope wf/core"
+   (wf-work/core? (FreshenedTree c_1 runnable-search_tail tag_1) c)]
+  [(wf-state/at-scope? (state sub dis c_i trail tag) c)
+   (wf-goal/core? g () c_i)
+   ------------------- "goal/state frontier wf/core"
+   (wf-work/core? (g (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-search/core? search_i c_i)
+   (wf-goal/core? g () c_i)
+   ------------------- "conj frontier wf/core"
+   (wf-work/core? (search_i × g c_i) c)])
+
+(define-judgment-form
+  core-lang
+  #:contract (wf-search/core? search c)
+  #:mode (wf-search/core? I I)
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-search/core? search_tail c_2)
+   ------------------- "search tree-freshened scope wf/core"
+   (wf-search/core? (FreshenedTree c_1 search_tail tag_1) c)]
+  [(wf-resolved/core? search_i c)
+   ------------------- "resolved search wf/core"
+   (wf-search/core? search_i c)]
+  [(wf-work/core? runnable-search_i c)
+   ------------------- "work search wf/core"
+   (wf-search/core? runnable-search_i c)])
+
+(define-judgment-form
+  core-lang
   #:contract (wf-frontier/core? cfg c)
   #:mode (wf-frontier/core? I I)
-  [------------------- "empty frontier residual is wf/core"
-   (wf-frontier/core? (empty-tree) c)]
-  [(lvars-same-members? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "raw answer/state wf/core"
-   (wf-frontier/core? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-same-members? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-frontier/core? cfg_tail c)
-   ------------------- "observable answer prefix wf/core"
-   (wf-frontier/core? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) c)]
-  [(wf-frontier/core? cfg_tail c)
-   ------------------- "bounced prefix wf/core"
-   (wf-frontier/core? (Bounced + cfg_tail) c)]
+  [(wf-search/core? search_i c)
+   ------------------- "search frontier wf/core"
+   (wf-frontier/core? search_i c)]
   [(lvars-fresh-extension? c_1 c)
    (where c_2 (c-append c_1 c))
    (wf-frontier/core? cfg_tail c_2)
-   ------------------- "freshened scope wf/core"
-   (wf-frontier/core? (Freshened c_1 tag_1 cfg_tail) c)]
-  [(lvars-same-members? c c_i)
-   (wf-goal/core? g () c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "goal/state frontier wf/core"
-   (wf-frontier/core? (g (state sub dis c_i trail tag)) c)]
-  [(lvars-same-members? c c_i)
-   (wf-frontier/core? f c_i)
-   (wf-goal/core? g () c_i)
-   ------------------- "conj frontier wf/core"
-   (wf-frontier/core? (f × g c_i) c)])
+   ------------------- "cfg shell-freshened scope wf/core"
+   (wf-frontier/core? (FreshenedShell c_1 cfg_tail tag_1) c)])
 
 (define-judgment-form
   core-lang

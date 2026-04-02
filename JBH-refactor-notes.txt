@@ -1,3 +1,10 @@
+Active source of truth
+
+- `STABILIZATION.md` is now the live source of truth for stabilization status.
+
+- This file remains historical scratch and rationale. If it disagrees with
+  `STABILIZATION.md`, trust `STABILIZATION.md`.
+
 Does succeed need a tag in the wf?
 How do I make sure that recursive case of wf-trail-unify*s-to-σ? doesn't return #f from unify
 Something seems odd about what I had to do for occurs?, like with the clause ordering. I couldn't figure out how to make them non-overlapping, so order matters apparently
@@ -62,3 +69,104 @@ We have to have delays and disjunctions to have interleaving
 
 We can have railway sign in the language without
 
+
+Concerns or future possible difficulties
+
+- With
+    [search ... (Freshened c tag search)]
+    [cfg search ... (Freshened c tag cfg) ...]
+  a term like (Freshened c tag some-search) belongs to both search and cfg.
+
+- That overlap is acceptable as long as reductions and renderers know which role
+  they mean from context or nonterminal position.
+
+- It may become awkward later if syntax alone needs to distinguish a freshened
+  live-search subtree from a freshened whole-configuration boundary.
+
+- If that happens, the likely repairs are either:
+  1. split the constructor names, or
+  2. keep one constructor and add helper judgments/nonterminals that classify
+     the intended role explicitly.
+
+Base context split for L0
+
+- `KCorePath` is the answer-wrapper path: just a chain of `Freshened`s.
+
+- `KScopePath` is the shared-scope path: also just a chain of `Freshened`s at
+  L0.
+
+- When disjunction is added, the intention is to extend only `KScopePath`
+  through the branch structure, not `KCorePath`.
+
+- That is the mechanism that should preserve the difference between:
+  `fresh x (disj g1 g2)` and `disj (fresh x g1) (fresh x g2)`.
+
+- Once bare terminal success and failure stay bare at raw runtime, there
+  should be no singleton collector stage in L0. Any collector relation that
+  survives after that change is dead scaffolding and should be deleted rather
+  than unioned through the stack.
+
+- Delay/bounce structure belongs in the outer `Q` segment context, not in
+  `KCorePath`.
+
+
+General lessons learned
+
+- `define-union-language` does merge recursive context extensions
+  extensionally. If one branch extends `QSpine` with one recursive case and
+  another branch extends it with a different recursive case, the diamonded
+  union language accepts the combined grammar.
+
+- Because of that, we should not restate a combined recursive context at a
+  higher layer unless we are actually changing its shape. If the intent is just
+  to inherit two independent extensions, the union language already gives that.
+
+- Keep L0/core lean. Do not pull future frontier machinery down into core just
+  for inheritance convenience.
+
+- `Bounced` belongs to the delay layer, not to core.
+
+- `QFront` should not be introduced before the first layer that actually uses
+  it operationally.
+
+- If two language layers are syntactically identical and differ only in their
+  reducers, that distinction belongs in the reduction-relations layer rather
+  than in separate language modules. Seq/fused disjunction is one shared
+  language with two reduction policies, not two different languages.
+
+- `Freshened` should be treated as introduction provenance, not as a lexical
+  scope wrapper that should be pushed eagerly through conjunction.
+
+- Bare terminal success and failure should stay bare at the raw runtime level;
+  do not force singleton answers through synthetic `+ (empty-tree)` padding.
+
+- After that simplification, any exported `...-collector` relation that only
+  reintroduces a no-op singleton collector should also be removed. If the full
+  relation is now the only real assembled relation, downstream layers should
+  compose from that real name directly instead of preserving a fake
+  pre-collector API seam.
+
+- For conjunction, the left child must stay `search`, not arbitrary `cfg`.
+  Allowing `(cfg x g c)` admits impossible `+`-under-conjunction shapes and
+  forces compensating rules later.
+
+- When a pure freshened-chain helper is needed, prefer using the common spine
+  path as a nested subcontext rather than introducing a one-off helper name if
+  that spine path already exists for real semantic reasons.
+
+- A lean way to do that is to let L0 own the pure freshened-only `QSpine`, use
+  it as the nested handoff helper in core, and then extend that same `QSpine`
+  independently in delay and disjunction. The higher join layers can inherit
+  the merged recursive context rather than restating it.
+
+- The bare core reduction pieces should live in a public reduction-relations
+  module, not under `private/`. `private/` should be reserved for actual
+  helper plumbing, while the staged semantic base remains directly visible.
+
+- Reduction-rule names like `core/...`, `delay/...`, and similar
+  language-provenance prefixes are useful temporary scaffolding while the
+  lattice is still being corrected and debugged, because they make blame and
+  search easier. They are not the desired final naming style. Once the
+  semantics stabilize, those provenance annotations should be removed so the
+  same inherited rule keeps the same language-neutral identity all the way up
+  the lattice.

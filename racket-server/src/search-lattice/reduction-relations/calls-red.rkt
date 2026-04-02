@@ -2,12 +2,14 @@
 
 (require redex/reduction-semantics
          "../languages/calls-lang.rkt"
-         "./delay-red.rkt"
+         (only-in "./delay-red.rkt"
+                  delay-red)
          "./private/common.rkt"
          "./private/context-pipeline.rkt"
          "./private/step-utils.rkt")
 
-(provide calls-red
+(provide calls-expand/raw
+         calls-red
          step-once)
 
 (check-redundancy #t)
@@ -20,8 +22,8 @@
   (reduction-relation
    calls-lang
    #:domain config
-   [--> (Γ (in-hole Q (in-hole K ((r t ... tag) σ))))
-        (Γ (in-hole Q (in-hole K (g_new σ))))
+   [--> (Γ (in-hole QShell (in-hole KLocal ((r t ... tag) σ))))
+        (Γ (in-hole QShell (in-hole KLocal (g_new σ))))
         (where g_new
                ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
         "calls/expand"]))

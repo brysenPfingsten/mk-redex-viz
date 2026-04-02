@@ -56,26 +56,17 @@
 (define (core-c-scope-agreement? f [scope '()])
   (match f
     ['(empty-tree) #t]
-    [(list 'Freshened intro _tag inner)
+    [(or (list 'FreshenedTree intro inner _tag)
+         (list 'FreshenedShell intro inner _tag))
      (and (distinct? intro)
           (for/and ([u (in-list intro)])
             (not (member u scope)))
           (core-c-scope-agreement? inner (append intro scope)))]
-    [(list 'Bounced '+ rest)
-     (core-c-scope-agreement? rest scope)]
-    [(list (list 'Freshened intro _tag inner) '+ rest)
-     (and (distinct? intro)
-          (for/and ([u (in-list intro)])
-            (not (member u scope)))
-          (core-c-scope-agreement? inner (append intro scope))
-          (core-c-scope-agreement? rest scope))]
-    [(list (list '⊤ st) '+ rest)
-     (and (state-c-agrees-with-scope? st scope)
-          (core-c-scope-agreement? rest scope))]
-    [(list '⊤ st)
-     (state-c-agrees-with-scope? st scope)]
-    [(list _ st)
-     (state-c-agrees-with-scope? st scope)]
+    [(list 'Bounced inner)
+     (core-c-scope-agreement? inner scope)]
+    [(list left '+ right)
+     (and (core-c-scope-agreement? left scope)
+          (core-c-scope-agreement? right scope))]
     [(list inner '× _ c)
      (and (equal? c scope)
           (core-c-scope-agreement? inner scope))]
@@ -87,32 +78,29 @@
     [(list left '+-> right)
      (and (core-c-scope-agreement? left scope)
           (core-c-scope-agreement? right scope))]
+    [(list '⊤ st)
+     (state-c-agrees-with-scope? st scope)]
+    [(list _g st)
+     #:when (match st
+              [`(state ,_sub ,_dis ,_c ,_trail ,_tag) #t]
+              [_ #f])
+     (state-c-agrees-with-scope? st scope)]
     [_ #f]))
 
 (define (core-lvars-contained? f [scope '()])
   (match f
     ['(empty-tree) #t]
-    [(list 'Freshened intro _tag inner)
+    [(or (list 'FreshenedTree intro inner _tag)
+         (list 'FreshenedShell intro inner _tag))
      (and (distinct? intro)
           (for/and ([u (in-list intro)])
             (not (member u scope)))
           (core-lvars-contained? inner (append intro scope)))]
-    [(list 'Bounced '+ rest)
-     (core-lvars-contained? rest scope)]
-    [(list (list 'Freshened intro _tag inner) '+ rest)
-     (and (distinct? intro)
-          (for/and ([u (in-list intro)])
-            (not (member u scope)))
-          (core-lvars-contained? inner (append intro scope))
-          (core-lvars-contained? rest scope))]
-    [(list (list '⊤ st) '+ rest)
-     (and (state-lvars-contained? st scope)
-          (core-lvars-contained? rest scope))]
-    [(list '⊤ st)
-     (state-lvars-contained? st scope)]
-    [(list g st)
-     (and (state-lvars-contained? st scope)
-          (subset? (lvars-in g) scope))]
+    [(list 'Bounced inner)
+     (core-lvars-contained? inner scope)]
+    [(list left '+ right)
+     (and (core-lvars-contained? left scope)
+          (core-lvars-contained? right scope))]
     [(list inner '× g c)
      (and (equal? c scope)
           (subset? (lvars-in g) scope)
@@ -125,6 +113,14 @@
     [(list left '+-> right)
      (and (core-lvars-contained? left scope)
           (core-lvars-contained? right scope))]
+    [(list '⊤ st)
+     (state-lvars-contained? st scope)]
+    [(list g st)
+     #:when (match st
+              [`(state ,_sub ,_dis ,_c ,_trail ,_tag) #t]
+              [_ #f])
+     (and (state-lvars-contained? st scope)
+          (subset? (lvars-in g) scope))]
     [_ #f]))
 
 (define (core-exact-scope? f [scope '()])
@@ -154,15 +150,14 @@
     ['() 0]
     [(list gamma f) #:when (list? gamma)
      (count-bounced f)]
-    [(list 'Freshened _ _ inner)
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
      (count-bounced inner)]
-    [(list 'Bounced '+ rest)
-     (add1 (count-bounced rest))]
-    [(list (list 'Freshened _ _ inner) '+ rest)
-     (+ (count-bounced inner)
-        (count-bounced rest))]
-    [(list (list '⊤ _) '+ rest)
-     (count-bounced rest)]
+    [(list 'Bounced inner)
+     (add1 (count-bounced inner))]
+    [(list left '+ right)
+     (+ (count-bounced left)
+        (count-bounced right))]
     [(list inner '× _ _)
      (count-bounced inner)]
     [(list 'delay inner)
@@ -180,15 +175,14 @@
     ['() 0]
     [(list gamma f) #:when (list? gamma)
      (count-answers f)]
-    [(list 'Freshened _ _ inner)
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
      (count-answers inner)]
-    [(list (list 'Freshened _ _ inner) '+ rest)
-     (+ (count-answers inner)
-        (count-answers rest))]
-    [(list (list '⊤ _) '+ rest)
-     (add1 (count-answers rest))]
-    [(list 'Bounced '+ rest)
-     (count-answers rest)]
+    [(list 'Bounced inner)
+     (count-answers inner)]
+    [(list left '+ right)
+     (+ (count-answers left)
+        (count-answers right))]
     [(list '⊤ _)
      1]
     [(list inner '× _ _)
@@ -208,15 +202,14 @@
     ['() 0]
     [(list gamma f) #:when (list? gamma)
      (count-freshened f)]
-    [(list 'Freshened _ _ inner)
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
      (add1 (count-freshened inner))]
-    [(list (list 'Freshened _ _ inner) '+ rest)
-     (+ (add1 (count-freshened inner))
-        (count-freshened rest))]
-    [(list (list '⊤ _) '+ rest)
-     (count-freshened rest)]
-    [(list 'Bounced '+ rest)
-     (count-freshened rest)]
+    [(list 'Bounced inner)
+     (count-freshened inner)]
+    [(list left '+ right)
+     (+ (count-freshened left)
+        (count-freshened right))]
     [(list inner '× _ _)
      (count-freshened inner)]
     [(list 'delay inner)
@@ -271,11 +264,8 @@
             ['nodeColor "green"]
             #:open)
      #t]
-    [(hash* ['name "Answer-Freshened"]
-            ['renderRole "answer-freshened"]
-            ['nodeColor "green"]
-            ['resolvedChildIndices '(0)]
-            ['resolvedColor "green"]
+    [(hash* ['name "Freshened"]
+            ['renderRole "freshened"]
             ['children (list child)]
             #:open)
      (visible-answer-node? child)]
@@ -343,6 +333,24 @@
             #:open)
      (and (visible-root? left)
           (visible-search-tree? right))]
+    [(hash* ['name "Freshened"]
+            ['renderRole "freshened"]
+            ['activeChildIndex 0]
+            ['children (list child)]
+            #:open)
+     (visible-root? child)]
+    [(hash* ['name "Bounced"]
+            ['renderRole "bounced"]
+            ['activeChildIndex 0]
+            ['children (list child)]
+            #:open)
+     (visible-root? child)]
+    [(hash* ['name "Emit"]
+            ['renderRole "stream-emit"]
+            ['children (list left right)]
+            #:open)
+     (and (visible-root? left)
+          (visible-root? right))]
     [(hash* ['name "Delay"]
             ['renderRole "delay"]
             ['activeChildIndex 0]
@@ -375,34 +383,20 @@
      #t]
     [(hash* ['name "Emit"]
             ['renderRole "stream-emit"]
-            ['resolvedChildIndices '(0)]
-            ['resolvedColor "green"]
-            ['activeChildIndex 1]
-            ['children (list answer rest)]
+            ['children (list left right)]
             #:open)
-     (and (visible-answer-node? answer)
-          (visible-root? rest))]
+     (and (visible-root? left)
+          (visible-root? right))]
     [(hash* ['name "Bounced"]
-            ['renderRole "stream-bounced"]
-            ['activeChildIndex 0]
-            ['children (list rest)]
+            ['renderRole "bounced"]
+            ['children (list child)]
             #:open)
-     (visible-root? rest)]
-    [(hash* ['name "Stream-Freshened"]
-            ['renderRole "stream-freshened"]
-            ['activeChildIndex 0]
-            ['children (list rest)]
+     (visible-root? child)]
+    [(hash* ['name "Freshened"]
+            ['renderRole "freshened"]
+            ['children (list child)]
             #:open)
-     (visible-root? rest)]
-    [(hash* ['name "Fragment-Freshened"]
-            ['renderRole "fragment-freshened"]
-            ['resolvedChildIndices '(0)]
-            ['resolvedColor "green"]
-            ['activeChildIndex 1]
-            ['children (list fragment rest)]
-            #:open)
-     (and (visible-stream? fragment)
-          (visible-root? rest))]
+     (visible-root? child)]
     [_ #f]))
 
 (define (visible-root? node)

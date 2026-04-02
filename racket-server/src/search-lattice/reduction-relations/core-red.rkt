@@ -2,17 +2,109 @@
 
 (require redex/reduction-semantics
          "../languages/core-lang.rkt"
-         "./private/context-pipeline.rkt"
-         "./private/core-common.rkt"
+         "./private/common.rkt"
          "./private/step-utils.rkt")
 
-(provide (rename-out [core-frontier/search core-red])
+(provide core-local/base
+         core-shell/base
+         extend-core-local-redex
+         extend-core-shell-redex
+         core-red
          step-once)
 
 (check-redundancy #t)
 
-(define core-redex/search (extend-core-redex core-lang))
-(define-search-frontier/one-stage core-frontier/search core-redex/search core-lang K)
+(define core-local/base
+  (reduction-relation
+   core-lang
+   #:domain search
+   [--> ((g_1 ∧ g_2 tag) (state sub dis c trail tag_1))
+        ((g_1 (state sub dis c trail tag_1)) × g_2 c)
+        "core/conj-distribute-state"]
+   [--> ((succeed tag) σ)
+        (⊤ σ)
+        "core/succeed"]
+   [--> ((fail tag) σ)
+        (empty-tree)
+        "core/fail"]
+   [--> ((in-hole QFresh (⊤ σ)) × g c_2)
+        (in-hole QFresh (g σ))
+        "core/conj-bring-scoped-success"]
+   [--> ((in-hole QFresh (empty-tree)) × g c_2)
+        (in-hole QFresh (empty-tree))
+        "core/conj-preserve-scoped-fail"]
+   [--> ((∃ d g tag) (state sub dis c trail tag_1))
+        (FreshenedTree (u_1 ...) (g_new (state sub dis (u_1 ... ,@(term c)) trail tag_1)) tag)
+        (where ((x_bound u_1) ...)
+               (fresh-substitution c d))
+        (where g_new
+               ,(subst-goal-host (term g) (term ((x_bound u_1) ...))))
+        "core/fresh-substitute"]
+   [--> ((t_1 =? t_2 tag) (state sub dis c ((t_3 =? t_4 tag_1) ...) tag_2))
+        (⊤ (state sub_1 dis c ((t_3 =? t_4 tag_1) ... (t_1 =? t_2 tag)) tag_2))
+        (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+        (where #f (invalid? sub_1 dis))
+        "core/unify-success"]
+   [--> ((t_1 =? t_2 tag) (state sub dis c ((t_3 =? t_4 tag_1) ...) tag_2))
+        (empty-tree)
+        (where sub_1 (unify (walk t_1 sub) (walk t_2 sub) sub))
+        (where #t (invalid? sub_1 dis))
+        "core/unify-violates-disequality"]
+   [--> ((t_1 =? t_2 tag) (state sub dis c trail tag_2))
+        (empty-tree)
+        (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
+        "core/unify-fail"]
+   [--> ((t_1 != t_2 tag) (state sub dis c trail tag_2))
+        (⊤ (state sub dis_1 c trail tag_2))
+        (where dis_1 ((t_1 t_2) ,@(term dis)))
+        (where #f (invalid? sub dis_1))
+        "core/disequality-success"]
+   [--> ((t_1 != t_2 tag) (state sub dis c trail tag_2))
+        (empty-tree)
+        (where dis_1 ((t_1 t_2) ,@(term dis)))
+        (where #t (invalid? sub dis_1))
+        "core/disequality-fail"]))
+
+(define core-shell/base
+  (reduction-relation
+   core-lang
+   #:domain cfg
+   [--> (in-hole QShell (in-hole QFresh (⊤ σ)))
+        (in-hole QShell cfg_i)
+        (where cfg_i
+               ,(tree-prefix->shell/host
+                 (term (in-hole QFresh (⊤ σ)))))
+        (side-condition
+         (not (equal? (term cfg_i)
+                      (term (in-hole QFresh (⊤ σ))))))
+        "core/final-answer-into-shell"]
+   [--> (in-hole QShell (in-hole QFresh (empty-tree)))
+        (in-hole QShell cfg_i)
+        (where cfg_i
+               ,(tree-prefix->shell/host
+                 (term (in-hole QFresh (empty-tree)))))
+        (side-condition
+         (not (equal? (term cfg_i)
+                      (term (in-hole QFresh (empty-tree))))))
+        "core/final-fail-into-shell"]))
+
+(define-syntax-rule (extend-core-local-redex lang)
+  (extend-reduction-relation core-local/base lang))
+
+(define-syntax-rule (extend-core-shell-redex lang)
+  (extend-reduction-relation core-shell/base lang))
+
+(define core-local/search
+  (context-closure core-local/base core-lang KLocal))
+
+(define core-local
+  (context-closure core-local/search core-lang QShell))
+
+;; Core splits unfinished tree work from the one final lift into the shell.
+(define core-red
+  (union-reduction-relations
+   core-local
+   core-shell/base))
 
 (define (step-once prog)
-  (step-once/deterministic core-frontier/search prog))
+  (step-once/deterministic core-red prog))

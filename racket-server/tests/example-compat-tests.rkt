@@ -4,7 +4,7 @@
          rackunit
          rackunit/text-ui
          redex/reduction-semantics
-         "../src/search-lattice/languages/canonical-lang.rkt"
+         "../src/transpiler/ir/canonical-lang.rkt"
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt")
 

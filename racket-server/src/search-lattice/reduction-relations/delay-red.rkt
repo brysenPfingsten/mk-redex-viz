@@ -2,45 +2,66 @@
 
 (require redex/reduction-semantics
          "../languages/delay-lang.rkt"
-         "./private/context-pipeline.rkt"
-         "./private/core-common.rkt"
+         (only-in "./core-red.rkt"
+                  extend-core-local-redex
+                  extend-core-shell-redex)
+         "./private/common.rkt"
          "./private/step-utils.rkt")
 
-(provide delay-red
+(provide delay-local/base
+         delay-local/under-QShell
+         delay-frontier/base
+         delay-red
          step-once)
 
 (check-redundancy #t)
 
-(define core-redex/delay (extend-core-redex delay-lang))
-(define-search-frontier/one-stage core-frontier/delay core-redex/delay delay-lang K)
+(define core-local/delay/base
+  (extend-core-local-redex delay-lang))
 
-(define delay-local
-  (reduction-relation
-   delay-lang
-   #:domain f
-   [--> (in-hole K ((suspend g tag) σ))
-        (in-hole K (delay (g σ)))
-        "delay/suspend-goal"]
-   [--> (in-hole K ((delay f_1) × g c))
-        (in-hole K (delay (f_1 × g c)))
-        "delay/delay-through-conj"]))
+(define core-local/delay
+  (context-closure core-local/delay/base delay-lang KLocal))
 
-(define delay-frontier-extra
+(define core-shell/delay/base
+  (extend-core-shell-redex delay-lang))
+
+;; Delay lifts core local work under the first committed shell: QShell ∘ KLocal.
+(define core-red/delay
+  (union-reduction-relations
+   (context-closure core-local/delay delay-lang QShell)
+   core-shell/delay/base))
+
+(define delay-local/base
   (reduction-relation
    delay-lang
    #:domain cfg
-   [--> (in-hole Q (delay f_1))
-        (in-hole Q (Bounced + f_1))
+   [--> (in-hole KLocal ((suspend g tag) σ))
+        (in-hole KLocal (delay (g σ)))
+        "delay/suspend-goal"]
+   [--> (in-hole KLocal ((in-hole QFresh (delay runnable-search_1)) × g c))
+        (in-hole KLocal
+                 (delay ((in-hole QFresh runnable-search_1) × g c)))
+        "delay/delay-through-conj"]))
+
+(define delay-frontier/base
+  (reduction-relation
+   delay-lang
+   #:domain cfg
+   [--> (in-hole QShell (in-hole QFresh (delay runnable-search_i)))
+        (in-hole QShell cfg_i)
+        (where cfg_i
+               ,(tree-prefix->shell/host
+                 (term (in-hole QFresh (Bounced runnable-search_i)))))
         "delay/invoke-delay"]))
 
-(define delay-extra
-  (context-closure delay-local delay-lang Q))
+(define delay-local/under-QShell
+  (context-closure delay-local/base delay-lang QShell))
 
 (define delay-red
   (union-reduction-relations
-   delay-frontier-extra
-   core-frontier/delay
-   delay-extra))
+   core-red/delay
+   delay-local/under-QShell
+   delay-frontier/base))
 
 (define (step-once prog)
   (step-once/deterministic delay-red prog))

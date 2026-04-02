@@ -1,7 +1,7 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "./core-lang.rkt")
+         "../../search-lattice/languages/core-lang.rkt")
 
 (provide canonical-core-lang)
 
@@ -10,13 +10,13 @@
 (define-extended-language canonical-core-lang core-lang
   [r (variable-prefix r:)]
   [d (x_!_ ...)]
-  [Γ ((r d g) ...)]
+  [Gamma ((r d g) ...)]
   [w (empty-tree)
      (g σ)
      (w × g c)
      (⊤ σ)]
-  [config (Γ w)]
-  [end-config (Γ (empty-tree))]
+  [config (Gamma w)]
+  [end-config (Gamma (empty-tree))]
 
   #:binding-forms
   (config #:refers-to (shadow r ...)

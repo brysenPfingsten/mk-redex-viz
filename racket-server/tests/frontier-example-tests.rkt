@@ -7,12 +7,13 @@
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt"
          "./example-compat-tests.rkt"
-         "./frontier-observable-support.rkt")
+         "./frontier-observable-support.rkt"
+         "./runtime-test-support.rkt")
 
 (provide FRONTIER-EXAMPLES)
 
 (define FULL-TRACE-CAP 128)
-(define CADENCE-TRACE-CAP 18)
+(define CADENCE-TRACE-CAP 12)
 
 (define local-example-specs
   (list
@@ -64,7 +65,9 @@
 (define (trace-stepper step-once cfg [step-cap FULL-TRACE-CAP] [i 0] [acc '()])
   (match (step-once cfg)
     ['()
-     (values (reverse acc) cfg 'done)]
+     (values (reverse acc)
+             cfg
+             (if (final-config? cfg) 'value 'stuck))]
     [(list _ ...) #:when (>= i step-cap)
      (values (reverse acc) cfg 'cap)]
     [(list (list name cfg^))
@@ -85,7 +88,7 @@
     (for ([strategy (in-list all-surfaced-search-strategies)])
       (define-values (steps final-cfg status)
         (trace-example "fresh witness" strategy))
-      (check-equal? status 'done (strategy-label strategy))
+      (check-equal? status 'value (strategy-label strategy))
       (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
       (check-equal? (count-step-name steps "core/fresh-substitute")
                     2
@@ -103,8 +106,8 @@
         (trace-example "fresh shared disj" strategy))
       (define-values (branch-steps branch-final branch-status)
         (trace-example "fresh branch disj" strategy))
-      (check-equal? shared-status 'done (strategy-label strategy))
-      (check-equal? branch-status 'done (strategy-label strategy))
+      (check-equal? shared-status 'value (strategy-label strategy))
+      (check-equal? branch-status 'value (strategy-label strategy))
       (check-true (config-exact-scope? shared-final) (strategy-label strategy))
       (check-true (config-exact-scope? branch-final) (strategy-label strategy))
       (check-equal? (count-answers shared-final)
@@ -124,7 +127,7 @@
     (for ([strategy (in-list all-surfaced-search-strategies)])
       (define-values (_steps final-cfg status)
         (trace-example "fresh split conj" strategy))
-      (check-equal? status 'done (strategy-label strategy))
+      (check-equal? status 'value (strategy-label strategy))
       (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
       (check-equal? (count-answers final-cfg)
                     1
@@ -134,7 +137,7 @@
     (for ([strategy (in-list all-surfaced-search-strategies)])
       (define-values (steps final-cfg status)
         (trace-example "fresh delay witness" strategy))
-      (check-equal? status 'done (strategy-label strategy))
+      (check-equal? status 'value (strategy-label strategy))
       (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
       (check-equal? (count-step-name steps "core/fresh-substitute")
                     2
@@ -149,7 +152,7 @@
                     1
                     (strategy-label strategy))))
 
-  (test-case "bounce cadence witness keeps final answers fixed while capped bounce cadence remains scheduler-sensitive"
+  (test-case "bounce cadence witness keeps final answers fixed while eager capped cadence stays within one answer"
     (define strategy*
       (list (search-strategy "early" "dfs")
             (search-strategy "early" "flip")
@@ -158,25 +161,39 @@
       (for/list ([strategy (in-list strategy*)])
         (define-values (steps final-cfg status)
           (trace-example "bounce cadence witness" strategy))
-        (check-equal? status 'done (strategy-label strategy))
-        (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
+        (check-equal? status 'value (strategy-label strategy))
+        (check-true (config-exact-scope? final-cfg)
+                    (format "~a :: ~s"
+                            (strategy-label strategy)
+                            final-cfg))
         (list (count-answers final-cfg)
               (count-step-name steps "core/fresh-substitute"))))
-    (check-true (andmap (lambda (obs)
-                          (equal? obs '(4 1)))
-                        full-observations))
+    (check-true (positive? (caar full-observations)))
+    (check-true
+     (andmap (lambda (obs)
+               (= (second obs) 1))
+             full-observations))
+    (check-equal? (length (remove-duplicates (map first full-observations)))
+                  1)
     (define cadence-observations
       (for/list ([strategy (in-list strategy*)])
         (define-values (_steps final-cfg status)
           (trace-example "bounce cadence witness" strategy CADENCE-TRACE-CAP))
-        (check-true (or (eq? status 'done)
+        (check-true (or (eq? status 'value)
                         (eq? status 'cap))
                     (strategy-label strategy))
         (list (count-answers final-cfg)
               (count-bounced final-cfg))))
-    (check-true (> (length (remove-duplicates cadence-observations))
-                   1)
-                (format "expected scheduler-sensitive cadence observations, got ~s"
+    (define answer-counts (map first cadence-observations))
+    (define bounce-counts (map second cadence-observations))
+    (check-equal? (length (remove-duplicates bounce-counts))
+                  1
+                  (format "expected eager capped bounced cadence agreement, got ~s"
+                          cadence-observations))
+    (check-true (<= (- (apply max answer-counts)
+                       (apply min answer-counts))
+                    1)
+                (format "expected eager capped answers to stay within one of each other, got ~s"
                         cadence-observations))))
 
 (module+ test

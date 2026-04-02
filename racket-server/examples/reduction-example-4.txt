@@ -1,0 +1,105 @@
+
+(conj
+  (fresh (z)
+	(conj
+	  (fresh (x)
+		(== x z))
+	  (fresh (x)
+		(== x z))))
+  (== z 'cat))
+
+My current imagination is that we'd, at this level, use something like the following sequence
+
+[(conj
+  (fresh (z)
+	(conj
+	  (fresh (x)
+		(== x z))
+	  (fresh (x)
+		(== x z))))
+  (== z 'cat))
+ (state () . 0)]
+
+
+
+[(\cross
+  ((fresh (z)
+	 (conj
+	   (fresh (x)
+		 (== x z))
+	   (fresh (x)
+		 (== x z))))
+   (state () . 0))
+  (== z 'cat))]
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+	 ((conj
+		(fresh (x)
+		  (== x 0))
+		(fresh (x)
+		  (== x 0)))
+	  (state () . 1)))
+  (== z 'cat))]
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+     (\cross
+		((fresh (x)
+		   (== x 0))
+		 (state () . 1))
+		(fresh (x)
+		  (== x 0))))
+  (== z 'cat))]
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+     (\cross
+		(Freshened (1)
+		  ((== 1 0)
+		   (state () . 1)))
+		(fresh (x)
+		  (== x 0))))
+  (== z 'cat))]
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+     (\cross
+		(Freshened (1)
+		  (T (state ((1 . 0)) . 1)))
+		(fresh (x)
+		  (== x 0))))
+  (== z 'cat))]
+
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+	 (Freshened (1)
+	   ((fresh (x)
+		  (== x 0))
+		(state ((1 . 0)) . 1))))
+  (== z 'cat))]
+
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+	 (Freshened (1)
+       (Freshened (2)
+         ((== 2 0)
+		  (state ((1 . 0)) . 1)))))
+  (== z 'cat))]
+
+
+[(\cross
+   (Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+	 (Freshened (1)
+       (Freshened (2)
+         (T (state ((2 . 0) (1 . 0)) . 1)))))
+  (== z 'cat))]
+
+
+[(Freshend (0) ;; note this is a list, just so it's clear how we're doing this
+   (Freshened (1)
+	 (Freshened (2)
+	   ((== z 'cat)
+		(state ((2 . 0) (1 . 0)) . 1)))))]

@@ -3,8 +3,9 @@
 (require racket/port
          racket/sandbox
          redex/reduction-semantics
-         "search-lattice/languages/canonical-core-lang.rkt"
-         "search-lattice/wf/all.rkt"
+         "transpiler/ir/canonical-core-lang.rkt"
+         "transpiler/ir/canonical-wf.rkt"
+         "transpiler/ir/canonical-core-wf.rkt"
          "sexpr-read.rkt"
          "transpiler.rkt")
 

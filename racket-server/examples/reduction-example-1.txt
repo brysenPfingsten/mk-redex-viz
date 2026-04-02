@@ -1,0 +1,159 @@
+
+(run* (q)
+  (fresh (x)
+    (disj
+      [conj (== x 'left) (== q 'left)]
+      [conj (Zzz (== x 'right)) (== q 'right)])))
+
+((fresh (q)
+  (fresh (x)
+    (disj
+      [conj (== x 'left) (== q 'left)]
+      [conj (Zzz (== x 'right)) (== q 'right)])))
+ (state () . 0))
+
+
+(freshened 0
+  ((fresh (x)
+    (disj
+      [conj (== x 'left) (== 0 'left)]
+      [conj (Zzz (== x 'right)) (== 0 'right)]))
+   (state () . 1)))
+
+(freshened 0
+  (freshened 1
+    ((disj
+      [conj (== 1 'left) (== 0 'left)]
+      [conj (Zzz (== 1 'right)) (== 0 'right)])
+	 (state () . 1))))
+
+
+(freshened 0
+  (freshened 1
+    ((disj
+      [conj (== 1 'left) (== 0 'left)]
+      [conj (Zzz (== 1 'right)) (== 0 'right)])
+	 (state () . 1))))
+
+
+(freshened 0
+  (freshened 1
+    (<-+
+      ([conj (== 1 'left) (== 0 'left)]
+	   (state () . 1))
+      ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	   (state () . 1)))))
+
+(freshened 0
+  (freshened 1
+    (<-+
+     [times ((== 1 'left)
+			 (state () . 1))
+			(== 0 'left)]
+      ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	   (state () . 1)))))
+
+(freshened 0
+  (freshened 1
+    (<-+
+     [times (state ((1 . 'left)) . 1)
+			(== 0 'left)]
+      ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	   (state () . 1)))))
+
+
+(freshened 0
+  (freshened 1
+    (<-+
+     [(== 0 'left)
+	  (state ((1 . 'left)) . 1)]
+      ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	   (state () . 1)))))
+
+
+(freshened 0
+  (freshened 1
+    (<-+
+     (state ((0 . 'left) (1 . 'left)) . 1)
+      ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	   (state () . 1)))))
+
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     ([conj (Zzz (== 1 'right)) (== 0 'right)]
+	  (state () . 1)))))
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     [times ((Zzz (== 1 'right))
+			 (state () . 1))
+			(== 0 'right)])))
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     [times (delay ((== 1 'right)
+					(state () . 1)))
+			(== 0 'right)])))
+
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (delay
+	  [times ((== 1 'right)
+			  (state () . 1))
+			 (== 0 'right)]))))
+
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (bounced
+	  [times ((== 1 'right)
+			  (state () . 1))
+			 (== 0 'right)]))))
+
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (bounced
+	  [times (state ((1 . 'right)) . 1)
+			 (== 0 'right)]))))
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (bounced
+	  [(== 0 'right)
+	   (state ((1 . 'right)) . 1)]))))
+
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (bounced
+	   (state ((0 . 'right) (1 . 'right)) . 1)))))
+
+;; maybe that's the end, or maybe it ends with:
+
+(freshened 0
+  (freshened 1
+    ((state ((0 . 'left) (1 . 'left)) . 1)
+	 +
+     (bounced
+	  ((state ((0 . 'right) (1 . 'right)) . 1)
+	   +
+	   (empty-tree))))))

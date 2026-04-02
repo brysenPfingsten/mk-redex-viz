@@ -58,10 +58,12 @@
 (define (final-frontier? f)
   (match f
     ['(empty-tree) #t]
-    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
-    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
-    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
-    [`(Bounced + ,rest) (final-frontier? rest)]
+    [`(⊤ ,_) #t]
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
+     (final-frontier? inner)]
+    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 
 (define (final-config? cfg)
@@ -75,24 +77,54 @@
 (define (core-shape-term? cfg)
   (redex-match? core-lang cfg cfg))
 
+(define (next-cfg* cfg)
+  (remove-duplicates
+   (apply-reduction-relation core-red cfg)))
+
+(define (tagged-next* cfg)
+  (remove-duplicates
+   (apply-reduction-relation/tag-with-names core-red cfg)))
+
 (define (unique-decomposition? cfg)
-  (define next* (apply-reduction-relation core-red cfg))
+  (define next* (next-cfg* cfg))
   (cond
     [(final-config? cfg) (null? next*)]
     [else (= (length next*) 1)]))
 
 (define (progress? cfg)
   (or (final-config? cfg)
-      (not (null? (apply-reduction-relation core-red cfg)))))
+      (not (null? (next-cfg* cfg)))))
 
 (define (wf-preserved? cfg)
-  (for/and ([cfg^ (in-list (apply-reduction-relation core-red cfg))])
+  (for/and ([cfg^ (in-list (next-cfg* cfg))])
     (wf-config-term? cfg^)))
+
+(define (trace-wf-preserved? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (wf-config-term? cfg)) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-wf-preserved? cfg^ (sub1 remaining))]
+       [_ #f])]))
 
 (define (core-shape-preserved? cfg)
   (and (core-shape-term? cfg)
-       (for/and ([cfg^ (in-list (apply-reduction-relation core-red cfg))])
+       (for/and ([cfg^ (in-list (next-cfg* cfg))])
          (core-shape-term? cfg^))))
+
+(define (trace-core-shape-preserved? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (core-shape-term? cfg)) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-core-shape-preserved? cfg^ (sub1 remaining))]
+       [_ #f])]))
 
 (define SOURCE-TRACE-CAP 64)
 
@@ -101,7 +133,7 @@
     [(negative? remaining) #f]
     [(not (config-exact-scope? cfg)) #f]
     [else
-     (match (apply-reduction-relation/tag-with-names core-red cfg)
+     (match (tagged-next* cfg)
        ['() #t]
        [(list (list _ cfg^))
        (trace-exact-scope? cfg^ (sub1 remaining))]
@@ -112,7 +144,7 @@
     [(negative? remaining) #f]
     [(not (config-c-scope-agreement? cfg)) #f]
     [else
-     (match (apply-reduction-relation/tag-with-names core-red cfg)
+     (match (tagged-next* cfg)
        ['() #t]
        [(list (list _ cfg^))
         (trace-c-scope-agreement? cfg^ (sub1 remaining))]
@@ -135,10 +167,46 @@
   (define-values (steps final-cfg status)
     (trace-deterministic core-red cfg))
   (and (eq? status 'done)
-       (config-c-scope-agreement? final-cfg)
+      (config-c-scope-agreement? final-cfg)
        (config-exact-scope? final-cfg)
        (<= (count-step-name steps "core/fresh-substitute")
            (count-freshened final-cfg))))
+
+(define (freshened-accounting/exact? cfg)
+  (define-values (steps final-cfg status)
+    (trace-deterministic core-red cfg))
+  (and (eq? status 'done)
+       (config-c-scope-agreement? final-cfg)
+       (config-exact-scope? final-cfg)
+       (= (count-step-name steps "core/fresh-substitute")
+          (count-freshened final-cfg))
+       (zero? (count-bounced final-cfg))))
+
+(define (trace-freshened-monotone? cfg
+                                   [remaining SOURCE-TRACE-CAP]
+                                   [freshened-count (count-freshened cfg)])
+  (cond
+    [(negative? remaining) #f]
+    [(< (count-freshened cfg) freshened-count) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-freshened-monotone? cfg^
+                                   (sub1 remaining)
+                                   (count-freshened cfg))]
+       [_ #f])]))
+
+(define (trace-zero-bounced? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (zero? (count-bounced cfg))) #f]
+    [else
+     (match (tagged-next* cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-zero-bounced? cfg^ (sub1 remaining))]
+       [_ #f])]))
 
 (define (cfg->visible-json cfg)
   (string->jsexpr
@@ -152,7 +220,7 @@
     [(negative? remaining) #f]
     [(not (visible-json-wf/cfg? cfg)) #f]
     [else
-     (match (apply-reduction-relation/tag-with-names core-red cfg)
+     (match (tagged-next* cfg)
        ['() #t]
        [(list (list _ cfg^))
         (trace-visible-json-wf/cfg? cfg^ (sub1 remaining))]
@@ -255,8 +323,9 @@
        (fresh-scope-extension c))
      (if (null? intro)
          (gen-live-tree c (sub1 depth))
-         `(Freshened ,intro ,(make-label "fresh")
-                     ,(gen-live-tree c^ (sub1 depth))))]))
+         `(FreshenedTree ,intro
+                     ,(gen-live-tree c^ (sub1 depth))
+                     ,(make-label "fresh")))]))
 
 (define (gen-tree c depth)
   (define options
@@ -271,8 +340,9 @@
        (fresh-scope-extension c))
      (if (null? intro)
          (gen-live-tree c depth)
-         `(Freshened ,intro ,(make-label "fresh")
-                     ,(gen-live-tree c^ (sub1 depth))))]))
+         `(FreshenedTree ,intro
+                     ,(gen-live-tree c^ (sub1 depth))
+                     ,(make-label "fresh")))]))
 
 (define (generate-wf-config/constructive)
   (define cfg
@@ -299,7 +369,8 @@
 (define (tree-coverage s)
   (match s
     [`(empty-tree) (values #f #f #f 0)]
-    [`(Freshened ,_ ,_ ,s-inner)
+    [(or (list 'FreshenedTree _ s-inner _)
+         (list 'FreshenedShell _ s-inner _))
      (tree-coverage s-inner)]
     [`(⊤ ,st) (define csz (state-c-size st))
               (values (> csz 0) #f #f csz)]
@@ -459,8 +530,13 @@
     (check-wf-guarded-property "progress" progress?))
   (test-case "WF-guarded one-step preservation"
     (check-wf-guarded-property "wf-preserved" wf-preserved?))
+  (test-case "WF-guarded trace preservation"
+    (check-wf-guarded-property "trace-wf-preserved" trace-wf-preserved?))
   (test-case "WF-guarded core-shape closure"
     (check-wf-guarded-property "core-shape-preserved" core-shape-preserved?))
+  (test-case "WF-guarded trace core-shape closure"
+    (check-wf-guarded-property "trace-core-shape-preserved"
+                               trace-core-shape-preserved?))
   (test-case "Source-guarded exact Freshened scoping"
     (check-source-guarded-property "exact-scope" config-exact-scope?))
   (test-case "Source-guarded exact c/scope agreement"
@@ -474,7 +550,16 @@
   (test-case "Source-guarded visible AST shape through trace"
     (check-source-guarded-property "trace-visible-json-wf" trace-visible-json-wf/cfg?))
   (test-case "Source-guarded Freshened accounting"
-    (check-source-guarded-property "freshened-accounting" freshened-accounting?)))
+    (check-source-guarded-property "freshened-accounting" freshened-accounting?))
+  (test-case "Source-guarded exact Freshened accounting"
+    (check-source-guarded-property "freshened-accounting/exact"
+                                   freshened-accounting/exact?))
+  (test-case "Source-guarded Freshened monotonicity through trace"
+    (check-source-guarded-property "trace-freshened-monotone"
+                                   trace-freshened-monotone?))
+  (test-case "Source-guarded core traces never introduce Bounced"
+    (check-source-guarded-property "trace-zero-bounced"
+                                   trace-zero-bounced?)))
 
 (define/provide-test-suite PROPERTY-CORE
   #:before

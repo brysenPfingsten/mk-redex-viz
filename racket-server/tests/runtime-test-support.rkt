@@ -10,10 +10,12 @@
 (define (final-frontier? f)
   (match f
     ['(empty-tree) #t]
-    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
-    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
-    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
-    [`(Bounced + ,rest) (final-frontier? rest)]
+    [`(⊤ ,_) #t]
+    [(or (list 'FreshenedTree _ inner _)
+         (list 'FreshenedShell _ inner _))
+     (final-frontier? inner)]
+    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 
 (define (final-config? cfg)
