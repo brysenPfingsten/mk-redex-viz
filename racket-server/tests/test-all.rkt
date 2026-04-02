@@ -6,7 +6,9 @@
          "./test-zipper.rkt"
          "./test-metafunctions.rkt"
          "./test-transpiler.rkt"
-         "./test-disequality.rkt")
+         "./test-disequality.rkt"
+         "./test-reduction-relations.rkt"
+         )
 
 (define-test-suite ALL
   APP
@@ -15,6 +17,7 @@
   ZIPPER
   METAFUNCTIONS
   TRANSPILER
-  DISEQUALITY)
+  DISEQUALITY
+  RED)
 
 (test/gui ALL)
