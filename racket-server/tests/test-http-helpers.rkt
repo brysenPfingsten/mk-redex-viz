@@ -1,27 +1,28 @@
 #lang racket
 
-(require rackunit
-         racket/string
-         json
+(require json
+         net/url-structs
+         rackunit
          web-server/http/request-structs
          web-server/http/response-structs
-         net/url-structs
-         "../src/model-registry.rkt")
+         "../src/search-strategy.rkt")
 
 (provide response-body->string
          make-post-request
-         make-post-analyze-request
          make-post-init-request
          make-post-source-convert-request
          default-source-options
-         assert-step-payload-shape
-         assert-analyze-payload-shape)
+         default-search-strategy-options
+         assert-step-payload-shape)
 
 (define default-source-options
   (hasheq 'sourceMode "mini"
           'compileProfile (hasheq 'conjAssoc "left"
                                   'disjAssoc "right"
                                   'delayPlacement "relbody")))
+
+(define default-search-strategy-options
+  (search-strategy->jsexpr default-search-strategy))
 
 (define (response-body->string response)
   (define out (open-output-string))
@@ -43,31 +44,31 @@
    5000
    "127.0.0.1"))
 
-(define (make-post-analyze-request src [payload #f])
-  (make-post-request "analyze"
-                     (or payload
-                         (hash-set default-source-options 'text src))))
+(define (strategy->payload strategy)
+  (search-strategy->jsexpr (normalize-search-strategy strategy)))
 
-(define (ensure-init-model payload [model-id #f])
+(define (ensure-init-search-strategy payload [strategy #f])
   (cond
-    [model-id (hash-set payload 'model model-id)]
-    [(hash-has-key? payload 'model) payload]
-    [else (hash-set payload 'model default-model-id)]))
+    [strategy (hash-set payload 'searchStrategy (strategy->payload strategy))]
+    [(hash-has-key? payload 'searchStrategy) payload]
+    [else (hash-set payload 'searchStrategy default-search-strategy-options)]))
 
-(define (make-post-init-request src [payload #f] #:model [model-id #f])
+(define (make-post-init-request src
+                                [payload (hash-set default-source-options 'text src)]
+                                #:strategy [strategy #f])
   (make-post-request "init"
-                     (ensure-init-model
-                      (or payload
-                          (hash-set default-source-options 'text src))
-                      model-id)))
+                     (ensure-init-search-strategy
+                      payload
+                      strategy)))
 
-(define (make-post-source-convert-request src [payload #f])
+(define (make-post-source-convert-request src
+                                          [payload
+                                           (hasheq 'text src
+                                                   'sourceMode "mini"
+                                                   'compileProfile (hash-ref default-source-options 'compileProfile)
+                                                   'targetSourceMode "micro")])
   (make-post-request "source-convert"
-                     (or payload
-                         (hasheq 'text src
-                                 'sourceMode "mini"
-                                 'compileProfile (hash-ref default-source-options 'compileProfile)
-                                 'targetSourceMode "micro"))))
+                     payload))
 
 (define (nonempty-string? v)
   (and (string? v)
@@ -75,34 +76,22 @@
 
 (define (assert-step-payload-shape payload where)
   (check-true (hash? payload) (format "~a: payload must be json object" where))
-  (check-true (exact-nonnegative-integer? (hash-ref payload 'step -1))
+  (match-define (hash* ['step step]
+                       ['stepName step-name]
+                       ['program program-json]
+                       #:open)
+    payload)
+  (check-true (exact-nonnegative-integer? step)
               (format "~a: missing/non-integer step" where))
-  (check-true (nonempty-string? (hash-ref payload 'stepName #f))
+  (check-true (nonempty-string? step-name)
               (format "~a: missing/non-string stepName" where))
-  (define program-json (hash-ref payload 'program #f))
   (check-true (string? program-json)
               (format "~a: missing/non-string program field" where))
   (define tree (string->jsexpr program-json))
   (check-true (hash? tree)
               (format "~a: program is not a json object" where))
-  (define root-name (hash-ref tree 'name #f))
+  (match-define (hash* ['name root-name] #:open) tree)
   (check-true (nonempty-string? root-name)
               (format "~a: tree root missing name" where))
   (check-false (equal? root-name "Unknown")
                (format "~a: tree root should not be Unknown" where)))
-
-(define analyze-payload-specs
-  (list (list 'requirements list? '())
-        (list 'compatibleModelIds list? '())
-        (list 'incompatibleModelIds list? '())
-        (list 'incompatReasonsByModel hash? #hash())
-        (list 'analysisVersion string? "")))
-
-(define (assert-analyze-payload-shape payload where)
-  (check-true (hash? payload) (format "~a: payload must be json object" where))
-  (check-true (hash-ref payload 'validSyntax #f)
-              (format "~a: validSyntax should be true for successful analyze response" where))
-  (for ([spec (in-list analyze-payload-specs)])
-    (match-define (list key pred default) spec)
-    (check-true (pred (hash-ref payload key default))
-                (format "~a: malformed ~a field" where key))))

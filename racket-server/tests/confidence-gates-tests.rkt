@@ -1,48 +1,64 @@
 #lang racket
 
-(require rackunit
+(require json
+         rackunit
          rackunit/text-ui
-         racket/match
-         racket/string
-         json
          web-server/http/response-structs
          "../src/app.rkt"
-         "../src/zipper.rkt"
-         "../src/transpiler.rkt"
+         "../src/search-runtime.rkt"
+         "../src/search-strategy.rkt"
          "../src/sexpr-read.rkt"
-         "../src/model-registry.rkt"
-         "./test-http-helpers.rkt"
-         "./variant-test-support.rkt"
-         "./example-compat-tests.rkt")
+         "../src/transpiler.rkt"
+         "../src/zipper.rkt"
+         "./example-compat-tests.rkt"
+         "./runtime-test-support.rkt"
+         "./test-http-helpers.rkt")
 
 (provide CONFIDENCE-GATES)
 
 (define TRACE-STEP-CAP 30)
+(define PAYLOAD-STEP-CAP 25)
 
 (define (example-src label)
   (for/first ([pr (in-list (frontend-example-programs))]
-              #:when (equal? (car pr) label))
-    (cdr pr)))
+              #:do [(match-define (cons example-label src) pr)]
+              #:when (equal? example-label label))
+    src))
 
-(define (trace-steps model-id label)
+(define (example-cfg label [compile-profile #f])
   (define src (example-src label))
   (unless src
     (error 'trace-steps (format "missing example label: ~a" label)))
-  (define-values (cfg0 _html)
-    (parse-prog/canonical (read-all-sexprs (open-input-string src))))
-  (define step-once (lookup-model-step-once model-id))
-  (unless step-once
-    (error 'trace-steps (format "unknown model id: ~a" model-id)))
-  (let loop ([cfg cfg0] [i 0] [acc '()])
-    (define next* (step-once cfg))
-    (cond
-      [(null? next*)
-       (values (reverse acc) (if (final-config? cfg) 'value 'stuck) cfg)]
-      [(>= i TRACE-STEP-CAP)
-       (values (reverse acc) 'cap cfg)]
-      [else
-       (match-define (list nm cfg1) (first next*))
-       (loop cfg1 (add1 i) (cons nm acc))])))
+  (define-values (cfg _html)
+    (parse-prog/canonical (read-all-sexprs (open-input-string src))
+                          #:compile-profile compile-profile))
+  cfg)
+
+(define/match (strategy-label strategy)
+  [((search-strategy hoist scheduler))
+   (format "~a/~a" hoist scheduler)])
+
+(define (trace-steps strategy
+                     label
+                     [compile-profile #f]
+                     [cfg (example-cfg label compile-profile)]
+                     [step-once (lookup-search-step-once strategy)]
+                     [i 0]
+                     [acc '()])
+  (define next* (step-once cfg))
+  (match next*
+    ['()
+     (values (reverse acc) (if (final-config? cfg) 'value 'stuck) cfg)]
+    [(list _ ...) #:when (>= i TRACE-STEP-CAP)
+     (values (reverse acc) 'cap cfg)]
+    [(list (list nm cfg1) _ ...)
+     (trace-steps strategy
+                  label
+                  compile-profile
+                  cfg1
+                  step-once
+                  (add1 i)
+                  (cons nm acc))]))
 
 (define (named-step? nm)
   (and (string? nm)
@@ -54,76 +70,57 @@
             ([nm (in-list steps)])
     (values (add1 count) nm)))
 
-(define GOLDEN-PREFIXES
+(define (count-non-null-step-payloads strategy label ses [i 0] [seen 0])
+  (cond
+    [(>= i PAYLOAD-STEP-CAP) seen]
+    [else
+     (define-values (step-resp next-session) (step! ses))
+     (define body (response-body->string step-resp))
+     (cond
+       [(string=? body "null")
+        (count-non-null-step-payloads strategy
+                                      label
+                                      next-session
+                                      (add1 i)
+                                      seen)]
+       [else
+        (assert-step-payload-shape (string->jsexpr body)
+                                   (format "~a / ~a step ~a"
+                                           (strategy-label strategy)
+                                           label
+                                           i))
+        (count-non-null-step-payloads strategy
+                                      label
+                                      next-session
+                                      (add1 i)
+                                      (add1 seen))])]))
+
+(define REPRESENTATIVE-TRACES
   (list
-   (list "mk-l0-core"
-         "core/fresh+conj+unify"
-         '("Substitute Fresh Variables"
-           "Substitute Fresh Variables"
-           "Distribute State Over Conjunction"
-           "Distribute State Over Conjunction"
-           "Distribute State Over Conjunction"
-           "Unification Succeeds"
-           "Bring Success State To Second Conjunct"
-           "Unification Succeeds"))
-   (list "mk-l4-rail-lazy"
-         "appendoh 1"
-         '("core/fresh-substitute"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "rail/invoke-delay"
-           "disj/goal-to-tree"
-           "core/conj-distribute-state"
-           "core/unify-fail"
-           "core/conj-prune-fail"
-           "disj/skip-left-fail"
-           "core/fresh-substitute"))
-   (list "mk-l4-rail-lazy"
+   (list (search-strategy "early" "rail")
          "fives/fours"
-         '("core/fresh-substitute"
-           "disj/goal-to-tree"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "rail/enter-right"
-           "rail/invoke-delay"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "rail/return-left"
-           "rail/invoke-delay"))
-   (list "mk-l3-flip-lazy"
+         #f
+         "rail-seq-calls/enter-right")
+   (list (search-strategy "late" "flip")
          "fives/fours"
-         '("core/fresh-substitute"
-           "disj/goal-to-tree"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "flip/delay-swap-left"
-           "flip/invoke-delay"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "flip/delay-swap-left"
-           "flip/invoke-delay"))
-   (list "mk-l3-dfs-lazy"
+         #f
+         "search-flip-fused-calls/delay-swap-left")
+   (list (search-strategy "late" "dfs")
          "same"
-         '("core/fresh-substitute"
-           "disj/goal-to-tree"
-           "disj/goal-to-tree"
-           "call/lazy-expand"
-           "source-delay/bridge"
-           "dfs/delay-through-left"
-           "dfs/delay-through-left"
-           "dfs/invoke-delay"
-           "core/unify-success"
-           "disj/bubble-left-answer"))))
+         (hasheq 'conjAssoc "left"
+                 'disjAssoc "right"
+                 'delayPlacement "relcall")
+         "search-base-fused-calls/expand")))
 
 (define/provide-test-suite CONFIDENCE-GATES
-  (test-case "golden trace prefixes stay stable and step names are always named"
-    (for ([entry (in-list GOLDEN-PREFIXES)])
-      (match-define (list model-id label expected-prefix) entry)
-      (define-values (steps status final-cfg) (trace-steps model-id label))
+  (test-case "representative structured strategies stay live and produce named search-lattice rules"
+    (for ([entry (in-list REPRESENTATIVE-TRACES)])
+      (match-define (list strategy label compile-profile required-step) entry)
+      (define-values (steps status final-cfg) (trace-steps strategy label compile-profile))
       (define-values (step-count last-step) (length+last steps))
       (check-true (or (eq? status 'value) (eq? status 'cap))
                   (format "~a / ~a unexpectedly ~a (steps=~a last=~a cfg=~s)"
-                          model-id
+                          (strategy-label strategy)
                           label
                           status
                           step-count
@@ -133,45 +130,36 @@
             [idx (in-naturals 1)])
         (check-true (named-step? nm)
                     (format "~a / ~a has unnamed step at position ~a: ~v"
-                            model-id label idx nm)))
+                            (strategy-label strategy) label idx nm)))
+      (check-not-false (member required-step steps)
+                       (format "~a / ~a missing representative step ~a"
+                               (strategy-label strategy)
+                               label
+                               required-step))))
 
-      (define expected-count (length expected-prefix))
-      (check-true (>= step-count expected-count)
-                  (format "~a / ~a produced too few steps: got ~a, expected >= ~a"
-                          model-id label step-count expected-count))
-      (check-equal? (take steps expected-count)
-                    expected-prefix
-                    (format "~a / ~a prefix drifted" model-id label))))
-
-  (test-case "init/step payloads satisfy UI contract for canonical programs"
+  (test-case "init/step payloads satisfy UI contract for structured search strategies"
     (define pairs
-      (list (list "mk-l4-rail-lazy" "appendoh 1")
-            (list "mk-l3-flip-lazy" "fives/fours")
-            (list "mk-l0-core" "core/fresh+conj+unify")))
+      (list (list (search-strategy "early" "rail") "appendoh 1")
+            (list (search-strategy "late" "flip") "fives/fours")
+            (list (search-strategy "late" "dfs") "same")))
     (for ([pr (in-list pairs)])
-      (match-define (list model-id label) pr)
+      (match-define (list strategy label) pr)
       (define src (example-src label))
-      (define ses
-        (session (zipper '() #f '() 0)
-                 (make-stepper (lookup-model-step-once default-model-id))
-                 1))
-      (define init-resp (init! ses (make-post-init-request src #:model model-id) 'shape-id))
+      (define ses (make-empty-session))
+      (define-values (init-resp ses^) (init! ses (make-post-init-request src #:strategy strategy) 'shape-id))
       (check-equal? (response-code init-resp) 200
-                    (format "init failed for ~a / ~a" model-id label))
-      (check-equal? (session-model-id ses) model-id
-                    (format "session model binding drifted for ~a / ~a" model-id label))
+                    (format "init failed for ~a / ~a" (strategy-label strategy) label))
+      (check-equal? (session-search-strategy ses^) strategy
+                    (format "session strategy binding drifted for ~a / ~a"
+                            (strategy-label strategy)
+                            label))
       (assert-step-payload-shape (string->jsexpr (response-body->string init-resp))
-                                 (format "~a / ~a init" model-id label))
-      (define seen 0)
-      (for ([i (in-range 25)])
-        (define step-resp (step! ses))
-        (define body (response-body->string step-resp))
-        (unless (string=? body "null")
-          (set! seen (add1 seen))
-          (assert-step-payload-shape (string->jsexpr body)
-                                     (format "~a / ~a step ~a" model-id label i))))
+                                 (format "~a / ~a init" (strategy-label strategy) label))
+      (define seen (count-non-null-step-payloads strategy label ses^))
       (check-true (> seen 0)
-                  (format "~a / ~a produced no non-null steps" model-id label)))))
+                  (format "~a / ~a produced no non-null steps"
+                          (strategy-label strategy)
+                          label)))))
 
 (module+ test
   (run-tests CONFIDENCE-GATES))

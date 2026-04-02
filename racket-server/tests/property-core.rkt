@@ -2,14 +2,12 @@
 
 (require rackunit
          rackunit/text-ui
-         racket/format
-         racket/list
          redex/reduction-semantics
          (prefix-in rt: "../src/random-test-support.rkt")
          (prefix-in gk: "./generator-kernel.rkt")
-         "../src/core-definitions.rkt"
-         "../src/wf-core.rkt"
-         "../src/reduction-relations/core-reduction-relations.rkt")
+         "../src/search-lattice/languages/core-lang.rkt"
+         "../src/search-lattice/wf/core-wf.rkt"
+         "../src/search-lattice/reduction-relations/core-red.rkt")
 
 ;; Randomized test tuning constants.
 ;; Edit these values directly when you want different pressure/coverage.
@@ -19,7 +17,6 @@
 (define PROPERTY-SEED 424242)
 (define PROPERTY-U-POOL-SIZE 24)
 (define PROPERTY-X-POOL-SIZE 16)
-(define PROPERTY-R-POOL-SIZE 16)
 (define PROPERTY-C-MAX 4)
 (define PROPERTY-C-EXTRA-MAX 2)
 (define PROPERTY-MIN-NONEMPTY-C-HITS 1)
@@ -30,7 +27,6 @@
 (gk:require-positive 'PROPERTY-TERM-SIZE PROPERTY-TERM-SIZE 'property-core)
 (gk:require-positive 'PROPERTY-U-POOL-SIZE PROPERTY-U-POOL-SIZE 'property-core)
 (gk:require-positive 'PROPERTY-X-POOL-SIZE PROPERTY-X-POOL-SIZE 'property-core)
-(gk:require-positive 'PROPERTY-R-POOL-SIZE PROPERTY-R-POOL-SIZE 'property-core)
 (gk:require-positive 'PROPERTY-C-MAX PROPERTY-C-MAX 'property-core)
 (gk:require-nonnegative 'PROPERTY-C-EXTRA-MAX PROPERTY-C-EXTRA-MAX 'property-core)
 (unless (<= PROPERTY-C-MAX PROPERTY-U-POOL-SIZE)
@@ -56,35 +52,32 @@
 
 (define PROPERTY-RNG (rt:make-seeded-rng PROPERTY-SEED))
 
-(define (prandom n)
-  (rt:rng-random PROPERTY-RNG n))
-
 (define (final-config? cfg)
-  (redex-match? Core end-config cfg))
+  (redex-match? core-lang end-cfg cfg))
 
 (define (wf-config-term? cfg)
-  (judgment-holds (wf-config? ,cfg)))
+  (judgment-holds (wf-cfg/core? ,cfg)))
 
 (define (core-shape-term? cfg)
-  (judgment-holds (core-shape? ,cfg)))
+  (redex-match? core-lang cfg cfg))
 
 (define (unique-decomposition? cfg)
-  (define next* (apply-reduction-relation -->cfg cfg))
+  (define next* (apply-reduction-relation core-red cfg))
   (cond
     [(final-config? cfg) (null? next*)]
     [else (= (length next*) 1)]))
 
 (define (progress? cfg)
   (or (final-config? cfg)
-      (not (null? (apply-reduction-relation -->cfg cfg)))))
+      (not (null? (apply-reduction-relation core-red cfg)))))
 
 (define (wf-preserved? cfg)
-  (for/and ([cfg^ (in-list (apply-reduction-relation -->cfg cfg))])
+  (for/and ([cfg^ (in-list (apply-reduction-relation core-red cfg))])
     (wf-config-term? cfg^)))
 
 (define (core-shape-preserved? cfg)
   (and (core-shape-term? cfg)
-       (for/and ([cfg^ (in-list (apply-reduction-relation -->cfg cfg))])
+       (for/and ([cfg^ (in-list (apply-reduction-relation core-red cfg))])
          (core-shape-term? cfg^))))
 
 ;; Pool sizes bound generated test-data diversity only; they do not bound the
@@ -94,9 +87,6 @@
 
 (define X-POOL
   (gk:make-x-pool PROPERTY-X-POOL-SIZE))
-
-(define R-POOL
-  (gk:make-r-pool PROPERTY-R-POOL-SIZE))
 
 (define (extend-c c max-extra)
   (when (> (length c) PROPERTY-C-MAX)
@@ -175,21 +165,9 @@
        ,(gen-goal '() c^ (sub1 depth))
        ,c^)]))
 
-(define (gen-rel-def r)
-  (define d (rt:random-distinct/rng PROPERTY-RNG X-POOL (prandom 3)))
-  `(,r
-    ,d
-    ,(gen-goal d '() (max-depth))))
-
-(define (gen-rel-env)
-  (define count (prandom 3))
-  (map gen-rel-def
-       (rt:random-distinct/rng PROPERTY-RNG R-POOL count)))
-
 (define (generate-wf-config/constructive)
   (define cfg
-    `(,(gen-rel-env)
-      ,(gen-tree '() (max-depth))
+    `(,(gen-tree '() (max-depth))
       (empty-stream)))
   (unless (wf-config-term? cfg)
     (error 'generate-wf-config/constructive
@@ -263,32 +241,51 @@
              (or has-exists? tree-exists)
              (or has-conj? tree-conj)
              (max tree-cmax stream-cmax))]
-    [`(,Gamma ,s_work)
-     (config-coverage `(,Gamma ,s_work (empty-stream)))]
+    [`(,s_work ,as)
+     (define-values (tree-nonempty tree-exists tree-conj tree-cmax)
+       (tree-coverage s_work))
+     (define-values (stream-nonempty stream-cmax)
+       (answer-stream-coverage as))
+     (values (or tree-nonempty stream-nonempty)
+             tree-exists
+             tree-conj
+             (max tree-cmax stream-cmax))]
     [_ (values #f #f #f 0)]))
 
 (define (check-wf-guarded-property label pred)
-  (define wf-hits 0)
-  (define fail-count 0)
-  (define nonempty-c-hits 0)
-  (define exists-node-hits 0)
-  (define conj-node-hits 0)
-  (define max-c-size-seen 0)
-  (define fail-samples '())
-
-  (for ([_ (in-range PROPERTY-ATTEMPTS)])
-    (define cfg (generate-wf-config/constructive))
-    (set! wf-hits (add1 wf-hits))
-    (define-values (nonempty-c? has-exists? has-conj? cmax) (config-coverage cfg))
-    (when nonempty-c? (set! nonempty-c-hits (add1 nonempty-c-hits)))
-    (when has-exists? (set! exists-node-hits (add1 exists-node-hits)))
-    (when has-conj? (set! conj-node-hits (add1 conj-node-hits)))
-    (set! max-c-size-seen (max max-c-size-seen cmax))
-    (unless (pred cfg)
-      (set! fail-count (add1 fail-count))
-      ;; Store only the first three failures for readable output truncation.
-      (when (< (length fail-samples) 3)
-        (set! fail-samples (cons cfg fail-samples)))))
+  (define-values (wf-hits
+                  fail-count
+                  nonempty-c-hits
+                  exists-node-hits
+                  conj-node-hits
+                  max-c-size-seen
+                  fail-samples)
+    (for/fold ([wf-hits 0]
+               [fail-count 0]
+               [nonempty-c-hits 0]
+               [exists-node-hits 0]
+               [conj-node-hits 0]
+               [max-c-size-seen 0]
+               [fail-samples '()])
+              ([_ (in-range PROPERTY-ATTEMPTS)])
+      (define cfg
+        (generate-wf-config/constructive))
+      (define-values (nonempty-c? has-exists? has-conj? cmax)
+        (config-coverage cfg))
+      (define ok?
+        (pred cfg))
+      (values (add1 wf-hits)
+              (if ok? fail-count (add1 fail-count))
+              (if nonempty-c? (add1 nonempty-c-hits) nonempty-c-hits)
+              (if has-exists? (add1 exists-node-hits) exists-node-hits)
+              (if has-conj? (add1 conj-node-hits) conj-node-hits)
+              (max max-c-size-seen cmax)
+              (cond
+                [(or ok? (>= (length fail-samples) 3))
+                 fail-samples]
+                [else
+                 ;; Store only the first three failures for readable output truncation.
+                 (cons cfg fail-samples)]))))
 
   (displayln
    (format "[property-core] ~a attempts=~a wf-hits=~a (~a%%) fails=~a nonempty-c=~a exists=~a conj=~a max-c=~a seed=~a"
@@ -339,13 +336,12 @@
   #:before
   (thunk
    (displayln
-    (format "Running core property tests (attempts=~a, term-size=~a, seed=~a, pools u/x/r=~a/~a/~a, c-max=~a, c-extra-max=~a)..."
+    (format "Running core property tests (attempts=~a, term-size=~a, seed=~a, pools u/x=~a/~a, c-max=~a, c-extra-max=~a)..."
             PROPERTY-ATTEMPTS
             PROPERTY-TERM-SIZE
             PROPERTY-SEED
             PROPERTY-U-POOL-SIZE
             PROPERTY-X-POOL-SIZE
-            PROPERTY-R-POOL-SIZE
             PROPERTY-C-MAX
             PROPERTY-C-EXTRA-MAX)))
   #:after (thunk (displayln "Finished core property tests."))

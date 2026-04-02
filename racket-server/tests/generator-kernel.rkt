@@ -1,7 +1,7 @@
 #lang racket
 
-(require racket/list
-         (prefix-in rt: "../src/random-test-support.rkt"))
+(require (prefix-in rt:
+                    "../src/random-test-support.rkt"))
 
 (provide require-positive
          require-nonnegative

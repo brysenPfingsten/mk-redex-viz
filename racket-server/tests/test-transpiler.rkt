@@ -1,10 +1,11 @@
 #lang racket
 (require rackunit
          rackunit/text-ui
-         racket/list
          redex/reduction-semantics
-         (prefix-in l4: "../src/extensions/l4-railroad-syntax.rkt")
-         (prefix-in j: "../src/wf-variants.rkt")
+         (prefix-in canonical:
+                    "../src/search-lattice/languages/canonical-lang.rkt")
+         (prefix-in wf:
+                    "../src/search-lattice/wf/all.rkt")
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt")
 
@@ -48,12 +49,12 @@
 
 (define (goal-top-delay? goal)
   (match goal
-    [`(sdelay ,_ ,_) #t]
+    [`(suspend ,_ ,_) #t]
     [_ #f]))
 
 (define (goal-contains-delay? goal [seen #f])
   (match goal
-    [`(sdelay ,g ,_)
+    [`(suspend ,g ,_)
      (goal-contains-delay? g #t)]
     [`(∃ ,_ ,g ,_)
      (goal-contains-delay? g seen)]
@@ -65,12 +66,20 @@
          (goal-contains-delay? g2 seen))]
     [_ seen]))
 
+(define (strip-suspends goal)
+  (match goal
+    [`(suspend ,g ,_) (strip-suspends g)]
+    [`(∃ ,vars ,g ,tag) `(∃ ,vars ,(strip-suspends g) ,tag)]
+    [`(,g1 ∧ ,g2 ,tag) `(,(strip-suspends g1) ∧ ,(strip-suspends g2) ,tag)]
+    [`(,g1 ∨ ,g2 ,tag) `(,(strip-suspends g1) ∨ ,(strip-suspends g2) ,tag)]
+    [_ goal]))
+
 (define (goal-contains-delayed-relcall? goal)
   (match goal
-    [`(sdelay (,r ,_ ... ,_) ,_)
+    [`(suspend (,r ,_ ... ,_) ,_)
      (and (symbol? r)
           (regexp-match? #rx"^r:" (symbol->string r)))]
-    [`(sdelay ,g ,_)
+    [`(suspend ,g ,_)
      (goal-contains-delayed-relcall? g)]
     [`(∃ ,_ ,g ,_)
      (goal-contains-delayed-relcall? g)]
@@ -81,6 +90,12 @@
      (or (goal-contains-delayed-relcall? g1)
          (goal-contains-delayed-relcall? g2))]
     [_ #f]))
+
+(define (strip-labels x)
+  (match x
+    [`(label ,_) '(label "_")]
+    [(cons a d) (cons (strip-labels a) (strip-labels d))]
+    [_ x]))
 
 (define conj-source
   "(run* (q) (== 1 1) (== 2 2) (== 3 3))")
@@ -116,15 +131,32 @@
           'disjAssoc disj-assoc
           'delayPlacement delay-placement))
 
+(define-test-suite SOURCE-MODES
+  (test-case "normalize-source-mode defaults missing or blank inputs"
+    (check-equal? (normalize-source-mode #f) default-source-mode)
+    (check-equal? (normalize-source-mode "") default-source-mode))
+
+  (test-case "normalize-source-mode preserves supported modes"
+    (check-equal? (normalize-source-mode "mini") "mini")
+    (check-equal? (normalize-source-mode "micro") "micro"))
+
+  (test-case "normalize-source-mode rejects unsupported values"
+    (check-exn
+     (lambda (e)
+       (and (exn:fail? e)
+            (regexp-match? #rx"unsupported sourceMode" (exn-message e))))
+     (thunk (normalize-source-mode "macro")))))
+
 (define-test-suite ASSOCIATIVITY
   (test-case "Conjunctions Left Associate"
     (define PROG '((run* (q) (== 1 1) (== 2 2) (== 3 3))))
     (define-values (cfg _) (parse-prog/canonical PROG))
-    (match cfg
-      [`(,_ ((∃ ,_ ,goal ,_) ,_))
-       (check-true (redex-match? l4:L4 g (term ,goal)))
-       (check-true (redex-match? l4:L4 g (term ((g_1 ∧ g_2 tag_1) ∧ g_3 tag_2))))]
-      [_ (fail "unexpected canonical cfg shape")]))
+    (define goal (query-goal-of cfg))
+    (check-true (redex-match? canonical:canonical-lang g (term ,goal)))
+    (check-true
+     (match goal
+       [`((,_ ∧ ,_ ,_) ∧ ,_ ,_) #t]
+       [_ #f])))
 
   (test-case "Disjunctions Right Associate"
     (define PROG '((run* (q)
@@ -135,11 +167,12 @@
                         [(== q 'dog)])]
                       [(same q 'fish)]))))
     (define-values (cfg _) (parse-prog/canonical PROG))
-    (match cfg
-      [`(,_ ((∃ ,_ ,goal ,_) ,_))
-       (check-true (redex-match? l4:L4 g (term ,goal)))
-       (check-true (redex-match? l4:L4 g (term ((g_1 ∨ (g_2 ∨ g_3 tag_1) tag_2) ∨ g_4 tag_3))))]
-      [_ (fail "unexpected canonical cfg shape")])
+    (define goal (query-goal-of cfg))
+    (check-true (redex-match? canonical:canonical-lang g (term ,goal)))
+    (check-true
+     (match goal
+       [`((,_ ∨ (,_ ∨ ,_ ,_) ,_) ∨ ,_ ,_) #t]
+       [_ #f]))
 
     (define PROG1 '((run* (q)
                       (conde
@@ -150,10 +183,11 @@
 	                          ((== q 'dog))))))
                             ((same q 'fish))))))
     (define-values (cfg1 _1) (parse-prog/canonical PROG1))
-    (match cfg1
-      [`(,_ ((∃ ,_ ,goal ,_) ,_))
-       (check-true (redex-match? l4:L4 g (term ((g_1 ∨ (g_2 ∨ g_3 tag_1) tag_2) ∨ g_4 tag_3))))]
-      [_ (fail "unexpected canonical cfg shape")])
+    (define goal1 (query-goal-of cfg1))
+    (check-true
+     (match goal1
+       [`((,_ ∨ (,_ ∨ ,_ ,_) ,_) ∨ ,_ ,_) #t]
+       [_ #f]))
 
     (define PROG2 '((run* (q)
                     (conde
@@ -162,10 +196,11 @@
                       [(== q 'dog)]
                       [(same q 'fish)]))))
     (define-values (cfg2 _2) (parse-prog/canonical PROG2))
-    (match cfg2
-      [`(,_ ((∃ ,_ ,goal ,_) ,_))
-       (check-true (redex-match? l4:L4 g (term (g_1 ∨ (g_2 ∨ (g_3 ∨ g_4 tag_1) tag_2) tag_3))))]
-      [_ (fail "unexpected canonical cfg shape")])
+    (define goal2 (query-goal-of cfg2))
+    (check-true
+     (match goal2
+       [`(,_ ∨ (,_ ∨ (,_ ∨ ,_ ,_) ,_) ,_) #t]
+       [_ #f]))
     ))
 
 (define-test-suite COMPILE-PROFILES
@@ -179,41 +214,54 @@
       (define-values (conj-cfg _conj-html)
         (parse-src/canonical conj-source #:compile-profile profile))
       (define conj-goal (query-goal-of conj-cfg))
-      (if (equal? conj-assoc "left")
-          (check-true
-           (redex-match? l4:L4 g (term ((g_1 ∧ g_2 tag_1) ∧ g_3 tag_2)))
-           (format "expected left-associated conjunction for profile ~e, got ~e"
-                   profile
-                   conj-goal))
-          (check-true
-           (redex-match? l4:L4 g (term (g_1 ∧ (g_2 ∧ g_3 tag_1) tag_2)))
-           (format "expected right-associated conjunction for profile ~e, got ~e"
-                   profile
-                   conj-goal)))
+      (cond
+        [(equal? conj-assoc "left")
+         (check-true
+          (match conj-goal
+            [`((,_ ∧ ,_ ,_) ∧ ,_ ,_) #t]
+            [_ #f])
+          (format "expected left-associated conjunction for profile ~e, got ~e"
+                  profile
+                  conj-goal))]
+        [else
+         (check-true
+          (match conj-goal
+            [`(,_ ∧ (,_ ∧ ,_ ,_) ,_) #t]
+            [_ #f])
+          (format "expected right-associated conjunction for profile ~e, got ~e"
+                  profile
+                  conj-goal))])
 
       (define-values (disj-cfg _disj-html)
         (parse-src/canonical disj-source #:compile-profile profile))
       (define disj-goal (query-goal-of disj-cfg))
       (define disj-inner
         (match disj-goal
-          [`(sdelay ,inner ,_) inner]
+          [`(suspend ,inner ,_) inner]
           [_ disj-goal]))
+      (define stripped-disj (strip-suspends disj-inner))
       (check-equal? (goal-top-delay? disj-goal)
                     (equal? delay-placement "disj")
                     (format "disjunction delay placement mismatch for profile ~e: ~e"
                             profile
                             disj-goal))
-      (if (equal? disj-assoc "left")
-          (check-true
-           (redex-match? l4:L4 g (term ((g_1 ∨ g_2 tag_1) ∨ g_3 tag_2)))
-           (format "expected left-associated disjunction for profile ~e, got ~e"
-                   profile
-                   disj-inner))
-          (check-true
-           (redex-match? l4:L4 g (term (g_1 ∨ (g_2 ∨ g_3 tag_1) tag_2)))
-           (format "expected right-associated disjunction for profile ~e, got ~e"
-                   profile
-                   disj-inner)))))
+      (cond
+        [(equal? disj-assoc "left")
+         (check-true
+          (match stripped-disj
+            [`((,_ ∨ ,_ ,_) ∨ ,_ ,_) #t]
+            [_ #f])
+          (format "expected left-associated disjunction for profile ~e, got ~e"
+                  profile
+                  disj-inner))]
+        [else
+         (check-true
+          (match stripped-disj
+            [`(,_ ∨ (,_ ∨ ,_ ,_) ,_) #t]
+            [_ #f])
+          (format "expected right-associated disjunction for profile ~e, got ~e"
+                  profile
+                  disj-inner))])))
 
   (test-case "delay placement distinguishes query relcalls from relation bodies"
     (for* ([conj-assoc (in-list '("left" "right"))]
@@ -251,12 +299,24 @@
                               profile
                               wrap-goal))]))))
 
+  (test-case "normalize-compile-profile rejects unsupported axis values"
+    (check-exn
+     (lambda (e)
+       (and (exn:fail? e)
+            (regexp-match? #rx"invalid compileProfile\\.conjAssoc"
+                           (exn-message e))))
+     (thunk
+      (normalize-compile-profile
+       (hasheq 'conjAssoc "middle"
+               'disjAssoc "right"
+               'delayPlacement "relbody")))))
+
 (define-test-suite MICRO-SOURCE
   (test-case "direct micro source accepts binary conj/disj, Zzz, and disequality"
     (define-values (cfg html)
       (parse-src/canonical micro-source #:source-mode "micro"))
-    (check-true (redex-match? l4:L4 config cfg))
-    (check-true (j:wf-config/target? "L4/config" cfg))
+    (check-true (redex-match? canonical:canonical-lang config cfg))
+    (check-true (wf:wf-config/target? "canonical/config" cfg))
     (check-true (string? html)))
 
   (test-case "direct micro source rejects source-level delay spelling"
@@ -312,18 +372,24 @@
       (define rendered
         (render-micro-source (read-all-sexprs (open-input-string relcall-source))
                              #:compile-profile profile))
-      (check-true (regexp-match? #rx"Zzz" rendered)
-                  (format "rendered micro should expose profile delay with Zzz for ~e" profile))
-      (check-equal? (parse-src/ast relcall-source #:compile-profile profile)
-                    (parse-src/ast rendered #:source-mode "micro")
-                    (format "rendered micro should round-trip normalized AST for ~e" profile)))))
+      (check-equal? (not (false? (regexp-match? #rx"Zzz" rendered)))
+                    (not (equal? delay-placement "disj"))
+                    (format "rendered micro delay visibility mismatch for ~e" profile))
+      (define-values (expected-cfg _expected-html)
+        (parse-src/canonical relcall-source #:compile-profile profile))
+      (define-values (rendered-cfg _rendered-html)
+        (parse-src/canonical rendered #:source-mode "micro"))
+      (check-equal? (strip-labels expected-cfg)
+                    (strip-labels rendered-cfg)
+                    (format "rendered micro should round-trip canonical cfg modulo labels for ~e"
+                            profile)))))
 
 (define-test-suite DISEQUALITY-TRANSLATION
   (test-case "mini source translates disequality to canonical != goal"
     (define-values (cfg _html)
       (parse-src/canonical "(run* (q) (=/= q 'cat))"))
     (define goal (query-goal-of cfg))
-    (check-true (redex-match? l4:L4 g (term ,goal)))
+    (check-true (redex-match? canonical:canonical-lang g (term ,goal)))
     (check-true
      (match goal
        [`(,_ != ,_ ,_) #t]
@@ -333,7 +399,7 @@
     (define-values (cfg _html)
       (parse-src/canonical "(run* (q) (=/= q 'cat))" #:source-mode "micro"))
     (define goal (query-goal-of cfg))
-    (check-true (redex-match? l4:L4 g (term ,goal)))
+    (check-true (redex-match? canonical:canonical-lang g (term ,goal)))
     (check-true
      (match goal
        [`(,_ != ,_ ,_) #t]
@@ -341,21 +407,21 @@
 
 (define-test-suite CANONICAL-TRANSLATION
   (test-case
-   "run*-only canonical translation is L4/config and wf"
+   "run*-only canonical translation is canonical/config and wf"
    (define-values (cfg html)
      (parse-src/canonical "(run* (q) (== 'a 'a))"))
-   (check-true (redex-match? l4:L4 config cfg))
-   (check-true (j:wf-config/target? "L4/config" cfg))
+   (check-true (redex-match? canonical:canonical-lang config cfg))
+   (check-true (wf:wf-config/target? "canonical/config" cfg))
    (check-true (string? html)))
 
   (test-case
-   "defrel+run* canonical translation is L4/config and wf"
+   "defrel+run* canonical translation is canonical/config and wf"
    (define-values (cfg html)
      (parse-src/canonical
       "(defrel (same x y) (== x y))
 (run* (q) (same q 'cat))"))
-   (check-true (redex-match? l4:L4 config cfg))
-   (check-true (j:wf-config/target? "L4/config" cfg))
+   (check-true (redex-match? canonical:canonical-lang config cfg))
+   (check-true (wf:wf-config/target? "canonical/config" cfg))
    (check-true (string? html)))
 
   (test-case
@@ -364,14 +430,15 @@
      (parse-src/canonical
       "(defrel (same x y) (== x y))
 (run* (q) (same q))"))
-   (check-true (redex-match? l4:L4 config cfg))
-   (check-false (j:wf-config/target? "L4/config" cfg)))
+   (check-true (redex-match? canonical:canonical-lang config cfg))
+   (check-false (wf:wf-config/target? "canonical/config" cfg)))
 
   )
 
 (define/provide-test-suite TRANSPILER
   #:after (thunk (displayln "Finished running tests for transpiler."))
 
+  SOURCE-MODES
   ASSOCIATIVITY
   COMPILE-PROFILES
   MICRO-SOURCE
@@ -379,4 +446,5 @@
   DISEQUALITY-TRANSLATION
   CANONICAL-TRANSLATION)
 
-#;(run-tests TRANSPILER)
+(module+ test
+  (run-tests TRANSPILER))

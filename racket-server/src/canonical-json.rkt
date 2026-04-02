@@ -56,18 +56,18 @@
     [_ t]))
 
 (define (sub->json/canonical sub)
-  (map (lambda (p)
-         (match-define (list u t) p)
-         (define key (or (u-symbol->natural u) u))
-         (hasheq 'key key
-                 'value (term->json/canonical t)))
+  (map (match-lambda
+         [(list u t)
+          (define key (or (u-symbol->natural u) u))
+          (hasheq 'key key
+                  'value (term->json/canonical t))])
        sub))
 
 (define (dis->json/canonical dis)
-  (map (lambda (p)
-         (match-define (list t1 t2) p)
-         (hasheq 'left (term->json/canonical t1)
-                 'right (term->json/canonical t2)))
+  (map (match-lambda
+         [(list t1 t2)
+          (hasheq 'left (term->json/canonical t1)
+                  'right (term->json/canonical t2))])
        dis))
 
 (define (trail->json/canonical trail)
@@ -123,8 +123,8 @@
     [`(str ,s) s]
     [other other]))
 
-(define (make-unify-clause query-vars n pair)
-  (match-define (list l r) pair)
+(define/match (make-unify-clause query-vars n pair)
+  [(query-vars n (list l r))
   (define lhs
     (if (< l n)
         (list-ref query-vars l)
@@ -133,10 +133,10 @@
     (if (and (number? r) (< r n))
         (list-ref query-vars r)
         (canonical-term->mk r)))
-  `(== ,lhs ,rhs))
+  `(== ,lhs ,rhs)])
 
-(define (make-diseq-clause query-vars n pair)
-  (match-define (list l r) pair)
+(define/match (make-diseq-clause query-vars n pair)
+  [(query-vars n (list l r))
   (define lhs
     (if (< l n)
         (list-ref query-vars l)
@@ -145,7 +145,7 @@
     (if (and (number? r) (< r n))
         (list-ref query-vars r)
         (canonical-term->mk r)))
-  `(=/= ,lhs ,rhs))
+  `(=/= ,lhs ,rhs)])
 
 (define (prepare-minikanren-namespace)
   (let ([ns (make-base-namespace)])
@@ -230,7 +230,7 @@
              'id (label->id tag)
              'children (list (goal->json/canonical g_1)
                              (goal->json/canonical g_2)))]
-    [`(sdelay ,g_1 ,tag)
+    [`(suspend ,g_1 ,tag)
      (hasheq 'name "Goal-Delay"
              'id (label->id tag)
              'children (list (goal->json/canonical g_1)))]
@@ -302,30 +302,6 @@
                                                    (dis->reify/canonical dis)
                                                    (state-c-bound/canonical c)
                                                    num-query-variables)))]
-    [`(proceed ((,r ,t ... ,tag-call) (state ,sub ,dis ,c ,trail ,tag-state)))
-     (hasheq 'name "Proceed"
-             'id (label->id tag-call)
-             'stateId (label->id tag-state)
-             'goal (goal->json/canonical `(,r ,@t ,tag-call))
-             'sub (sub->json/canonical sub)
-             'disequalities (dis->json/canonical dis)
-             'trail (trail->json/canonical trail)
-             'reified (reify/canonical (sub->reify/canonical sub)
-                                       (dis->reify/canonical dis)
-                                       (state-c-bound/canonical c)
-                                       num-query-variables))]
-    [`(proceed (,g (state ,sub ,dis ,c ,trail ,tag-state)))
-     (hasheq 'name "Proceed"
-             'id (label->id tag-state)
-             'stateId (label->id tag-state)
-             'goal (goal->json/canonical g)
-             'sub (sub->json/canonical sub)
-             'disequalities (dis->json/canonical dis)
-             'trail (trail->json/canonical trail)
-             'reified (reify/canonical (sub->reify/canonical sub)
-                                       (dis->reify/canonical dis)
-                                       (state-c-bound/canonical c)
-                                       num-query-variables))]
     [`(,s_1 <-+ ,s_2)
      (hasheq 'name "<-+"
              'children (list (tree->json/canonical s_1 num-query-variables)
@@ -345,7 +321,8 @@
      (state->answer-json/canonical σ num-query-variables)]
     [`((⊤ ,σ) + ,s_tail)
      (define tail-json (tree->json/canonical s_tail num-query-variables))
-     (define tail-empty? (equal? (hash-ref tail-json 'name #f) "Empty"))
+     (match-define (hash* ['name tail-name] #:open) tail-json)
+     (define tail-empty? (equal? tail-name "Empty"))
      (state->answer-json/canonical σ
                                    num-query-variables
                                    (and (not tail-empty?) tail-json))]
@@ -362,7 +339,7 @@
 (define (goal-query-vars/canonical g)
   (match g
     [`(∃ ,d ,_ ,_) (length d)]
-    [`(sdelay ,g_1 ,_) (goal-query-vars/canonical g_1)]
+    [`(suspend ,g_1 ,_) (goal-query-vars/canonical g_1)]
     [`(,g_1 ∧ ,g_2 ,_) (max (goal-query-vars/canonical g_1)
                             (goal-query-vars/canonical g_2))]
     [`(,g_1 ∨ ,g_2 ,_) (max (goal-query-vars/canonical g_1)
@@ -386,8 +363,6 @@
      (num-query-vars/work s_1)]
     [`(delay ,s_1)
      (num-query-vars/work s_1)]
-    [`(proceed (,g ,_σ))
-     (goal-query-vars/canonical g)]
     [_ 0]))
 
 (define (num-query-vars/canonical cfg)

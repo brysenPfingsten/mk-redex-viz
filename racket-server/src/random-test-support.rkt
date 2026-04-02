@@ -1,7 +1,5 @@
 #lang racket
 
-(require racket/list)
-
 (provide make-seeded-rng
          rng-random
          remove-at
@@ -24,21 +22,21 @@
 
 (define (remove-at xs idx)
   (define-values (prefix suffix) (split-at xs idx))
-  (if (null? suffix) prefix (append prefix (cdr suffix))))
+  (match suffix
+    ['() prefix]
+    [(cons _ rest) (append prefix rest)]))
 
 (define (random-distinct/rng rng xs k)
   (unless (exact-nonnegative-integer? k)
     (raise-argument-error 'random-distinct/rng "exact-nonnegative-integer?" k))
-  (let loop ([pool xs]
-             [need (min k (length xs))]
-             [acc '()])
-    (if (zero? need)
-        (reverse acc)
-        (let* ([idx (rng-random rng (length pool))]
-               [picked (list-ref pool idx)])
-          (loop (remove-at pool idx)
-                (sub1 need)
-                (cons picked acc))))))
+  (define need (min k (length xs)))
+  (for/fold ([pool xs]
+             [rev-acc '()]
+             #:result (reverse rev-acc))
+            ([_ (in-range need)])
+    (define idx (rng-random rng (length pool)))
+    (values (remove-at pool idx)
+            (cons (list-ref pool idx) rev-acc))))
 
 (define (gen-primitive/rng rng)
   (case (rng-random rng 5)

@@ -2,12 +2,12 @@ import * as d3 from 'd3';
 import { termToString } from './strings.js';
 
 
-function applyStroke(selection, hasSub, isProceed, isPartial, hasAnswer) {
+function applyStroke(selection, hasSub, isPartial, hasAnswer) {
     if (hasSub && !isPartial) {
         selection
             .clone(true)
             .lower()
-            .attr("stroke", isProceed ? "green" : "yellow")
+            .attr("stroke", "yellow")
             .attr("stroke-width", "8px")
             .attr("fill", "none");
     } else if (isPartial) {
@@ -157,27 +157,6 @@ function drawTextNode(group, textContent, padding = 10, outline="") {
     return rect;
 }
 
-function drawProceedNode(group, data) {
-    const goal = data?.goal || {};
-    let textContent;
-
-    if (goal.rel) {
-      const args = Array.isArray(goal.args) ? goal.args : [];
-      const argsText = args.map(t => (t && t.var) ? t.var : termToString(t)).join(' ');
-      textContent = `(${goal.rel}${argsText ? ` ${argsText}` : ""})`;
-    } else if (goal.name === "Unify") {
-      textContent = `(== ${termToString(goal.left)} ${termToString(goal.right)})`;
-    } else if (goal.name === "Succeed") {
-      textContent = `(succeed)`;
-    } else if (goal.name) {
-      textContent = `(proceed ${goal.name})`;
-    } else {
-      textContent = `(proceed ...)`;
-    }
-
-    return drawTextNode(group, textContent, 10, "green");
-}
-
 function drawUnifyNode(group, data) {
     const textContent = `(== ${termToString(data.left)} ${termToString(data.right)})`;
     return drawTextNode(group, textContent);
@@ -246,7 +225,6 @@ const nodeDrawFunctions = {
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,
     "Rel-Call": drawRelCallNode,
-    "Proceed": drawProceedNode,
     "Goal-Delay": drawGoalDelayNode,
     "Goal-Conj": drawGoalConjNode,
     "Goal-Disj": drawGoalDisjNode,
@@ -263,10 +241,9 @@ export function drawTree(nodeGroups) {
         if (drawFunction) {
             const shape = drawFunction(group, data); 
             const hasSub = data.sub ? true : false;
-            const isProceed = data.name === "Proceed";
             const isPartial = data.partial ? true : false;
             const hasAnswer = data.hasAnswer ? true : false;
-            applyStroke(shape, hasSub, isProceed, isPartial, hasAnswer);
+            applyStroke(shape, hasSub, isPartial, hasAnswer);
         }
     });
 }

@@ -2,7 +2,7 @@
 
 This directory has multiple intentional lanes. Keep them separate so failures are easier to triage.
 
-## Lane A: Headless (default)
+## Lane A: Headless (default, modern runtime)
 
 Runs deterministic/unit/property checks that do not require GUI interaction.
 
@@ -12,8 +12,10 @@ raco test racket-server/tests/test-all-headless.rkt
 
 Includes:
 - Core property/judgment checks
-- Variant lattice + randomized variant checks
-- Frontend example compatibility gate (surface programs must parse/lift into `L4` syntax)
+- Internal search-lattice tests
+- Structured search-runtime registry + overlap audit
+- Frontend example compatibility gate
+- Structured strategy confidence/matrix checks
 
 ## Lane B: App/API Regression
 
@@ -23,31 +25,50 @@ Runs the app-level test suite used for server behavior regression checks.
 raco test racket-server/tests/test-all.rkt
 ```
 
-## Lane C: Frontend Compatibility-Gating Logic
+## Lane C: Frontend Unit Tests
 
-Runs pure frontend logic tests for compatibility analysis status + Start-button gating behavior.
+Runs pure frontend unit tests.
 
 ```sh
 npm --prefix frontend test
 ```
 
-## Lane D: Model×Example API-Flow Matrix (automated GUI-proxy)
+## Lane D: Strategy×Example API-Flow Matrix (automated GUI-proxy)
 
-Runs full model/example compatibility and stepping audit without manual clicking:
-- analyze source (`POST /api/post/analyze`)
-- init with selected model (`POST /api/post/init`, payload includes `model`)
+Runs full surfaced strategy/example stepping audit without manual clicking:
+- init with selected search strategy (`POST /api/post/init`, payload includes `searchStrategy`)
 - step up to 25 or termination (`GET /api/get/next`)
 - assert payload shape each step (`step`, `stepName`, JSON `program`)
 
-Tiering policy:
-- Heavy coverage (`L3/L4` surfaced models): full example matrix.
-- Internal smoke (`L0/L1/L2` hidden models): bounded seam/smoke checks only.
+Coverage policy:
+- Surfaced strategies only:
+  - `hoist`: `early`, `late`
+  - `scheduler`: `dfs`, `flip`, `rail`
 
 ```sh
 raco test racket-server/tests/model-example-matrix-tests.rkt
 ```
 
+## Lane E: Legacy Ladder Research Coverage
+
+Runs the archived eager/lazy/proceed-era ladder suites. This lane is not part
+of the default modern runtime gate.
+
+```sh
+raco test racket-server/tests/test-all-legacy.rkt
+```
+
+Implementation note:
+- the root lane wrapper delegates to `racket-server/archive/legacy-ladder/tests/test-all-legacy.rkt`
+
 ## Notes
 
-- Deprecated legacy suites are archived under `racket-server/tests/archive/legacy-deprecated/`.
-- Supported lanes are `A`/`B`/`C`/`D` above.
+- Public GUI/API runs are now selected structurally by:
+  - `sourceMode`
+  - optional `compileProfile` for `mini`
+  - `searchStrategy = { hoist, scheduler }`
+- The app boundary adapts canonical flat configs into the internal
+  `search-lattice` `+calls` machines before stepping.
+- The default headless lane is modern-only.
+- The eager/lazy/proceed ladder remains available only through the archived legacy lane.
+- Supported lanes are `A`/`B`/`C`/`D`/`E` above.

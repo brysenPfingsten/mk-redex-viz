@@ -41,6 +41,12 @@ const same = `(defrel (same x y)
        [(== q 'dog)])]
     [(same q 'fish)]))`;
 
+const hoistWitness = `(run 2 (q)
+  (conde
+    [(== q 'hoist)]
+    [(== q 'witness)])
+  (== q q))`;
+
 const div3o = `(defrel (same-counto bn)
   (conde
    [(== bn \`(1 1))]
@@ -130,6 +136,11 @@ export const semanticExamples = Object.freeze([
     id: "same",
     label: "same",
     miniSource: same,
+  }),
+  Object.freeze({
+    id: "hoist-witness",
+    label: "hoist witness",
+    miniSource: hoistWitness,
   }),
   Object.freeze({
     id: "div3o",

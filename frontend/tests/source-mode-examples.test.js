@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { exampleById, exampleOptions } from "../src/utils/example_programs.js";
-import { DEFAULT_MODEL_OPTIONS, MODEL_IDS } from "../src/utils/model_ids.js";
+import {
+  DEFAULT_SEARCH_STRATEGY,
+  HOIST_OPTIONS,
+  SCHEDULER_OPTIONS,
+} from "../src/utils/search_strategy.js";
 import {
   buildInitOptions,
   buildSourceOptions,
@@ -34,19 +38,19 @@ test("buildSourceOptions omits compileProfile for micro source", () => {
   );
 });
 
-test("buildInitOptions carries the selected model id", () => {
+test("buildInitOptions carries the selected structured search strategy", () => {
   assert.deepEqual(
     buildInitOptions(
       "(run* (q) (== q 'cat))",
       "mini",
       DEFAULT_COMPILE_PROFILE,
-      MODEL_IDS.L3_DFS_LAZY,
+      DEFAULT_SEARCH_STRATEGY,
     ),
     {
       text: "(run* (q) (== q 'cat))",
       sourceMode: "mini",
       compileProfile: DEFAULT_COMPILE_PROFILE,
-      model: MODEL_IDS.L3_DFS_LAZY,
+      searchStrategy: DEFAULT_SEARCH_STRATEGY,
     },
   );
 });
@@ -66,19 +70,14 @@ test("exampleById returns the semantic example source of truth", () => {
   assert.equal(exampleById("missing-example"), null);
 });
 
-test("default model option labels no longer prefix every entry with µKanren", () => {
-  assert.ok(DEFAULT_MODEL_OPTIONS.length > 0);
-  assert.ok(DEFAULT_MODEL_OPTIONS.every(({ label }) => !label.includes("µKanren")));
+test("search strategy option catalogs expose the hoist and scheduler axes", () => {
   assert.deepEqual(
-    DEFAULT_MODEL_OPTIONS.map(({ value }) => value),
-    [
-      MODEL_IDS.L3_DFS_LAZY,
-      MODEL_IDS.L3_FLIP_LAZY,
-      MODEL_IDS.L4_RAIL_LAZY,
-      MODEL_IDS.L3_DFS_EAGER,
-      MODEL_IDS.L3_FLIP_EAGER,
-      MODEL_IDS.L4_RAIL_EAGER,
-    ],
+    HOIST_OPTIONS.map(({ value }) => value),
+    ["early", "late"],
+  );
+  assert.deepEqual(
+    SCHEDULER_OPTIONS.map(({ value }) => value),
+    ["dfs", "flip", "rail"],
   );
 });
 

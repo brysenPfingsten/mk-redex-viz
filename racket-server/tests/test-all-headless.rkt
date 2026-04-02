@@ -2,28 +2,24 @@
 
 (require rackunit
          rackunit/text-ui
-         "./helpers-tests.rkt"
-         "./capability-analysis-tests.rkt"
-         "./property-core.rkt"
-         "./example-compat-tests.rkt"
-         "./determinism-overlap-tests.rkt"
          "./confidence-gates-tests.rkt"
+         "./determinism-overlap-tests.rkt"
+         "./example-compat-tests.rkt"
+         "./helpers-tests.rkt"
          "./model-example-matrix-tests.rkt"
-         "./variant-module-tests.rkt"
-         "./property-variants.rkt"
-         "./property-variants-random.rkt")
+         "./property-core.rkt"
+         "./search-lattice-tests.rkt"
+         "./search-runtime-tests.rkt")
 
 (define-test-suite HEADLESS
   HELPERS-TESTS
-  CAPABILITY-ANALYSIS
   PROPERTY-CORE
+  SEARCH-RUNTIME
+  SEARCH-LATTICE
   EXAMPLE-COMPAT
   DETERMINISM-OVERLAP
   CONFIDENCE-GATES
-  MODEL-EXAMPLE-MATRIX
-  VARIANT-MODULES
-  PROPERTY-VARIANTS
-  PROPERTY-VARIANTS-RANDOM)
+  MODEL-EXAMPLE-MATRIX)
 
 (module+ test
   (run-tests HEADLESS))

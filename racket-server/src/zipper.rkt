@@ -1,65 +1,34 @@
 #lang racket
-(provide (all-defined-out))
 
-(define-struct zipper 
-               ([prev #:mutable] 
-                [curr #:mutable]
-                [next #:mutable]
-                [idx  #:mutable])
-               #:transparent)
+(provide (struct-out zipper)
+         make-empty-zipper
+         zipper-reset
+         zipper-add
+         zipper-forward
+         zipper-back)
 
-;; zipper-init!: zipper -> void
-;; Initializes the given zipper with empty prev and next,
-;; false current, and 0 current
-(define (zipper-init! z)
-  (set-zipper-prev! z '())
-  (set-zipper-curr! z #f)
-  (set-zipper-next! z '())
-  (set-zipper-idx!  z 0))
+(struct zipper (prev curr next idx) #:transparent)
 
-;; zipper-add!: zipper any -> void
-;; Adds the given elem to the zipper and moves the current to the previous
-(define (zipper-add! z elem)
+(define (make-empty-zipper)
+  (zipper '() #f '() 0))
+
+(define (zipper-reset _z)
+  (make-empty-zipper))
+
+(define (zipper-add z elem)
   (match z
-    [(zipper prev curr next idx) #:when (not (false? curr))
-    (set-zipper-prev! z (cons curr prev))
-    (set-zipper-curr! z elem)
-    (set-zipper-idx!  z (add1 idx))]
-    [_
-     (set-zipper-curr! z elem)]))
+    [(zipper prev curr _ idx) #:when (not (false? curr))
+     (zipper (cons curr prev) elem '() (add1 idx))]
+    [_ (zipper '() elem '() 0)]))
 
-;; zipper-next!: zipper -> any
-;; Retrieves the next element if it exists and pushes the current to the previous
-;; Returns: The element if next is non-empty, otherwise false
-(define (zipper-next! z)
+(define (zipper-forward z)
   (match z
     [(zipper prev curr (cons a d) idx)
-     (set-zipper-prev! z (cons curr prev))
-     (set-zipper-curr! z a)
-     (set-zipper-next! z d)
-     (set-zipper-idx!  z (add1 idx))
-     a]
-    [_ #f]))
+     (values a (zipper (cons curr prev) a d (add1 idx)))]
+    [_ (values #f z)]))
 
-
-(define-struct initial (elem) #:transparent)
-
-;; zipper-back!: zipper ->  any
-;; Retrieves the previous element if it exists and pushes the current to the next
-;; Returns: The element if prev is non-empty, otherwise false
-(define (zipper-back! z)
-  (let ([go-back! (λ (a d curr next idx)
-                      (set-zipper-next! z (cons curr next))
-                      (set-zipper-curr! z a)
-                      (set-zipper-prev! z d)
-                      (set-zipper-idx!  z (sub1 idx)))])
+(define (zipper-back z)
   (match z
-    [(zipper (list elem) curr next idx)
-     (go-back! elem '() curr next idx)
-     (initial elem)]
     [(zipper (cons a d) curr next idx)
-     (go-back! a d curr next idx)
-     a]
-    [_ #f])))
-
-
+     (values a (zipper d a (cons curr next) (sub1 idx)))]
+    [_ (values #f z)]))

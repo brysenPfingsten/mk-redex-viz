@@ -1,33 +1,15 @@
 #lang racket
-(require racket/struct
-         racket/generic
-         racket/set
-         redex/reduction-semantics
-         syntax/to-string
-         racket/pretty)
 
-(provide parse-prog
-         parse-prog/canonical
+(provide parse-prog/canonical
          parse-prog->ast
          render-micro-source
          default-source-mode
-         source-mode?
          normalize-source-mode
-         compile-profile
-         compile-profile?
-         compile-profile-conj-assoc
-         compile-profile-disj-assoc
-         compile-profile-delay-placement
+         (struct-out compile-profile)
          canonical-compile-profile
          canonical-compile-profile-jsexpr
          normalize-compile-profile
          compile-profile->jsexpr
-         REQ-CORE
-         REQ-RELCALL
-         REQ-DISJUNCTION
-         REQ-FRESH
-         REQ-DELAY
-         ast->requirements
          canonical-parser-profile
          canonical-parser-target-id)
 
@@ -55,122 +37,82 @@
 ;-----------------------------------------------
 
 ;; Canonical parser target for backend stepping.
-(define canonical-parser-profile "surface->l4")
-(define canonical-parser-target-id "L4/config")
+(define canonical-parser-profile "surface->canonical")
+(define canonical-parser-target-id "canonical/config")
 
 (define default-source-mode "mini")
+
+(define/match (compile-profile->jsexpr profile)
+  [((compile-profile conj-assoc disj-assoc delay-placement))
+  (hasheq 'conjAssoc conj-assoc
+          'disjAssoc disj-assoc
+          'delayPlacement delay-placement)])
 
 (define canonical-compile-profile
   (compile-profile "left" "right" "relbody"))
 
 (define canonical-compile-profile-jsexpr
-  (hasheq 'conjAssoc "left"
-          'disjAssoc "right"
-          'delayPlacement "relbody"))
-
-;; Capability requirements (used for model compatibility checks).
-(define REQ-CORE "req/core")
-(define REQ-RELCALL "req/relcall")
-(define REQ-DISJUNCTION "req/disjunction")
-(define REQ-FRESH "req/fresh")
-(define REQ-DELAY "req/delay")
-
-(define (source-mode? v)
-  (and (string? v)
-       (member v '("mini" "micro"))))
+  (compile-profile->jsexpr canonical-compile-profile))
 
 (define (normalize-source-mode maybe-mode)
-  (cond
-    [(or (not maybe-mode) (equal? maybe-mode "")) default-source-mode]
-    [(source-mode? maybe-mode) maybe-mode]
-    [else
+  (match maybe-mode
+    [(or #f "") default-source-mode]
+    [(or "mini" "micro") maybe-mode]
+    [_
      (error 'normalize-source-mode
             "unsupported sourceMode ~e; expected \"mini\" or \"micro\""
             maybe-mode)]))
 
-(define (compile-profile->jsexpr profile)
-  (hasheq 'conjAssoc (compile-profile-conj-assoc profile)
-          'disjAssoc (compile-profile-disj-assoc profile)
-          'delayPlacement (compile-profile-delay-placement profile)))
-
 (define (normalize-axis maybe-value valid-values key)
-  (cond
-    [(not maybe-value) #f]
-    [(and (string? maybe-value) (member maybe-value valid-values)) maybe-value]
-    [else
+  (match maybe-value
+    [#f #f]
+    [`,v #:when (member v valid-values) maybe-value]
+    [_
      (error 'normalize-compile-profile
             "invalid compileProfile.~a ~e; expected one of ~e"
             key
             maybe-value
             valid-values)]))
 
-(define (normalize-compile-profile maybe-profile [source-mode default-source-mode])
-  (define source-mode* (normalize-source-mode source-mode))
-  (cond
-    [(equal? source-mode* "micro")
-     (when maybe-profile
-       (error 'normalize-compile-profile
-              "compileProfile is only valid when sourceMode is \"mini\""))
-     #f]
-    [(not maybe-profile) canonical-compile-profile]
-    [(compile-profile? maybe-profile) maybe-profile]
-    [(hash? maybe-profile)
-     (define conj-assoc
-       (normalize-axis (hash-ref maybe-profile 'conjAssoc #f)
-                       '("left" "right")
-                       'conjAssoc))
-     (define disj-assoc
-       (normalize-axis (hash-ref maybe-profile 'disjAssoc #f)
-                       '("left" "right")
-                       'disjAssoc))
-     (define delay-placement
-       (normalize-axis (hash-ref maybe-profile 'delayPlacement #f)
-                       '("relbody" "relcall" "disj")
-                       'delayPlacement))
-     (unless (and conj-assoc disj-assoc delay-placement)
-       (error 'normalize-compile-profile
-              "compileProfile must contain conjAssoc, disjAssoc, and delayPlacement"))
-     (compile-profile conj-assoc disj-assoc delay-placement)]
-    [else
+(define (normalize-mini-compile-profile maybe-profile)
+  (match maybe-profile
+    [#f canonical-compile-profile]
+    [(? compile-profile?) maybe-profile]
+    [(? hash? profile)
+     (match (list (normalize-axis (hash-ref profile 'conjAssoc #f)
+                                  '("left" "right")
+                                  'conjAssoc)
+                  (normalize-axis (hash-ref profile 'disjAssoc #f)
+                                  '("left" "right")
+                                  'disjAssoc)
+                  (normalize-axis (hash-ref profile 'delayPlacement #f)
+                                  '("relbody" "relcall" "disj")
+                                  'delayPlacement))
+       [(list (? string? conj-assoc)
+              (? string? disj-assoc)
+              (? string? delay-placement))
+        (compile-profile conj-assoc disj-assoc delay-placement)]
+       [_ 
+        (error 'normalize-compile-profile
+               "compileProfile must contain conjAssoc, disjAssoc, and delayPlacement")])]
+    [_
      (error 'normalize-compile-profile
             "compileProfile must be a hash or compile-profile, got ~e"
             maybe-profile)]))
 
-(define (goal->requirements g)
-  (match g
-    [(fresh _ goal)
-     (set-add (goal->requirements goal) REQ-FRESH)]
-    [(conde clauses)
-     (for/fold ([acc (set REQ-DISJUNCTION)])
-               ([clause (in-list clauses)])
-       (set-union acc (goal->requirements clause)))]
-    [(disj g1 g2)
-     (set-union (set REQ-DISJUNCTION)
-                (goal->requirements g1)
-                (goal->requirements g2))]
-    [(conj g1 g2)
-     (set-union (goal->requirements g1)
-                (goal->requirements g2))]
-    [(delay-goal goal)
-     (set-add (goal->requirements goal) REQ-DELAY)]
-    [(compiled-delay-goal goal)
-     (set-add (goal->requirements goal) REQ-DELAY)]
-    [(relcall _ _)
-     (set REQ-RELCALL)]
-    [_ (set)]))
-
-(define (ast->requirements ast)
-  (match ast
-    [(prog rels (run _ _ query-goal))
-     (define reqs-from-rels
-       (for/fold ([acc (set REQ-CORE)])
-                 ([rel (in-list rels)])
-         (match rel
-           [(defrel _ _ goal) (set-union acc (goal->requirements goal))]
-           [_ acc])))
-     (sort (set->list (set-union reqs-from-rels (goal->requirements query-goal)))
-           string<?)]
-    [_ (list REQ-CORE)]))
+(define (normalize-compile-profile maybe-profile [source-mode default-source-mode])
+  (match source-mode
+    ["micro"
+     (when maybe-profile
+       (error 'normalize-compile-profile
+              "compileProfile is only valid when sourceMode is \"mini\""))
+     #f]
+    ["mini"
+     (normalize-mini-compile-profile maybe-profile)]
+    [_
+     (error 'normalize-compile-profile
+            "unsupported sourceMode ~e; expected \"mini\" or \"micro\""
+            source-mode)]))
 
 ;; map/fold: (T A -> (values R A)) (listof T) A -> (values (listof R) A)
 ;; Purpose: Like map, but threads an accumulator state through each call.
@@ -181,167 +123,19 @@
 ;;   (map/fold (λ (x s) (values (+ x s) (* s 2))) '(1 2 3) 1)
 ;;    => values '(2 4 7), 8
 (define (map/fold f lst init-state)
-  (let loop ([lst lst] [acc '()] [state init-state])
-    (if (null? lst)
-        (values (reverse acc) state)
-        (let-values ([(v s1) (f (car lst) state)])
-          (loop (cdr lst) (cons v acc) s1)))))
-
-;; map/fold-with-guids: (T Nat -> (values R Nat (listof String))) (listof T) Nat
-;;                      -> (values (listof R) Nat (listof String))
-;;
-;; Purpose: Like map/fold, but threads an integer counter through each call and
-;;          accumulates a list of generated GUIDs. The function f takes
-;;          an element of the list and a counter, and returns a result, an updated
-;;          counter, and a list of GUIDs associated with that element.
-;;
-;; Example:
-;;   (map/fold-with-guids
-;;    (λ (x n) (values (* x 2) (+ n 1) (list (format "g~a" n))))
-;;    '(1 2 3) 0)
-;;   => values '(2 4 6), 3, '("g0" "g1" "g2")
-(define (map/fold-with-guids f lst init-counter)
-  (let loop ([lst lst] [acc '()] [count init-counter] [guids '()])
-    (if (null? lst)
-        (values (reverse acc) count guids)
-        (let-values ([(v c2 g2) (f (car lst) count)])
-          (loop (cdr lst)
-                (cons v acc)
-                c2
-                (append guids g2))))))
-
+  (define-values (rev-acc state)
+    (for/fold ([rev-acc '()]
+               [state init-state])
+              ([x (in-list lst)])
+      (define-values (v next-state) (f x state))
+      (values (cons v rev-acc) next-state)))
+  (values (reverse rev-acc) state))
 
 ;; next-g-id: String Number -> (values String Number)
 ;; Purpose: Creates a GUID based on the given prefix and counter and returns
 ;;          the GUID and the next count
 (define (next-g-id prefix counter)
   (values (string-append prefix (number->string counter)) (add1 counter)))
-
-;; konst->term: konst -> term
-;; Purpose: Convert a konst structure to a term
-(define (konst->term const)
-  (match const
-    [(konst s) #:when (symbol? s) `(sym ,(symbol->string s))]
-    [(konst s) #:when (string? s) s]
-    [(konst b) #:when (boolean? b) b]
-    [(konst n) #:when (number? n) `(nat ,n)]))
-
-;; transpile: struct Nat -> (values model-term Nat (listof String))
-;; Purpose: To compile the nested structures into the language of our model
-(define (transpile expr count)
-  (match expr
-
-    [(prog rels q)
-     #:when (prog? expr)
-     (define-values (trs count1 guids1)
-       (map/fold-with-guids transpile rels count))
-     (define-values (tq count2 guids2)
-       (transpile q count1))
-     (values `(,tq ,trs) count2 (append guids1 guids2))]
-
-    [(fresh vars goal)
-     #:when (fresh? expr)
-     (define-values (id count1) (next-g-id "f" count))
-     (define-values (tvars count2 guids1)
-       (map/fold-with-guids transpile vars count1))
-     (define-values (tgoal count3 guids2)
-       (transpile goal count2))
-     (values `(∃ ,tvars ,tgoal ,id) count3 (cons id (append guids1 guids2)))]
-
-
-    [(conde clauses)
-     #:when (conde? expr)
-     (define-values (id count1) (next-g-id "d" count))
-     (struct acc (expr count guids))
-     (define final-acc
-       (foldr
-        (λ (clause accum)
-          (define-values (t-clause new-count new-guids)
-            (transpile clause (acc-count accum)))
-          (acc (if (null? (acc-expr accum))
-                   t-clause
-                   `(,t-clause ∨ ,(acc-expr accum) ,id))
-               new-count
-               (append new-guids (acc-guids accum))))
-        (acc '() count1 '())
-        clauses))
-     (define final-expr (acc-expr final-acc))
-     (define final-count (acc-count final-acc))
-     (define final-guids (acc-guids final-acc))
-     (values final-expr final-count  (cons id final-guids))]
-
-    [(conj g1 g2)
-     #:when (conj? expr)
-     (define-values (id count1) (next-g-id "c" count))
-     (define-values (tg1 count2 guids1) (transpile g1 count1))
-     (define-values (tg2 count3 guids2) (transpile g2 count2))
-     (values `(,tg1 ∧ ,tg2 ,id) count3 (cons id (append guids1 guids2)))]
-
-    [(unify t1 t2)
-     #:when (unify? expr)
-     (define-values (id count1) (next-g-id "u" count))
-     (define-values (tt1 count2 guids1) (transpile t1 count1))
-     (define-values (tt2 count3 guids2) (transpile t2 count2))
-     (values `(,tt1 =? ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
-
-    [(diseq t1 t2)
-     #:when (diseq? expr)
-     (define-values (id count1) (next-g-id "n" count))
-     (define-values (tt1 count2 guids1) (transpile t1 count1))
-     (define-values (tt2 count3 guids2) (transpile t2 count2))
-     (values `(,tt1 != ,tt2 ,id) count3 (cons id (append guids1 guids2)))]
-
-    [(succeed) #:when (succeed? expr) (values '⊤ count '())]
-    [(fail)    #:when (fail? expr)    (values '⊥ count '())]
-
-    [(relcall name terms)
-     #:when (relcall? expr)
-     (define-values (id count1) (next-g-id "r" count))
-     (define-values (tname count2 guids1) (transpile name count1))
-     (define-values (tterms count3 guids2)
-       (map/fold-with-guids transpile terms count2))
-     (values `(,tname ,@tterms ,id) count3 (cons id (append guids1 guids2)))]
-
-    [(nil) #:when (nil? expr) (values 'empty count '())]
-    
-    [(konst k) #:when (konst? expr) (values (konst->term expr) count '())]
-    
-    [(kons a d)
-     #:when (kons? expr)
-     (define-values (ta count1 guids1) (transpile a count))
-     (define-values (td count2 guids2) (transpile d count1))
-     (values `(,ta : ,td) count2 (append guids1 guids2))]
-
-    [(var v)
-     #:when (var? expr)
-     (values (string->symbol (string-append "x:" (symbol->string (var-v v))))
-             count
-             '())]
-
-    [(relname name)
-     #:when (relname? expr)
-     (values (string->symbol (string-append "r:" (symbol->string name)))
-             count
-             '())]
-
-    [(defrel name lop goal)
-     #:when (defrel? expr)
-     (define-values (tname count1 guids1) (transpile name count))
-     (define-values (tlop count2 guids2)
-       (map/fold-with-guids transpile lop count1))
-     (define-values (tgoal count3 guids3) (transpile goal count2))
-     (values `(,tname ,tlop ,tgoal)
-             count3
-             (append guids1 guids2 guids3))]
-
-    [(run n qs goal)
-     #:when (run? expr)
-     (define-values (id count1) (next-g-id "f" count))
-     (define-values (tq count2 guids1) (map/fold-with-guids transpile qs count1))
-     (define-values (tg count3 guids2) (transpile goal count2))
-     (values `((∃ ,tq ,tg ,id) (state () 0 () "s"))
-             count3
-             (cons id (append guids1 guids2)))]))
 
 ;; konst->string: konst -> string
 ;; Purpose: Convert a konst structure to a string
@@ -352,10 +146,9 @@
     [(konst b) #:when (boolean? b) (if b "#t" "#f")]
     [(konst n) #:when (number? n) (number->string n)]))
 
-;; TODO: What the hell is going on here. Seems like way to much edge casing just to get it wrong sometimes.
-;; Should probably (within compilation) capture what `type` of list/pair we are parsing.
-;; Something like cons list, quasi pair, quote pair, (list ...), etc and so the lists are actually reproducable
-;; Or, rather than building an AST, build both a CST so the output is the same as its input except with tags
+;; `kons` currently loses some concrete source distinctions among list/pair forms.
+;; Reconstructing the original surface spelling would require carrying either
+;; pair/list provenance through compilation or a parallel CST-style structure.
 
 (define (term->string t)
   (cond
@@ -422,8 +215,7 @@
 
     [(fresh vars goal)
      #:when (fresh? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (vars-str rest1)
        (map/fold (λ (v gs) (add-guids v 0 gs)) vars rest))
      (define-values (goal-str rest2)
@@ -438,8 +230,7 @@
 
     [(conde clauses)
      #:when (conde? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define (indent n) (make-string n #\space))
 
  
@@ -467,8 +258,7 @@
 
     [(conj g1 g2)
      #:when (conj? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tg1 rest1) (add-guids g1 s rest))
      (define-values (tg2 rest2) (add-guids g2 s rest1))
      (values (format "~a[[~a]]~a\n~a[[/~a]]"
@@ -481,8 +271,7 @@
 
     [(unify t1 t2)
      #:when (unify? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tt1 rest1) (add-guids t1 0 rest))
      (define-values (tt2 rest2) (add-guids t2 0 rest1))
      (values (format "~a[[~a]](== ~a ~a)[[/~a]]"
@@ -495,8 +284,7 @@
 
     [(diseq t1 t2)
      #:when (diseq? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tt1 rest1) (add-guids t1 0 rest))
      (define-values (tt2 rest2) (add-guids t2 0 rest1))
      (values (format "~a[[~a]](=/= ~a ~a)[[/~a]]"
@@ -517,8 +305,7 @@
 
     [(disj g1 g2)
      #:when (disj? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tg1 rest1) (add-guids g1 (+ s 2) rest))
      (define-values (tg2 rest2) (add-guids g2 (+ s 2) rest1))
      (values (format "~a[[~a]](disj\n~a\n~a\n~a)[[/~a]]"
@@ -532,8 +319,7 @@
 
     [(relcall name terms)
      #:when (relcall? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tname rest1) (add-guids name 0 rest))
      (define-values (tterms rest2)
        (map/fold (λ (t g) (add-guids t 0 g)) terms rest1))
@@ -565,8 +351,7 @@
 
     [(run n qs goal)
      #:when (run? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (tq r1)
        (map/fold (λ (q g) (add-guids q 0 g)) qs rest))
      (define-values (tg r2) (add-guids goal 0 r1))
@@ -580,8 +365,7 @@
 
     [(delay-goal goal)
      #:when (delay-goal? expr)
-     (define id (car guids))
-     (define rest (cdr guids))
+     (match-define (cons id rest) guids)
      (define-values (goal-str rest1) (add-guids goal (+ s 2) rest))
      (values (format "~a[[~a]](Zzz\n~a\n~a)[[/~a]]"
                      (make-string s #\space)
@@ -600,32 +384,29 @@
 (define (conj-goals/left goals)
   (match goals
     [(list goal) goal]
-    [(cons goal more)
+    [(cons goal (cons next more))
      (conj-goals/left
-      (cons (conj goal (car more))
-            (cdr more)))]
+      (cons (conj goal next) more))]
     [_ (error 'conj-goals/left "expected a non-empty goal sequence")]))
 
 (define (combine-conj goals assoc)
   (match goals
     [(list goal) goal]
-    [(cons goal more)
+    [(cons goal (cons next more))
      (if (equal? assoc "left")
-         (combine-conj (cons (conj goal (car more))
-                             (cdr more))
+         (combine-conj (cons (conj goal next) more)
                        assoc)
-         (conj goal (combine-conj more assoc)))]
+         (conj goal (combine-conj (cons next more) assoc)))]
     [_ (error 'combine-conj "expected a non-empty goal sequence")]))
 
 (define (combine-disj goals assoc)
   (match goals
     [(list goal) goal]
-    [(cons goal more)
+    [(cons goal (cons next more))
      (if (equal? assoc "left")
-         (combine-disj (cons (disj goal (car more))
-                             (cdr more))
+         (combine-disj (cons (disj goal next) more)
                        assoc)
-         (disj goal (combine-disj more assoc)))]
+         (disj goal (combine-disj (cons next more) assoc)))]
     [_ (error 'combine-disj "expected a non-empty clause sequence")]))
 
 (define (flatten-conj-tree goal [acc '()])
@@ -680,7 +461,8 @@
      (compiled-delay-goal (wrap-disjs g wrapper))]
     [_ goal]))
 
-(define (surface-goal->micro goal profile)
+(define/match (surface-goal->micro goal profile)
+  [(goal (and profile (compile-profile conj-assoc disj-assoc _)))
   (match goal
     [(fresh vars g)
      (fresh vars (surface-goal->micro g profile))]
@@ -688,18 +470,18 @@
      (combine-disj
       (for/list ([clause (in-list clauses)])
         (surface-goal->micro clause profile))
-      (compile-profile-disj-assoc profile))]
+      disj-assoc)]
     [(conj _ _)
      (combine-conj
       (for/list ([piece (in-list (flatten-conj-tree goal))])
         (surface-goal->micro piece profile))
-      (compile-profile-conj-assoc profile))]
+      conj-assoc)]
     [(disj g1 g2)
      (disj (surface-goal->micro g1 profile)
            (surface-goal->micro g2 profile))]
     [(delay-goal g)
      (delay-goal (surface-goal->micro g profile))]
-    [_ goal]))
+    [_ goal])])
 
 (define (apply-delay-placement goal placement [wrapper delay-goal])
   (case (string->symbol placement)
@@ -707,30 +489,30 @@
     [(disj) (wrap-disjs goal wrapper)]
     [else goal]))
 
-(define (mini-ast->normalized-micro ast profile)
-  (match ast
-    [(prog rels (run n q goal))
-     (define normalized-rels
-       (for/list ([rel (in-list rels)])
-         (match-define (defrel name lop rel-goal) rel)
-         (define normalized-goal
-           (surface-goal->micro rel-goal profile))
-         (defrel name
-                 lop
-                 (if (equal? (compile-profile-delay-placement profile) "relbody")
-                     (compiled-delay-goal normalized-goal)
-                     (apply-delay-placement normalized-goal
-                                            (compile-profile-delay-placement profile)
-                                            compiled-delay-goal)))))
-     (prog normalized-rels
-           (run n
-                q
-                (apply-delay-placement (surface-goal->micro goal profile)
-                                       (compile-profile-delay-placement profile)
-                                       compiled-delay-goal)))]
-    [_ (error 'mini-ast->normalized-micro
-              "unexpected source AST shape: ~e"
-              ast)]))
+(define/match (mini-ast->normalized-micro ast profile)
+  [((prog rels (run n q goal))
+    (and profile (compile-profile _ _ delay-placement)))
+   (define normalized-rels
+     (for/list ([rel (in-list rels)])
+       (match-define (defrel name lop rel-goal) rel)
+       (define normalized-goal (surface-goal->micro rel-goal profile))
+       (defrel name
+               lop
+               (if (equal? delay-placement "relbody")
+                   (compiled-delay-goal normalized-goal)
+                   (apply-delay-placement normalized-goal
+                                          delay-placement
+                                          compiled-delay-goal)))))
+   (prog normalized-rels
+         (run n
+              q
+              (apply-delay-placement (surface-goal->micro goal profile)
+                                     delay-placement
+                                     compiled-delay-goal)))]
+  [(ast _)
+   (error 'mini-ast->normalized-micro
+          "unexpected source AST shape: ~e"
+          ast)])
 
 (define (relbody-certifies? goal)
   (match goal
@@ -756,73 +538,65 @@
 
 (define (disj-certifies? goal)
   (match goal
-    [(delay-goal inner)
-     (and (disj? inner)
-          (match inner
-            [(disj g1 g2)
-             (and (disj-certifies? g1)
-                  (disj-certifies? g2))]
-            [_ #f]))]
-    [(compiled-delay-goal inner)
-     (and (disj? inner)
-          (match inner
-            [(disj g1 g2)
-             (and (disj-certifies? g1)
-                  (disj-certifies? g2))]
-            [_ #f]))]
-    [(disj _ _) #f]
+    [(or (delay-goal (disj g1 g2))
+         (compiled-delay-goal (disj g1 g2)))
+     (and (disj-certifies? g1)
+          (disj-certifies? g2))]
+    [(or (delay-goal _)
+         (compiled-delay-goal _)
+		 (disj _ _))
+	 #f]
     [(fresh _ g) (disj-certifies? g)]
     [(conj g1 g2)
      (and (disj-certifies? g1)
           (disj-certifies? g2))]
     [_ #t]))
 
-(define (certify-guarded-mini-program ast profile)
-  (define placement (compile-profile-delay-placement profile))
-  (match ast
-    [(prog rels (run _ _ query-goal))
-     (case (string->symbol placement)
-       [(relbody)
-        (unless (andmap (lambda (rel)
-                          (match rel
-                            [(defrel _ _ goal) (relbody-certifies? goal)]
-                            [_ #f]))
-                        rels)
-          (error 'certify-guarded-mini-program
-                 "relbody profile did not produce delayed relation bodies"))
-        (when (contains-delay-goal? query-goal)
-          (error 'certify-guarded-mini-program
-                 "relbody profile should not delay the query"))]
-       [(relcall)
-        (unless (andmap (lambda (rel)
-                          (match rel
-                            [(defrel _ _ goal) (relcall-certifies? goal)]
-                            [_ #f]))
-                        rels)
-          (error 'certify-guarded-mini-program
-                 "relcall profile did not delay every relation call in bodies"))
-        (unless (relcall-certifies? query-goal)
-          (error 'certify-guarded-mini-program
-                 "relcall profile did not delay every relation call in query"))]
-       [(disj)
-        (unless (andmap (lambda (rel)
-                          (match rel
-                            [(defrel _ _ goal) (disj-certifies? goal)]
-                            [_ #f]))
-                        rels)
-          (error 'certify-guarded-mini-program
-                 "disj profile did not delay every disjunction in bodies"))
-        (unless (disj-certifies? query-goal)
-          (error 'certify-guarded-mini-program
-                 "disj profile did not delay every disjunction in query"))]
-       [else
+(define/match (certify-guarded-mini-program ast profile)
+  [((prog rels (run _ _ query-goal)) (compile-profile _ _ placement))
+   (case (string->symbol placement)
+     [(relbody)
+      (unless (andmap (lambda (rel)
+                        (match rel
+                          [(defrel _ _ goal) (relbody-certifies? goal)]
+                          [_ #f]))
+                      rels)
         (error 'certify-guarded-mini-program
-               "unknown delay placement ~e"
-               placement)])
-     ast]
-    [_ (error 'certify-guarded-mini-program
-              "unexpected normalized program shape: ~e"
-              ast)]))
+               "relbody profile did not produce delayed relation bodies"))
+      (when (contains-delay-goal? query-goal)
+        (error 'certify-guarded-mini-program
+               "relbody profile should not delay the query"))]
+     [(relcall)
+      (unless (andmap (lambda (rel)
+                        (match rel
+                          [(defrel _ _ goal) (relcall-certifies? goal)]
+                          [_ #f]))
+                      rels)
+        (error 'certify-guarded-mini-program
+               "relcall profile did not delay every relation call in bodies"))
+      (unless (relcall-certifies? query-goal)
+        (error 'certify-guarded-mini-program
+               "relcall profile did not delay every relation call in query"))]
+     [(disj)
+      (unless (andmap (lambda (rel)
+                        (match rel
+                          [(defrel _ _ goal) (disj-certifies? goal)]
+                          [_ #f]))
+                      rels)
+        (error 'certify-guarded-mini-program
+               "disj profile did not delay every disjunction in bodies"))
+      (unless (disj-certifies? query-goal)
+        (error 'certify-guarded-mini-program
+               "disj profile did not delay every disjunction in query"))]
+     [else
+      (error 'certify-guarded-mini-program
+             "unknown delay placement ~e"
+             placement)])
+   ast]
+  [(ast _)
+   (error 'certify-guarded-mini-program
+          "unexpected normalized program shape: ~e"
+          ast)])
 
 (define (parse-run/surface-mini r)
   (match r
@@ -894,16 +668,26 @@
   (match goal
     [`(fresh ,vars ,g)
      (fresh (map var vars) (parse-goal/micro g))]
-    [`(fresh ,vars . ,rest)
-     (error 'parse-goal/micro
-            "micro fresh expects exactly one body goal, got ~a"
-            (length rest))]
     [`(conj ,g1 ,g2)
      (conj (parse-goal/micro g1) (parse-goal/micro g2))]
     [`(disj ,g1 ,g2)
      (disj (parse-goal/micro g1) (parse-goal/micro g2))]
     [`(Zzz ,g)
      (delay-goal (parse-goal/micro g))]
+    [`(== ,t1 ,t2)
+     (unify (parse-term t1) (parse-term t2))]
+    [`(=/= ,t1 ,t2)
+     (diseq (parse-term t1) (parse-term t2))]
+    ['succeed (succeed)]
+    ['fail (fail)]
+    [`(,r . ,terms)
+     #:when (and (symbol? r) (not (reserved-goal-symbol? r)))
+     (relcall (relname r) (map parse-term terms))]
+    ;; Specific diagnostics for malformed source forms and internal-only names.
+    [`(fresh ,_ . ,rest)
+     (error 'parse-goal/micro
+            "micro fresh expects exactly one body goal, got ~a"
+            (length rest))]
     [`(Zzz . ,rest)
      (error 'parse-goal/micro
             "micro Zzz expects exactly one goal, got ~a"
@@ -911,65 +695,55 @@
     [`(delay . ,_)
      (error 'parse-goal/micro
             "direct micro source uses Zzz for explicit goal delay; delay is internal-only")]
-    [`(== ,t1 ,t2)
-     (unify (parse-term t1) (parse-term t2))]
-    [`(=/= ,t1 ,t2)
-     (diseq (parse-term t1) (parse-term t2))]
-    ['succeed (succeed)]
-    ['fail (fail)]
     [`(conde . ,_)
      (error 'parse-goal/micro "conde is not part of direct micro source mode")]
     [`(proceed . ,_)
      (error 'parse-goal/micro "proceed is internal-only and not valid in micro source mode")]
-    [`(,r . ,terms)
-     #:when (and (symbol? r) (not (reserved-goal-symbol? r)))
-     (relcall (relname r) (map parse-term terms))]
     [_ (error 'parse-goal/micro "invalid micro goal form: ~e" goal)]))
 
 (define (term->micro-datum t)
-  (cond
-    [(konst? t)
-     (define k (konst-k t))
-     (cond
-       [(symbol? k) `(quote ,k)]
-       [(string? k) k]
-       [(boolean? k) k]
-       [(number? k) k]
-       [else (error 'term->micro-datum "unexpected konst payload: ~e" k)])]
-    [(nil? t) '(quote ())]
-    [(kons? t) `(cons ,(term->micro-datum (kons-a t))
-                      ,(term->micro-datum (kons-d t)))]
-    [(var? t) (var-v t)]
-    [(relname? t) (relname-name t)]
-    [else (error 'term->micro-datum "unexpected term AST: ~e" t)]))
+  (match t
+    [(struct konst ((? symbol? k))) `(quote ,k)]
+    [(struct konst ((? string? k))) k]
+    [(struct konst ((? boolean? k))) k]
+    [(struct konst ((? number? k))) k]
+    [(struct konst (k))
+     (error 'term->micro-datum "unexpected konst payload: ~e" k)]
+    [(struct nil ()) '(quote ())]
+    [(struct kons (a d)) `(cons ,(term->micro-datum a)
+                                ,(term->micro-datum d))]
+    [(struct var (v)) v]
+    [(struct relname (name)) name]
+    [_ (error 'term->micro-datum "unexpected term AST: ~e" t)]))
 
 (define (goal->micro-datum g)
-  (cond
-    [(unify? g)
-     `(== ,(term->micro-datum (unify-t1 g))
-          ,(term->micro-datum (unify-t2 g)))]
-    [(diseq? g)
-     `(=/= ,(term->micro-datum (diseq-t1 g))
-           ,(term->micro-datum (diseq-t2 g)))]
-    [(succeed? g) 'succeed]
-    [(fail? g) 'fail]
-    [(fresh? g)
-     `(fresh ,(map term->micro-datum (fresh-vars g))
-        ,(goal->micro-datum (fresh-goal g)))]
-    [(conj? g)
-     `(conj ,(goal->micro-datum (conj-g1 g))
-            ,(goal->micro-datum (conj-g2 g)))]
-    [(disj? g)
-     `(disj ,(goal->micro-datum (disj-g1 g))
-            ,(goal->micro-datum (disj-g2 g)))]
-    [(delay-goal? g)
-     `(Zzz ,(goal->micro-datum (delay-goal-goal g)))]
-    [(compiled-delay-goal? g)
-     `(Zzz ,(goal->micro-datum (compiled-delay-goal-goal g)))]
-    [(relcall? g)
-     `(,(term->micro-datum (relcall-name g))
-       ,@(map term->micro-datum (relcall-terms g)))]
-    [else (error 'goal->micro-datum "unexpected goal AST: ~e" g)]))
+  (match g
+    [(struct unify (t1 t2))
+     `(== ,(term->micro-datum t1)
+          ,(term->micro-datum t2))]
+    [(struct diseq (t1 t2))
+     `(=/= ,(term->micro-datum t1)
+           ,(term->micro-datum t2))]
+    [(struct succeed ()) 'succeed]
+    [(struct fail ()) 'fail]
+    [(struct fresh (vars goal))
+     `(fresh ,(map term->micro-datum vars)
+        ,(goal->micro-datum goal))]
+    [(struct conj (g1 g2))
+     `(conj ,(goal->micro-datum g1)
+            ,(goal->micro-datum g2))]
+    [(struct disj (g1 g2))
+     `(disj ,(goal->micro-datum g1)
+            ,(goal->micro-datum g2))]
+    [(struct delay-goal (goal))
+     `(Zzz ,(goal->micro-datum goal))]
+    [(struct relcall (name terms))
+     `(,(term->micro-datum name)
+       ,@(map term->micro-datum terms))]
+    ;; Internal AST forms that still serialize back to direct micro surface syntax.
+    [(struct compiled-delay-goal (goal))
+     `(Zzz ,(goal->micro-datum goal))]
+    [_ (error 'goal->micro-datum "unexpected goal AST: ~e" g)]))
 
 (define (datum->pretty-string datum)
   (define out (open-output-string))
@@ -1070,7 +844,8 @@
                    [else (error "Not a defrel or run form" expr)])]))
             (cons '() #f)
             lst)])
-      (values (reverse (car result)) (cdr result))))
+      (match-define (cons defrels-rev run-expr) result)
+      (values (reverse defrels-rev) run-expr)))
 
   (case (string->symbol source-mode*)
     [(mini)
@@ -1099,21 +874,6 @@
     (prepare-program lst source-mode compile-profile))
   normalized-ast)
 
-(define (parse-prog lst)
-  ;; Parse AST
-  (define-values (_normalized-ast display-ast _profile)
-    (prepare-program lst default-source-mode #f))
-
-  ;; Transpile AST to redex program and collect generated GUIDs
-  (define-values (REDEX-PROG counter guid-list)
-    (transpile display-ast 0))
-
-  ;; Tag AST with guids
-  (define-values (GUID-PROG _) (add-guids display-ast 0 guid-list))
-
-  ;; Return both programs
-  (values REDEX-PROG GUID-PROG))
-
 ;; ---------- Canonical parser projection ----------
 
 (define (id->label id)
@@ -1135,23 +895,34 @@
 (define (next-hidden-id counter)
   (values (string-append "y" (number->string counter)) (add1 counter)))
 
+(define (flatten-guid-groups reversed-guid-groups [acc '()])
+  (match reversed-guid-groups
+    ['() acc]
+    [(cons guid-group rest)
+     (flatten-guid-groups rest (append guid-group acc))]))
+
+(define (transpile-canonical/list exprs count hidden-count [acc '()] [reversed-guid-groups '()])
+  (match exprs
+    ['()
+     (values (reverse acc)
+             count
+             hidden-count
+             (flatten-guid-groups reversed-guid-groups))]
+    [(cons expr rest)
+     (define-values (t-expr count^ hidden^ expr-guids)
+       (transpile-canonical expr count hidden-count))
+     (transpile-canonical/list rest
+                               count^
+                               hidden^
+                               (cons t-expr acc)
+                               (cons expr-guids reversed-guid-groups))]))
+
 (define (transpile-canonical expr count hidden-count)
   (match expr
     [(prog rels q)
      #:when (prog? expr)
      (define-values (trs count1 hidden1 guids1)
-       (let loop ([rest rels] [acc '()] [count* count] [hidden* hidden-count] [guids '()])
-         (match rest
-           ['()
-            (values (reverse acc) count* hidden* guids)]
-           [(cons rel rels-tail)
-            (define-values (trel count** hidden** rel-guids)
-              (transpile-canonical rel count* hidden*))
-            (loop rels-tail
-                  (cons trel acc)
-                  count**
-                  hidden**
-                  (append guids rel-guids))])))
+       (transpile-canonical/list rels count hidden-count))
      (define-values (tq count2 hidden2 guids2)
        (transpile-canonical q count1 hidden1))
      (values `(,trs ,tq (empty-stream)) count2 hidden2 (append guids1 guids2))]
@@ -1160,18 +931,7 @@
      #:when (fresh? expr)
      (define-values (id count1) (next-g-id "f" count))
      (define-values (tvars count2 hidden1 guids1)
-       (let loop ([rest vars] [acc '()] [count* count1] [hidden* hidden-count] [guids '()])
-         (match rest
-           ['()
-            (values (reverse acc) count* hidden* guids)]
-           [(cons v vars-tail)
-            (define-values (tv count** hidden** var-guids)
-              (transpile-canonical v count* hidden*))
-            (loop vars-tail
-                  (cons tv acc)
-                  count**
-                  hidden**
-                  (append guids var-guids))])))
+       (transpile-canonical/list vars count1 hidden-count))
      (define-values (tgoal count3 hidden2 guids2)
        (transpile-canonical goal count2 hidden1))
      (values `(∃ ,tvars ,tgoal ,(id->label id))
@@ -1259,7 +1019,7 @@
      (define-values (id count1) (next-g-id "y" count))
      (define-values (tg count2 hidden1 guids1)
        (transpile-canonical goal count1 hidden-count))
-     (values `(sdelay ,tg ,(id->label id))
+     (values `(suspend ,tg ,(id->label id))
              count2 hidden1
              (cons id guids1))]
 
@@ -1268,7 +1028,7 @@
      (define-values (id hidden1) (next-hidden-id hidden-count))
      (define-values (tg count1 hidden2 guids1)
        (transpile-canonical goal count hidden1))
-     (values `(sdelay ,tg ,(id->label id))
+     (values `(suspend ,tg ,(id->label id))
              count1 hidden2
              guids1)]
 
@@ -1278,18 +1038,7 @@
      (define-values (tname count2 hidden1 guids1)
        (transpile-canonical name count1 hidden-count))
      (define-values (tterms count3 hidden2 guids2)
-       (let loop ([rest terms] [acc '()] [count* count2] [hidden* hidden1] [guids '()])
-         (match rest
-           ['()
-            (values (reverse acc) count* hidden* guids)]
-           [(cons t terms-tail)
-            (define-values (tt count** hidden** term-guids)
-              (transpile-canonical t count* hidden*))
-            (loop terms-tail
-                  (cons tt acc)
-                  count**
-                  hidden**
-                  (append guids term-guids))])))
+       (transpile-canonical/list terms count2 hidden1))
      (values `(,tname ,@tterms ,(id->label id))
              count3 hidden2
              (cons id (append guids1 guids2)))]
@@ -1327,18 +1076,7 @@
      (define-values (tname count1 hidden1 guids1)
        (transpile-canonical name count hidden-count))
      (define-values (tlop count2 hidden2 guids2)
-       (let loop ([rest lop] [acc '()] [count* count1] [hidden* hidden1] [guids '()])
-         (match rest
-           ['()
-            (values (reverse acc) count* hidden* guids)]
-           [(cons v lop-tail)
-            (define-values (tv count** hidden** lop-guids)
-              (transpile-canonical v count* hidden*))
-            (loop lop-tail
-                  (cons tv acc)
-                  count**
-                  hidden**
-                  (append guids lop-guids))])))
+       (transpile-canonical/list lop count1 hidden1))
      (define-values (tgoal count3 hidden3 guids3)
        (transpile-canonical goal count2 hidden2))
      (values `(,tname ,tlop ,tgoal)
@@ -1349,18 +1087,7 @@
      #:when (run? expr)
      (define-values (id count1) (next-g-id "f" count))
      (define-values (tq count2 hidden1 guids1)
-       (let loop ([rest qs] [acc '()] [count* count1] [hidden* hidden-count] [guids '()])
-         (match rest
-           ['()
-            (values (reverse acc) count* hidden* guids)]
-           [(cons q qs-tail)
-            (define-values (tqv count** hidden** query-guids)
-              (transpile-canonical q count* hidden*))
-            (loop qs-tail
-                  (cons tqv acc)
-                  count**
-                  hidden**
-                  (append guids query-guids))])))
+       (transpile-canonical/list qs count1 hidden-count))
      (define-values (tg count3 hidden2 guids2)
        (transpile-canonical goal count2 hidden1))
      (values `((∃ ,tq ,tg ,(id->label id))
@@ -1377,91 +1104,3 @@
     (transpile-canonical ast 0 0))
   (define-values (html-prog _rest) (add-guids display-ast 0 guid-list))
   (values canonical-prog html-prog))
-
- 
-#;(parse-prog
-   '(defrel (assoco key table value)
-      (fresh (car table-cdr)
-             (== table `(,car . ,table-cdr))
-             (conde ((== `(,key . ,value) car))
-                    ((assoco key table-cdr value)))))
-   '(defrel (same-lengtho l1 l2)
-      (conde ((== l1 '()) (== l1 '()))
-             ((fresh (car1 cdr1 car2 cdr2)
-                     (== l1 `(,car1 . ,cdr1))
-                     (== l2 `(,car2 . ,cdr2))
-                     (same-lengtho cdr1 cdr2)))))
-   '(defrel (make-assoc-tableo l1 l2 table)
-      (conde ((== l1 '()) (== l1 '()) (== table '()))
-             ((fresh (car1 cdr1 car2 cdr2 cdr3)
-                     (== l1 `(,car1 . ,cdr1))
-                     (== l2 `(,car2 . ,cdr2))
-                     (== table `((,car1 . ,car2) . ,cdr3))
-                     (make-assoc-tableo cdr1 cdr2 cdr3)))))
-   '(run 5 (q) (same-lengtho '(abc def ghi) q)))
-
-
-#;'(prog ((r:make-assoc-tableo x:l1 x:l2 x:table
-                               (((x:l1 =? empty) ∧ ((x:l1 =? empty) ∧ (x:table =? empty)))
-                                ∨
-                                (∃ x:car1 x:cdr1 x:car2 x:cdr2 x:cdr3
-                                   ((x:l1 =? (x:car1 : x:cdr1))
-                                    ∧
-                                    ((x:l2 =? (x:car2 : x:cdr2))
-                                     ∧
-                                     ((x:table =? ((x:car1 : x:car2) : x:cdr3))
-                                      ∧
-                                      (r:make-assoc-tableo x:cdr1 x:cdr2 x:cdr3)))))))
-          (r:same-lengtho x:l1 x:l2
-                          (((x:l1 =? empty) ∧ (x:l1 =? empty))
-                           ∨
-                           (∃ x:car1 x:cdr1 x:car2 x:cdr2
-                              ((x:l1 =? (x:car1 : x:cdr1)) ∧ ((x:l2 =? (x:car2 : x:cdr2)) ∧ (r:same-lengtho x:cdr1 x:cdr2))))))
-          (r:assoco x:key x:table x:value
-                    (∃ x:car x:table-cdr
-                       ((x:table =? (x:car : x:table-cdr)) ∧ (((x:key : x:value) =? x:car) ∨ (r:assoco x:key x:table-cdr x:value))))))
-         ((∃ x:q (r:same-length (abc : (def : (ghi : empty))) x:q)) (state () 0)))
-
-#;(parse-prog
- '((defrel (appendo l s out)
-     (conde
-      [(== l '()) (== out s)]
-      [(fresh (a d res)
-              (== l `(,a . ,d))
-              (== out `(,a . ,res))
-              (appendo d s res))]))
-
-   (defrel (reverseo ls out)
-     (conde
-      [(== ls '()) (== out '())]
-      [(fresh (a d res)
-              (== ls `(,a . ,d))
-              (reverseo d res)
-              (appendo res `(,a) out))]))
-
-   (run* (q) (reverseo '(dog cat bear lion) q))))
-
-
-(module+ test
-  (require rackunit)
-
-  (define-values (model-prog html-prog)
-    (parse-prog '((run* (q) (fresh () (== 'dog1 'cat) (== 'bear1 lion) (== 'dog 'cat) (== 'bear 'lion))))))
-
-  (check-equal?
-   model-prog
-   '(((∃ (x:q)
-       (∃ ()
-          (((((sym "dog1") =? (sym "cat") "u5")
-             ∧ ((sym "bear1") =? x:lion "u6") "c4")
-            ∧ ((sym "dog") =? (sym "cat") "u7") "c3")
-           ∧ ((sym "bear") =? (sym "lion") "u8") "c2") "f1") "f0")
-      (state () 0 () "s"))
-     ()))
-
-  (check-equal?
-   html-prog
-   "\n\n[[f0]](run* (q) [[f1]](fresh ()\n  [[c2]]  [[c3]][[c4]][[u5]](== 'dog1 'cat)[[/u5]]\n  [[u6]](== 'bear1 lion)[[/u6]][[/c4]]\n  [[u7]](== 'dog 'cat)[[/u7]][[/c3]]\n  [[u8]](== 'bear 'lion)[[/u8]][[/c2]])[[/f1]])[[/f0]]"
-   )
-
-  )

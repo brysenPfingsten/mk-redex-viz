@@ -41,8 +41,10 @@ export function buildInitOptions(
   text,
   sourceMode = DEFAULT_SOURCE_MODE,
   compileProfile = DEFAULT_COMPILE_PROFILE,
-  model,
+  searchStrategy,
 ) {
   const payload = buildSourceOptions(text, sourceMode, compileProfile);
-  return model ? { ...payload, model } : payload;
+  return searchStrategy
+    ? { ...payload, searchStrategy }
+    : payload;
 }

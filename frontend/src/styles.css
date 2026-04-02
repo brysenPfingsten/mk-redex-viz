@@ -202,7 +202,7 @@
   /* ============================ */
   .code-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-sm);
     flex-wrap: wrap;
     box-sizing: border-box;
@@ -215,16 +215,107 @@
 
   .header-controls {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     gap: var(--space-sm);
     flex-wrap: wrap;
     flex: 1;
+  }
+
+  .control-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 12px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 0.625rem;
+    background: linear-gradient(180deg, var(--color-page-bg) 0%, var(--color-panel-bg) 100%);
+    box-shadow: var(--box-shadow);
+  }
+
+  .control-section-program {
+    flex: 1 1 18rem;
+  }
+
+  .control-section-compile {
+    flex: 2 1 28rem;
+  }
+
+  .control-section-search {
+    flex: 1 1 18rem;
+  }
+
+  .control-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text);
+    opacity: 0.8;
+  }
+
+  .control-section-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
   .select-group {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 12rem;
+  }
+
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1 1 11rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .radio-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .radio-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: var(--color-panel-bg);
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  }
+
+  .radio-option input {
+    margin: 0;
+    accent-color: var(--color-btn-bg);
+  }
+
+  .radio-option.checked {
+    border-color: var(--color-btn-bg);
+    background-color: color-mix(in srgb, var(--color-btn-bg) 14%, var(--color-page-bg));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-btn-bg) 35%, transparent);
+  }
+
+  .radio-option.disabled {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+    border-color: #ddd;
+    opacity: 0.7;
   }
 
   .select-label {
@@ -238,6 +329,7 @@
 
   .logo {
     height: 2.7rem;
+    margin-top: 6px;
   }
 
   .select {
@@ -249,8 +341,9 @@
     cursor: pointer;
     font-size: var(--font-size-base);
     transition: border-color 0.2s;
-    text-align: center;
+    text-align: left;
     color: var(--color-text);
+    min-width: 12rem;
   }
 
   .select:hover {
@@ -263,6 +356,14 @@
     cursor: not-allowed;
     border-color: #ddd;
     opacity: 0.7;
+  }
+
+  @media (max-width: 1100px) {
+    .control-section-program,
+    .control-section-compile,
+    .control-section-search {
+      flex-basis: 100%;
+    }
   }
   /* ============================= */
   /*   Editor & Overlay            */
@@ -284,7 +385,7 @@
   }
 
   .selected-tag-deco {
-    background-color: rgba(0,123,255,0.3);
+    background-color: rgba(180, 27, 89, 0.22);
   }
 
   /* ============================= */
@@ -303,7 +404,7 @@
   g.node circle.highlighted,
   g.node rect.highlighted,
   g.node polygon.highlighted {
-    stroke: rgb(0, 103, 138) !important;
+    stroke: rgb(180, 27, 89) !important;
     stroke-width: 8px   !important;
   }
 

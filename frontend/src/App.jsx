@@ -1,17 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Scrollbar } from 'react-scrollbars-custom';
-import CodeHeader      from './components/CodeHeader.jsx';
-import CodeEditor      from './components/CodeEditor';
-import Toolbar         from './components/Toolbar';
-import StepInfo        from './components/StepInfo';
-import TreeCanvas      from './components/TreeCanvas';
-import CustomAlert     from './components/CustomAlert';
-import useStepper      from './hooks/useStepper';
-import Resizable       from './components/Resizable';
+import CodeHeader from './components/CodeHeader.jsx';
+import CodeEditor from './components/CodeEditor';
+import Toolbar from './components/Toolbar';
+import StepInfo from './components/StepInfo';
+import TreeCanvas from './components/TreeCanvas';
+import CustomAlert from './components/CustomAlert';
+import useStepper from './hooks/useStepper';
+import Resizable from './components/Resizable';
 import Sidebar from './components/Sidebar';
-import { DEFAULT_MODEL_OPTIONS, MODEL_IDS } from './utils/model_ids.js';
-import { analysisStatusForModel, isStartBlockedByAnalysis } from './utils/compatibility.js';
 import { exampleById } from './utils/example_programs.js';
+import {
+  DEFAULT_SEARCH_STRATEGY,
+  HOIST_OPTIONS,
+  SCHEDULER_OPTIONS,
+} from './utils/search_strategy.js';
 import {
   buildSourceOptions,
   CONJ_ASSOC_OPTIONS,
@@ -21,87 +24,41 @@ import {
   DISJ_ASSOC_OPTIONS,
   SOURCE_MODE_OPTIONS,
 } from './utils/source_defaults.js';
-import './styles.css'
-
-const ANALYSIS_DEBOUNCE_MS = 450;
+import {
+  deriveToolbarState,
+  nextSelectedExampleId,
+} from './utils/app_state.js';
+import './styles.css';
 
 function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
   const [selectedExampleId, setSelectedExampleId] = useState('');
+  const [selectedExampleSource, setSelectedExampleSource] = useState('');
   const [sourceMode, setSourceMode] = useState(DEFAULT_SOURCE_MODE);
   const [compileProfile, setCompileProfile] = useState(DEFAULT_COMPILE_PROFILE);
-  const [model, setModel] = useState(MODEL_IDS.L4_RAIL_LAZY);
-  const [serverModelOptions, setServerModelOptions] = useState([]);
+  const [searchStrategy, setSearchStrategy] = useState(DEFAULT_SEARCH_STRATEGY);
   const [isFrozen, setFrozen] = useState(false);
+  const [isAtStart, setIsAtStart] = useState(true);
+  const [isAtEnd, setIsAtEnd] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const treeRef = useRef();
-  const scrollRef = useRef(null);
   const {
     tree, stepInfo,
     init, step, reset, back
   } = useStepper({
     onSuccess: () => { setGoalId(null); }
   });
-  const [disabled, setDisabled] = useState({
-    start: false,
-    reset: true,
-    back: true,
-    step: true,
-  });
   const [substitutionData, setSubstitutionData] = useState([]);
   const [trailData, setTrailData] = useState([]);
   const [goalId, setGoalId] = useState(null);
   const [stateId, setStateId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState("idle");
-  const [analysisResult, setAnalysisResult] = useState(null);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
-  
-  const [ darkMode, setDarkMode ] = useState(false);
-  const analysisCacheRef = useRef(new Map());
-  const analysisAbortRef = useRef(null);
-  const analysisTokenRef = useRef(0);
-  const programmaticCodeUpdateRef = useRef(false);
-
-  const analyzeSource = async (source, { signal } = {}) => {
-    const requestPayload = buildSourceOptions(source, sourceMode, compileProfile);
-    const cacheKey = JSON.stringify(requestPayload);
-    const cached = analysisCacheRef.current.get(cacheKey);
-    if (cached) return cached;
-
-    const response = await fetch('api/post/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json'},
-      body: JSON.stringify(requestPayload),
-      credentials: "include",
-      signal,
-    });
-    const text = await response.text();
-    let responsePayload;
-    try {
-      responsePayload = JSON.parse(text);
-    } catch (_) {
-      responsePayload = { validSyntax: false, error: "invalid analysis response" };
-    }
-
-    if (!response.ok) {
-      const failData = (responsePayload && typeof responsePayload === "object")
-        ? responsePayload
-        : { validSyntax: false, error: `Analyze failed (${response.status})` };
-      // Only cache deterministic syntax failures; avoid pinning transient backend errors.
-      if (response.status === 400 && failData.validSyntax === false) {
-        analysisCacheRef.current.set(cacheKey, failData);
-      }
-      return failData;
-    }
-
-    analysisCacheRef.current.set(cacheKey, responsePayload);
-    return responsePayload;
-  };
+  const [darkMode, setDarkMode] = useState(false);
 
   const convertExampleToMicro = async (sourceText, profile = compileProfile) => {
-    const response = await fetch('api/post/source-convert', {
+    const response = await fetch('/api/post/source-convert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -130,17 +87,9 @@ function App() {
   };
 
   const applyExampleSource = (nextCode, exampleId) => {
-    programmaticCodeUpdateRef.current = true;
     setSelectedExampleId(exampleId);
+    setSelectedExampleSource(nextCode);
     setCode(nextCode);
-  };
-
-  const applyAnalysisStatus = (analysis, modelId = model) => {
-    setAnalysisResult(analysis);
-    const nextStatus = analysisStatusForModel(analysis, modelId);
-    setAnalysisStatus(nextStatus);
-    const isCompatible = nextStatus === "ok";
-    return isCompatible;
   };
 
   const handleInit = async () => {
@@ -150,118 +99,56 @@ function App() {
       return;
     }
 
-    try {
-      const analysis = await analyzeSource(code);
-      const isCompatible = applyAnalysisStatus(analysis);
-      if (!analysis.validSyntax) {
-        setAlert({ isOpen: true, message: analysis.error || "Program has syntax errors." });
-        return;
-      }
-      if (!isCompatible) {
-        const reasons = (analysis.incompatReasonsByModel || {})[model] || [];
-        const details = reasons.length > 0 ? ` ${reasons.join("; ")}` : "";
-        setAlert({
-          isOpen: true,
-          message: `Program is incompatible with selected model.${details}`,
-        });
-        return;
-      }
-    } catch (err) {
-      setAlert({ isOpen: true, message: err?.message || "Unable to analyze program." });
-      return;
-    }
-
     originalCodeRef.current = code;
-    const [success, progOrError] = await init(code, sourceMode, compileProfile, model);
+    const [success, progOrError] = await init(code, sourceMode, compileProfile, searchStrategy);
     if (success) {
       setFrozen(true);
       setCode(progOrError);
-      setDisabled({start: true, reset: false, back: true, step: false});
+      setIsAtStart(true);
+      setIsAtEnd(false);
     } else {
       setAlert({ isOpen: true, message: progOrError });
     }
   };
-  
+
   const handleStep = async () => {
-    const [success, isDone] = await step();
-    if (isDone) { // no more reductions
-      setDisabled({start: true, reset: false, back: false, step: true});
-    } else if (success) { // success but more reductions
-      setDisabled(prev => ({...prev, back: false}));
+    const [success, stepDone, error] = await step();
+    if (!success) {
+      setAlert({ isOpen: true, message: error });
+      return;
     }
+    setIsAtStart(false);
+    setIsAtEnd(stepDone);
   };
 
   const handleBack = async () => {
-    const [_, isLast] = await back();
-    if (isLast) {  // TODO: Change this to isStart on both sides
-      setDisabled(prev => ({...prev, back: true}));
-    } else {
-      setDisabled(prev => ({...prev, step: false}));
+    const [success, atStart, error] = await back();
+    if (!success) {
+      setAlert({ isOpen: true, message: error });
+      return;
     }
-  }
+    setIsAtStart(atStart);
+    setIsAtEnd(false);
+  };
 
   const handleReset = async () => {
-    const success = await reset();  
-    if (success) {
-      programmaticCodeUpdateRef.current = true;
-      setCode(originalCodeRef.current);
-      setFrozen(false);
-      setDisabled({start: false, reset: true, back: true, step: true});
+    const [success, error] = await reset();
+    if (!success) {
+      setAlert({ isOpen: true, message: error });
+      return;
     }
-  }
-  
+    setCode(originalCodeRef.current);
+    setFrozen(false);
+    setIsAtStart(true);
+    setIsAtEnd(false);
+  };
+
   useEffect(() => {
     if (tree && treeRef.current) {
       treeRef.current.redraw(tree);
       treeRef.current.updateSidebar(stateId);
-      }
-  }, [tree]);
-
-  useEffect(() => {
-    if (isFrozen) return undefined;
-    if (isExampleLoading) {
-      setAnalysisStatus("analyzing");
-      return undefined;
     }
-    const trimmed = code.trim();
-    if (!trimmed) {
-      setAnalysisStatus("idle");
-      setAnalysisResult(null);
-      return undefined;
-    }
-
-    if (analysisAbortRef.current) {
-      analysisAbortRef.current.abort();
-    }
-
-    const controller = new AbortController();
-    analysisAbortRef.current = controller;
-    const token = analysisTokenRef.current + 1;
-    analysisTokenRef.current = token;
-
-    setAnalysisStatus("analyzing");
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        const analysis = await analyzeSource(code, { signal: controller.signal });
-        if (token !== analysisTokenRef.current) return;
-
-        applyAnalysisStatus(analysis);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        if (token !== analysisTokenRef.current) return;
-        applyAnalysisStatus({
-          validSyntax: false,
-          error: err?.message || "analysis failed",
-        });
-      }
-    }, ANALYSIS_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [code, model, sourceMode, compileProfile, isFrozen, isExampleLoading]);
+  }, [tree, stateId]);
 
   useEffect(() => {
     if (isFrozen || !selectedExampleId) {
@@ -280,11 +167,11 @@ function App() {
         );
         if (!active || nextCode == null) return;
         applyExampleSource(nextCode, selectedExampleId);
-      } catch (err) {
+      } catch (error) {
         if (!active) return;
         setAlert({
           isOpen: true,
-          message: err?.message || "Unable to load example.",
+          message: error?.message || "Unable to load example.",
         });
       } finally {
         if (active) {
@@ -297,68 +184,13 @@ function App() {
     return () => { active = false; };
   }, [selectedExampleId, sourceMode, compileProfile, isFrozen]);
 
-  useEffect(() => {
-    if (programmaticCodeUpdateRef.current) {
-      programmaticCodeUpdateRef.current = false;
-    }
-  }, [code]);
-
-  useEffect(() => {
-    let active = true;
-    const loadModels = async () => {
-      try {
-        const response = await fetch('api/get/models');
-        if (!response.ok) return;
-        const models = await response.json();
-        if (!Array.isArray(models) || models.length === 0) return;
-        const nextOptions = models
-          .filter((m) => m && m.id && m.label)
-          .map((m) => ({ value: m.id, label: m.label }));
-        if (nextOptions.length === 0) return;
-        if (!active) return;
-        setServerModelOptions(nextOptions);
-        setModel((currentModel) =>
-          nextOptions.some((opt) => opt.value === currentModel)
-            ? currentModel
-            : nextOptions[0].value
-        );
-      } catch (_) {
-        // Keep local fallback model options on fetch failure.
-      }
-    };
-    loadModels();
-    return () => { active = false; };
-  }, []);
-
-  const modelOptions = serverModelOptions.length > 0
-    ? serverModelOptions
-    : DEFAULT_MODEL_OPTIONS;
-  const compatibleModelIds = analysisResult?.compatibleModelIds || [];
-  const currentModelReasons = (analysisResult?.incompatReasonsByModel || {})[model] || [];
-  const firstCompatibleModel = compatibleModelIds[0] || null;
-
-  const compatWarning = (!isFrozen && analysisStatus === "incompatible")
-    ? {
-        message: "Current program is incompatible with the selected model.",
-        reasons: currentModelReasons,
-        canSwitchModel: Boolean(firstCompatibleModel),
-      }
-    : null;
-
-  const startBlockedByAnalysis = isStartBlockedByAnalysis({
+  const toolbarState = deriveToolbarState({
     isFrozen,
     code,
-    analysisStatus,
+    isExampleLoading,
+    isAtStart,
+    isAtEnd,
   });
-  const toolbarDisabled = {
-    ...disabled,
-    start: disabled.start || startBlockedByAnalysis,
-  };
-
-  const switchCompatibleModel = () => {
-    if (!firstCompatibleModel) return;
-    setModel(firstCompatibleModel);
-  };
 
   const handleSourceModeChange = (nextSourceMode) => {
     if (isFrozen) return;
@@ -370,27 +202,30 @@ function App() {
 
   const handleCompileProfileChange = (axis, value) => {
     if (isFrozen) return;
-    if (selectedExampleId && sourceMode === "micro") {
-      setIsExampleLoading(true);
-    }
     setCompileProfile((current) => ({ ...current, [axis]: value }));
   };
 
   const handleExampleChange = (exampleId) => {
     if (isFrozen) return;
     setIsExampleLoading(Boolean(exampleId));
+    if (!exampleId) {
+      setSelectedExampleSource('');
+    }
     setSelectedExampleId(exampleId);
   };
 
-  const handleModelChange = (nextModel) => {
+  const handleSearchStrategyChange = (axis, value) => {
     if (isFrozen) return;
-    setModel(nextModel);
+    setSearchStrategy((current) => ({ ...current, [axis]: value }));
   };
 
   const handleCodeChange = (nextCode) => {
-    if (!programmaticCodeUpdateRef.current) {
-      setSelectedExampleId("");
-    }
+    setSelectedExampleId((currentId) =>
+      nextSelectedExampleId({
+        selectedExampleId: currentId,
+        selectedExampleSource,
+        nextCode,
+      }));
     setCode(nextCode);
   };
 
@@ -410,38 +245,39 @@ function App() {
             disjAssocOptions={DISJ_ASSOC_OPTIONS}
             delayPlacementOptions={DELAY_PLACEMENT_OPTIONS}
             onCompileProfileChange={handleCompileProfileChange}
-            modelValue={model}
-            modelOptions={modelOptions}
-            onModelChange={handleModelChange}
+            searchStrategy={searchStrategy}
+            hoistOptions={HOIST_OPTIONS}
+            schedulerOptions={SCHEDULER_OPTIONS}
+            onSearchStrategyChange={handleSearchStrategyChange}
             isFrozen={isFrozen}
-            analysisStatus={analysisStatus}
-            compatWarning={compatWarning}
-            onSwitchCompatibleModel={switchCompatibleModel}
-           />
+          />
           <div className="editor-area">
-            <CodeEditor 
-              codeText={code} 
+            <CodeEditor
+              codeText={code}
               setCodeText={handleCodeChange}
-              isFrozen={isFrozen} 
+              isFrozen={isFrozen}
               isDark={darkMode}
               goalId={goalId}
               onTagClick={setGoalId}
             />
           </div>
-          <Toolbar 
+          <Toolbar
             onStart={handleInit}
             onStep={handleStep}
             onBack={handleBack}
             onReset={handleReset}
-            disabled={toolbarDisabled}
+            canStart={toolbarState.canStart}
+            canReset={toolbarState.canReset}
+            canBack={toolbarState.canBack}
+            canStep={toolbarState.canStep}
           />
         </div>
-        
+
         <div className="right-pane">
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
           <Scrollbar style={{ width: '100%', height: '100%' }}>
             <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
-              <TreeCanvas 
+              <TreeCanvas
                 ref={treeRef}
                 onNodeClick={({ substitutionData, trailData, gId, sId }) => {
                   setSubstitutionData(substitutionData);
@@ -451,16 +287,16 @@ function App() {
                 }}
                 selectedGoalId={goalId}
                 selectedStateId={stateId}
-                />
+              />
             </div>
           </Scrollbar>
         </div>
-      </Resizable>  
+      </Resizable>
       <Sidebar
-        substitutionData={substitutionData} 
-        trailData={trailData} 
+        substitutionData={substitutionData}
+        trailData={trailData}
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(o => !o)}
+        onToggle={() => setSidebarOpen((open) => !open)}
       />
       <CustomAlert
         isOpen={alert.isOpen}

@@ -2,8 +2,7 @@
 
 (require rackunit
          rackunit/text-ui
-         racket/match
-         "./helpers.rkt")
+         "../src/random-test-support.rkt")
 
 (provide HELPERS-TESTS)
 

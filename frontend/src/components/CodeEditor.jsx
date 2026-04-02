@@ -52,6 +52,7 @@ const CodeEditor = forwardRef(({
   const decorationIds = useRef([]);
   const segmentsRef = useRef([]);
   const isMounted = useRef(false);
+  const pendingProgrammaticValue = useRef(null);
 
   // Memoize parsed results
   const { plain, segments } = useMemo(() => 
@@ -76,6 +77,7 @@ const CodeEditor = forwardRef(({
     isMounted.current = true;
 
     // Set initial value
+    pendingProgrammaticValue.current = plain;
     editor.setValue(plain);
 
     editor.onMouseUp((e) => {
@@ -136,6 +138,7 @@ const CodeEditor = forwardRef(({
 
     // Update editor content when unfrozen
     if (!isFrozen && editor.getValue() !== plain) {
+      pendingProgrammaticValue.current = plain;
       editor.setValue(plain);
     }
 
@@ -169,7 +172,16 @@ const CodeEditor = forwardRef(({
         value={plain}
         beforeMount={handleEditorWillMount}
         onMount={handleEditorDidMount}
-        onChange={(value) => !isFrozen && setCodeText(value ?? '')}
+        onChange={(value) => {
+          const nextValue = value ?? '';
+          if (pendingProgrammaticValue.current === nextValue) {
+            pendingProgrammaticValue.current = null;
+            return;
+          }
+          if (!isFrozen) {
+            setCodeText(nextValue);
+          }
+        }}
         theme={isDark ? 'vs-dark' : 'vs-light'}
         options={{
           readOnly: isFrozen,

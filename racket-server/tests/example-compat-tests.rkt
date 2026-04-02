@@ -1,13 +1,12 @@
 #lang racket
 
-(require rackunit
+(require racket/runtime-path
+         rackunit
          rackunit/text-ui
          redex/reduction-semantics
-         racket/runtime-path
-         racket/match
-         "../src/transpiler.rkt"
+         "../src/search-lattice/languages/canonical-lang.rkt"
          "../src/sexpr-read.rkt"
-         "../src/extensions/l4-railroad-syntax.rkt")
+         "../src/transpiler.rkt")
 
 (provide EXAMPLE-COMPAT
          frontend-example-programs)
@@ -53,9 +52,6 @@
                      label)))
     (cons label maybe-src)))
 
-(define (parse-src src)
-  (parse-prog (read-all-sexprs (open-input-string src))))
-
 (define (parse-src/canonical src)
   (parse-prog/canonical (read-all-sexprs (open-input-string src))))
 
@@ -65,9 +61,9 @@
 (define (assert-example-compat! name src)
   (define-values (canonical html) (parse-src/canonical src))
   (check-true (string? html) (format "~a should produce html-guid source" name))
-  (check-true (redex-match? L4 config canonical)
-              (format "~a should lift into L4 config syntax" name))
-  (check-true (redex-match? L4 config canonical)
+  (check-true (redex-match? canonical-lang config canonical)
+              (format "~a should lift into canonical config syntax" name))
+  (check-true (redex-match? canonical-lang config canonical)
               (format "~a should satisfy canonical target predicate (~a)"
                       name
                       canonical-parser-target-id)))
@@ -90,8 +86,8 @@
                               #:source-mode "micro"))
       (check-true (string? html)
                   (format "~a rendered micro should produce html-guid source" label))
-      (check-true (redex-match? L4 config canonical)
-                  (format "~a rendered micro should lift into L4 config syntax" label)))))
+      (check-true (redex-match? canonical-lang config canonical)
+                  (format "~a rendered micro should lift into canonical config syntax" label)))))
 
 (module+ test
   (run-tests EXAMPLE-COMPAT))
