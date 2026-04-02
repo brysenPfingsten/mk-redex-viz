@@ -7,16 +7,18 @@
          overlap-kind
          overlap-event)
 
-(define (final-answer-stream? as)
-  (match as
-    ['(empty-stream) #t]
-    [`(⊤ ,_) #t]
-    [`((⊤ ,_) + ,rest) (final-answer-stream? rest)]
+(define (final-frontier? f)
+  (match f
+    ['(empty-tree) #t]
+    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
+    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
+    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
+    [`(Bounced + ,rest) (final-frontier? rest)]
     [_ #f]))
 
 (define (final-config? cfg)
   (match cfg
-    [`(,_gamma (empty-tree) ,as) (final-answer-stream? as)]
+    [`(,_gamma ,f) (final-frontier? f)]
     [_ #f]))
 
 (define (tagged-successor-name succ)

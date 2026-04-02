@@ -14,8 +14,8 @@
   (extend-reduction-relation
    search-base-fused-calls-red
    search-base-fused-calls-lang
-   [--> (Γ ((in-hole K ((delay s_1) <-+ s_2)) as_1))
-        (Γ ((in-hole K (delay (s_2 <-+ s_1))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K ((delay f_1) <-+ f_2)))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (delay (f_2 <-+ f_1))))))
         "search-flip-fused-calls/delay-swap-left"]))
 
 (define (step-once prog)

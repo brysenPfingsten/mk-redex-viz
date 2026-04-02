@@ -1,42 +1,74 @@
 #lang racket
 
-(require redex/reduction-semantics)
+(require redex/reduction-semantics
+         "./core-common.rkt")
 
-(provide define-search-cfg/one-stage
-         define-search-cfg/two-stage
-         define-calls-cfg/one-stage
-         define-calls-cfg/two-stage
+(provide define-search-frontier/one-stage
+         define-search-frontier/one-stage/no-collector
+         define-search-frontier/two-stage
+         define-search-frontier/three-stage
+         define-search-frontier/two-stage/no-collector
+         define-search-frontier/three-stage/no-collector
+         define-calls-frontier/one-stage
+         define-calls-frontier/two-stage
+         define-calls-frontier/three-stage
          define-lift-search-to-calls)
 
-(define-syntax-rule (define-search-cfg/one-stage cfg-name rel lang ctx)
-  (define cfg-name
+(define-syntax-rule (define-search-frontier/one-stage name rel lang ctx)
+  (define name
+    (union-reduction-relations
+     (context-closure
+      (context-closure rel lang ctx)
+      lang
+      Q)
+     (make-core-collector lang))))
+
+(define-syntax-rule (define-search-frontier/one-stage/no-collector name rel lang ctx)
+  (define name
     (context-closure
      (context-closure rel lang ctx)
      lang
-     (hole as))))
+     Q)))
 
-(define-syntax-rule (define-search-cfg/two-stage cfg-name rel lang ctx1 ctx2)
-  (define cfg-name
+(define-syntax-rule (define-search-frontier/two-stage name rel lang ctx1 ctx2)
+  (define name
+    (union-reduction-relations
+     (context-closure
+      (context-closure
+       (context-closure rel lang ctx1)
+       lang
+       ctx2)
+      lang
+      Q)
+     (make-core-collector lang))))
+
+(define-syntax-rule (define-search-frontier/three-stage name rel lang ctx1 ctx2 ctx3)
+  (define name
+    (union-reduction-relations
+     (context-closure
+      (context-closure
+       (context-closure
+        (context-closure rel lang ctx1)
+        lang
+        ctx2)
+       lang
+       ctx3)
+      lang
+      Q)
+     (make-core-collector lang))))
+
+(define-syntax-rule (define-search-frontier/two-stage/no-collector name rel lang ctx1 ctx2)
+  (define name
     (context-closure
      (context-closure
       (context-closure rel lang ctx1)
       lang
       ctx2)
      lang
-     (hole as))))
+     Q)))
 
-(define-syntax-rule (define-calls-cfg/one-stage cfg-name rel lang ctx)
-  (define cfg-name
-    (context-closure
-     (context-closure
-      (context-closure rel lang ctx)
-      lang
-      (hole as))
-     lang
-     (Γ hole))))
-
-(define-syntax-rule (define-calls-cfg/two-stage cfg-name rel lang ctx1 ctx2)
-  (define cfg-name
+(define-syntax-rule (define-search-frontier/three-stage/no-collector name rel lang ctx1 ctx2 ctx3)
+  (define name
     (context-closure
      (context-closure
       (context-closure
@@ -44,7 +76,46 @@
        lang
        ctx2)
       lang
-      (hole as))
+      ctx3)
+     lang
+     Q)))
+
+(define-syntax-rule (define-calls-frontier/one-stage name rel lang ctx)
+  (define name
+    (context-closure
+     (context-closure
+      (context-closure rel lang ctx)
+      lang
+      Q)
+     lang
+     (Γ hole))))
+
+(define-syntax-rule (define-calls-frontier/two-stage name rel lang ctx1 ctx2)
+  (define name
+    (context-closure
+     (context-closure
+      (context-closure
+       (context-closure rel lang ctx1)
+       lang
+       ctx2)
+      lang
+      Q)
+     lang
+     (Γ hole))))
+
+(define-syntax-rule (define-calls-frontier/three-stage name rel lang ctx1 ctx2 ctx3)
+  (define name
+    (context-closure
+     (context-closure
+      (context-closure
+       (context-closure
+        (context-closure rel lang ctx1)
+        lang
+        ctx2)
+       lang
+       ctx3)
+      lang
+      Q)
      lang
      (Γ hole))))
 

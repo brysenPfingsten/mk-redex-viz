@@ -13,4 +13,12 @@
   disj-fused-lang)
 
 (define-extended-language search-base-fused-calls-lang
-  search-base-fused-calls/join)
+  search-base-fused-calls/join
+  [K ::= hole
+        (K × g c)]
+  [KCorePath ::= hole
+                 (Freshened c tag KCorePath)
+                 (KCorePath <-+ f)]
+  [KScopePath ::= hole
+                  (Freshened c tag KScopePath)
+                  (KScopePath <-+ f)])

@@ -137,7 +137,7 @@ function drawFailNode(group, _)     { return drawCircle(group, "#ffdddd", "×");
 function drawAnswerNode(group, _)   { return drawCircle(group, "green", "Answer", undefined, "10px") }
 function drawEmptyNode(group, _)    { return drawCircle(group, "white") }
 
-function drawTextNode(group, textContent, padding = 10, outline="") {
+function drawTextNode(group, textContent, padding = 10, fill = "lightgray") {
     const textElement = group.append("text")
         .text(textContent)
         .attr("text-anchor", "middle")
@@ -151,7 +151,7 @@ function drawTextNode(group, textContent, padding = 10, outline="") {
         .attr("y", -15)
         .attr("width", textWidth + 2 * padding)
         .attr("height", 30) 
-        .style("fill", "lightgray")
+        .style("fill", fill)
 
     textElement.raise();
     return rect;
@@ -170,15 +170,48 @@ function drawDisequalityNode(group, data) {
 function drawFreshNode(group, data) {
     const varsText = data.vars ? data.vars.map(t => t.var).join(' ') : '';
     const textContent = `(fresh (${varsText}) ...)`;
-    return drawTextNode(group, textContent);
+    return drawTextNode(group, textContent, 10, "#f2f2f2");
 }
 
 function drawRelCallNode(group, data) {
-    const rel = data?.rel || "call";
-    const args = Array.isArray(data?.args) ? data.args : [];
-    const argsText = args.map(t => (t && t.var) ? t.var : termToString(t)).join(' ');
-    const textContent = `(${rel}${argsText ? ` ${argsText}` : ""})`;
-    return drawTextNode(group, textContent);
+  const rel = data?.rel || "call";
+  const args = Array.isArray(data?.args) ? data.args : [];
+  const argsText = args.map(t => (t && t.var) ? t.var : termToString(t)).join(' ');
+  const textContent = `(${rel}${argsText ? ` ${argsText}` : ""})`;
+  return drawTextNode(group, textContent);
+}
+
+function freshenedText(data) {
+    const vars = Array.isArray(data?.vars) ? data.vars : [];
+    return vars.map(v => termToString(v)).join(' ');
+}
+
+function drawAnswerFreshenedNode(group, data) {
+    const varsText = freshenedText(data);
+    const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
+    return drawTextNode(group, textContent, 12, "#d9ead3");
+}
+
+function drawStreamFreshenedNode(group, data) {
+    const varsText = freshenedText(data);
+    const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
+    return drawTextNode(group, textContent, 12, "#d9e2f3");
+}
+
+function drawFragmentFreshenedNode(group, data) {
+    const varsText = freshenedText(data);
+    const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
+    return drawTextNode(group, textContent, 12, "#fff2cc");
+}
+
+function drawEmitNode(group) {
+    return group.append("circle")
+        .attr("r", 4)
+        .attr("fill", "#666");
+}
+
+function drawBouncedNode(group) {
+    return drawCircle(group, "#fff2cc", "Bounce", "black", "10px");
 }
 
 
@@ -224,12 +257,19 @@ const nodeDrawFunctions = {
     "Delay": drawDelayNode,
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,
+    "Emit": drawEmitNode,
+    "Answer-Freshened": drawAnswerFreshenedNode,
+    "Stream-Freshened": drawStreamFreshenedNode,
+    "Fragment-Freshened": drawFragmentFreshenedNode,
+    "Bounced": drawBouncedNode,
     "Rel-Call": drawRelCallNode,
     "Goal-Delay": drawGoalDelayNode,
     "Goal-Conj": drawGoalConjNode,
     "Goal-Disj": drawGoalDisjNode,
     "Empty": drawEmptyNode
 };
+
+export const DRAWABLE_NODE_NAMES = Object.freeze(Object.keys(nodeDrawFunctions));
 
 
 export function drawTree(nodeGroups) {
@@ -244,13 +284,16 @@ export function drawTree(nodeGroups) {
             const isPartial = data.partial ? true : false;
             const hasAnswer = data.hasAnswer ? true : false;
             applyStroke(shape, hasSub, isPartial, hasAnswer);
+        } else {
+            console.error("Unknown tree node", data);
+            drawTextNode(group, `Unknown: ${data?.name ?? "?"}`, 10);
         }
     });
 }
 
 
-export function drawNodes(svg, nodes) {
-    const nodeGroups = svg.selectAll(".node")
+export function drawNodes(container, nodes) {
+    const nodeGroups = container.selectAll(".node")
     .data(nodes)
     .join("g")
     .attr("class", "node")
@@ -260,12 +303,12 @@ export function drawNodes(svg, nodes) {
 }
 
 
-export function drawLinks(svg, links) {
-    svg.selectAll(".link")
+export function drawLinks(container, links) {
+    container.selectAll(".link")
     .data(links)
     .join("path")
     .attr("class", "link")
     .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y))
-    .style("stroke", d => (d.target.data.color ? d.target.data.color : "#ccc"))
+    .style("stroke", d => (d.target.data.edgeColor ?? d.target.data.color ?? "#ccc"))
     .style("stroke-width", 4);
 }

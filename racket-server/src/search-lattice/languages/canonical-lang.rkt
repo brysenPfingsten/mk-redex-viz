@@ -1,20 +1,20 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "./calls-lang.rkt"
-         "./disj-lang.rkt")
+         "./canonical-core-lang.rkt")
 
 (provide canonical-lang)
 
 (check-redundancy #t)
 
-(define-union-language canonical/join
-  calls-lang
-  disj-lang)
-
-(define-extended-language canonical-lang canonical/join
-  [config (Γ s as)]
-  [end-config (Γ (empty-tree) as)]
+(define-extended-language canonical-lang canonical-core-lang
+  [g ....
+     (g ∨ g tag)
+     (suspend g tag)
+     (r t ... tag)]
+  [w ....
+     (delay w)
+     (w <-+ w)]
 
   #:binding-forms
   (config #:refers-to (shadow r ...)

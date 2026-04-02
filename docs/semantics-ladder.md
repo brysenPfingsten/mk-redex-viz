@@ -1,40 +1,12 @@
 # Semantics Organization
 
-This repo now has two semantic views living side by side:
+This repo now has one active semantics stack:
 
-- the legacy/public `L0 -> L4` ladder under `racket-server/src/languages`,
-  `racket-server/src/wf`, and `racket-server/src/reduction-relations`
-- the internal feature-based search lattice under
-  `racket-server/src/search-lattice`
+- the feature-based search lattice under `racket-server/src/search-lattice`
 
-The app/API boundary now runs through the internal search lattice.
+The app/API boundary runs through that lattice directly.
 
-## Public Ladder
-
-The canonical parser target is still the legacy flat `L4/config` shape.
-
-```mermaid
-flowchart TD
-  L0["L0"]
-  L1["L1 calls + delay"]
-  L2["L2 left disjunction"]
-  L3["L3 base"]
-  L4["L4 railroad"]
-
-  L0 --> L1
-  L0 --> L2
-  L1 --> L3
-  L2 --> L3
-  L3 --> L4
-```
-
-This ladder remains useful for:
-
-- canonical parsing and transpilation
-- legacy/public reduction relations
-- legacy/public well-formedness checks
-
-## Internal Search Lattice
+## Search Lattice
 
 The internal stepper family is organized by features instead of numbered levels:
 
@@ -113,11 +85,10 @@ The GUI/API boundary now uses structured strategy selection:
 
 The app flow is:
 
-1. parse/transpile surface input to canonical flat `L4/config`
+1. parse/transpile surface input to canonical `canonical/config`
 2. validate that canonical target
-3. adapt the flat config to the internal `+calls` search-lattice shape
-4. run relation-aware internal `wf`
-5. step using the reducer selected by `searchStrategy`
+3. run relation-aware internal `wf`
+4. step using the reducer selected by `searchStrategy`
 
 The app/runtime seam lives in:
 

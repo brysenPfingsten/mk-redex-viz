@@ -2,12 +2,15 @@
 
 (require rackunit
          rackunit/text-ui
+         json
          redex/reduction-semantics
          (prefix-in rt: "../src/random-test-support.rkt")
          (prefix-in gk: "./generator-kernel.rkt")
+         "../src/canonical-json.rkt"
          "../src/search-lattice/languages/core-lang.rkt"
          "../src/search-lattice/wf/core-wf.rkt"
-         "../src/search-lattice/reduction-relations/core-red.rkt")
+         "../src/search-lattice/reduction-relations/core-red.rkt"
+         "./frontier-observable-support.rkt")
 
 ;; Randomized test tuning constants.
 ;; Edit these values directly when you want different pressure/coverage.
@@ -52,8 +55,19 @@
 
 (define PROPERTY-RNG (rt:make-seeded-rng PROPERTY-SEED))
 
+(define (final-frontier? f)
+  (match f
+    ['(empty-tree) #t]
+    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
+    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
+    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
+    [`(Bounced + ,rest) (final-frontier? rest)]
+    [_ #f]))
+
 (define (final-config? cfg)
-  (redex-match? core-lang end-cfg cfg))
+  (match cfg
+    [`(,_gamma ,f) (final-frontier? f)]
+    [_ (final-frontier? cfg)]))
 
 (define (wf-config-term? cfg)
   (judgment-holds (wf-cfg/core? ,cfg)))
@@ -80,6 +94,70 @@
        (for/and ([cfg^ (in-list (apply-reduction-relation core-red cfg))])
          (core-shape-term? cfg^))))
 
+(define SOURCE-TRACE-CAP 64)
+
+(define (trace-exact-scope? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (config-exact-scope? cfg)) #f]
+    [else
+     (match (apply-reduction-relation/tag-with-names core-red cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+       (trace-exact-scope? cfg^ (sub1 remaining))]
+       [_ #f])]))
+
+(define (trace-c-scope-agreement? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (config-c-scope-agreement? cfg)) #f]
+    [else
+     (match (apply-reduction-relation/tag-with-names core-red cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-c-scope-agreement? cfg^ (sub1 remaining))]
+       [_ #f])]))
+
+(define (count-step-name steps expected [count 0])
+  (match steps
+    ['() count]
+    [(cons step-name rest)
+     (count-step-name rest
+                      expected
+                      (if (or (string=? step-name expected)
+                              (and (string=? expected "core/fresh-substitute")
+                                   (string-prefix? "core/fresh-substitute"
+                                                   step-name)))
+                          (add1 count)
+                          count))]))
+
+(define (freshened-accounting? cfg)
+  (define-values (steps final-cfg status)
+    (trace-deterministic core-red cfg))
+  (and (eq? status 'done)
+       (config-c-scope-agreement? final-cfg)
+       (config-exact-scope? final-cfg)
+       (<= (count-step-name steps "core/fresh-substitute")
+           (count-freshened final-cfg))))
+
+(define (cfg->visible-json cfg)
+  (string->jsexpr
+   (to-json/canonical cfg (num-query-vars/canonical cfg))))
+
+(define (visible-json-wf/cfg? cfg)
+  (visible-json-wf? (cfg->visible-json cfg)))
+
+(define (trace-visible-json-wf/cfg? cfg [remaining SOURCE-TRACE-CAP])
+  (cond
+    [(negative? remaining) #f]
+    [(not (visible-json-wf/cfg? cfg)) #f]
+    [else
+     (match (apply-reduction-relation/tag-with-names core-red cfg)
+       ['() #t]
+       [(list (list _ cfg^))
+        (trace-visible-json-wf/cfg? cfg^ (sub1 remaining))]
+       [_ #f])]))
+
 ;; Pool sizes bound generated test-data diversity only; they do not bound the
 ;; semantic logic-variable/name space of the language.
 (define U-POOL
@@ -88,12 +166,22 @@
 (define X-POOL
   (gk:make-x-pool PROPERTY-X-POOL-SIZE))
 
-(define (extend-c c max-extra)
-  (when (> (length c) PROPERTY-C-MAX)
-    (error 'extend-c
-           (format "incoming c is too large: |c|=~a, PROPERTY-C-MAX=~a"
-                   (length c) PROPERTY-C-MAX)))
-  (gk:extend-c/rng PROPERTY-RNG c U-POOL PROPERTY-C-MAX max-extra))
+(define (fresh-scope-extension c)
+  (define unused
+    (filter (lambda (u) (not (member u c))) U-POOL))
+  (define room
+    (min PROPERTY-C-EXTRA-MAX
+         (- PROPERTY-C-MAX (length c))
+         (length unused)))
+  (cond
+    [(zero? room)
+     (values '() c)]
+    [else
+     (define intro
+       (rt:random-distinct/rng PROPERTY-RNG
+                               unused
+                               (add1 (rt:rng-random PROPERTY-RNG room))))
+     (values intro (append intro c))]))
 
 (define (make-label prefix)
   (gk:make-label/rng PROPERTY-RNG prefix))
@@ -142,33 +230,53 @@
 (define (gen-state c)
   `(state () () ,c () ,(make-label "st")))
 
+(define (generate-source-config)
+  `(,(gen-goal '() '() (max-depth))
+    ,(gen-state '())))
+
 (define (max-depth)
   PROPERTY-MAX-DEPTH)
 
+(define (gen-live-tree c depth)
+  (define options
+    (append '(goal-state)
+            (if (zero? depth) '() '(conj-tree freshened-tree))))
+  (case (pick-one options)
+    [(goal-state)
+     `(,(gen-goal '() c depth)
+       ,(gen-state c))]
+    [(conj-tree)
+     `(,(gen-tree c (sub1 depth))
+       ×
+       ,(gen-goal '() c (sub1 depth))
+       ,c)]
+    [(freshened-tree)
+     (define-values (intro c^)
+       (fresh-scope-extension c))
+     (if (null? intro)
+         (gen-live-tree c (sub1 depth))
+         `(Freshened ,intro ,(make-label "fresh")
+                     ,(gen-live-tree c^ (sub1 depth))))]))
+
 (define (gen-tree c depth)
   (define options
-    (append '(empty answer goal-state)
-            (if (zero? depth) '() '(conj-tree))))
+    (append '(empty goal-state)
+            (if (zero? depth) '() '(conj-tree freshened-tree))))
   (case (pick-one options)
     [(empty) '(empty-tree)]
-    [(answer)
-     (define c^ (extend-c c PROPERTY-C-EXTRA-MAX))
-     `(⊤ ,(gen-state c^))]
-    [(goal-state)
-     (define c^ (extend-c c PROPERTY-C-EXTRA-MAX))
-     `(,(gen-goal '() c^ depth)
-       ,(gen-state c^))]
-    [(conj-tree)
-     (define c^ (extend-c c PROPERTY-C-EXTRA-MAX))
-     `(,(gen-tree c^ (sub1 depth))
-       ×
-       ,(gen-goal '() c^ (sub1 depth))
-       ,c^)]))
+    [(goal-state) (gen-live-tree c depth)]
+    [(conj-tree) (gen-live-tree c depth)]
+    [(freshened-tree)
+     (define-values (intro c^)
+       (fresh-scope-extension c))
+     (if (null? intro)
+         (gen-live-tree c depth)
+         `(Freshened ,intro ,(make-label "fresh")
+                     ,(gen-live-tree c^ (sub1 depth))))]))
 
 (define (generate-wf-config/constructive)
   (define cfg
-    `(,(gen-tree '() (max-depth))
-      (empty-stream)))
+    (gen-tree '() (max-depth)))
   (unless (wf-config-term? cfg)
     (error 'generate-wf-config/constructive
            (format "constructed non-wf config: ~s" cfg)))
@@ -191,6 +299,8 @@
 (define (tree-coverage s)
   (match s
     [`(empty-tree) (values #f #f #f 0)]
+    [`(Freshened ,_ ,_ ,s-inner)
+     (tree-coverage s-inner)]
     [`(⊤ ,st) (define csz (state-c-size st))
               (values (> csz 0) #f #f csz)]
     [`(,g ,st) (define csz (state-c-size st))
@@ -206,50 +316,15 @@
              (max cmax1 csz))]
     [_ (values #f #f #f 0)]))
 
-(define (answer-stream-coverage as)
-  (match as
-    [`(empty-stream)
-     (values #f 0)]
-    [`(⊤ ,st)
-     (define csz (state-c-size st))
-     (values (> csz 0) csz)]
-    [`((⊤ ,st) + ,as2)
-     (define csz (state-c-size st))
-     (define-values (nonempty?2 cmax2) (answer-stream-coverage as2))
-     (values (or (> csz 0) nonempty?2)
-             (max csz cmax2))]
-    [_ (values #f 0)]))
-
 (define (config-coverage cfg)
   (match cfg
-    [`(,Gamma ,s_work ,as)
-     (define-values (has-exists? has-conj?)
-       (for/fold ([has-exists? #f]
-                  [has-conj? #f])
-                 ([rel (in-list Gamma)])
-         (match rel
-           [`(,_ ,_ ,g)
-            (define-values (hex hconj) (goal-flags g))
-            (values (or has-exists? hex)
-                    (or has-conj? hconj))]
-           [_ (values has-exists? has-conj?)])))
+    [s-work
      (define-values (tree-nonempty tree-exists tree-conj tree-cmax)
-       (tree-coverage s_work))
-     (define-values (stream-nonempty stream-cmax)
-       (answer-stream-coverage as))
-     (values (or tree-nonempty stream-nonempty)
-             (or has-exists? tree-exists)
-             (or has-conj? tree-conj)
-             (max tree-cmax stream-cmax))]
-    [`(,s_work ,as)
-     (define-values (tree-nonempty tree-exists tree-conj tree-cmax)
-       (tree-coverage s_work))
-     (define-values (stream-nonempty stream-cmax)
-       (answer-stream-coverage as))
-     (values (or tree-nonempty stream-nonempty)
+       (tree-coverage s-work))
+     (values tree-nonempty
              tree-exists
              tree-conj
-             (max tree-cmax stream-cmax))]
+             tree-cmax)]
     [_ (values #f #f #f 0)]))
 
 (define (check-wf-guarded-property label pred)
@@ -322,6 +397,61 @@
                         label
                         (reverse fail-samples))))
 
+(define (check-source-guarded-property label pred)
+  (define-values (source-hits
+                  fail-count
+                  exists-node-hits
+                  conj-node-hits
+                  fail-samples)
+    (for/fold ([source-hits 0]
+               [fail-count 0]
+               [exists-node-hits 0]
+               [conj-node-hits 0]
+               [fail-samples '()])
+              ([_ (in-range PROPERTY-ATTEMPTS)])
+      (define cfg (generate-source-config))
+      (define-values (_nonempty-c? has-exists? has-conj? _cmax)
+        (config-coverage cfg))
+      (define ok?
+        (and (wf-config-term? cfg)
+             (config-exact-scope? cfg)
+             (pred cfg)))
+      (values (add1 source-hits)
+              (if ok? fail-count (add1 fail-count))
+              (if has-exists? (add1 exists-node-hits) exists-node-hits)
+              (if has-conj? (add1 conj-node-hits) conj-node-hits)
+              (cond
+                [(or ok? (>= (length fail-samples) 3))
+                 fail-samples]
+                [else
+                 (cons cfg fail-samples)]))))
+
+  (displayln
+   (format "[property-core] ~a attempts=~a source-hits=~a exists=~a conj=~a seed=~a"
+           label
+           PROPERTY-ATTEMPTS
+           source-hits
+           exists-node-hits
+           conj-node-hits
+           PROPERTY-SEED))
+
+  (check-equal? source-hits
+                PROPERTY-ATTEMPTS
+                (format "~a: source generator violated contract." label))
+
+  (check-true (>= exists-node-hits PROPERTY-MIN-EXISTS-HITS)
+              (format "~a: insufficient exists-node coverage (~a < ~a)."
+                      label exists-node-hits PROPERTY-MIN-EXISTS-HITS))
+  (check-true (>= conj-node-hits PROPERTY-MIN-CONJ-HITS)
+              (format "~a: insufficient conjunction-node coverage (~a < ~a)."
+                      label conj-node-hits PROPERTY-MIN-CONJ-HITS))
+
+  (check-equal? fail-count
+                0
+                (format "~a: counterexamples (up to 3): ~s"
+                        label
+                        (reverse fail-samples))))
+
 (define-test-suite CORE-PROPERTIES
   (test-case "WF-guarded unique decomposition"
     (check-wf-guarded-property "unique-decomposition" unique-decomposition?))
@@ -330,7 +460,21 @@
   (test-case "WF-guarded one-step preservation"
     (check-wf-guarded-property "wf-preserved" wf-preserved?))
   (test-case "WF-guarded core-shape closure"
-    (check-wf-guarded-property "core-shape-preserved" core-shape-preserved?)))
+    (check-wf-guarded-property "core-shape-preserved" core-shape-preserved?))
+  (test-case "Source-guarded exact Freshened scoping"
+    (check-source-guarded-property "exact-scope" config-exact-scope?))
+  (test-case "Source-guarded exact c/scope agreement"
+    (check-source-guarded-property "c-scope-agreement" config-c-scope-agreement?))
+  (test-case "Source-guarded exact c/scope agreement through trace"
+    (check-source-guarded-property "trace-c-scope-agreement" trace-c-scope-agreement?))
+  (test-case "Source-guarded exact Freshened scoping through trace"
+    (check-source-guarded-property "trace-exact-scope" trace-exact-scope?))
+  (test-case "WF-guarded visible AST shape"
+    (check-wf-guarded-property "visible-json-wf" visible-json-wf/cfg?))
+  (test-case "Source-guarded visible AST shape through trace"
+    (check-source-guarded-property "trace-visible-json-wf" trace-visible-json-wf/cfg?))
+  (test-case "Source-guarded Freshened accounting"
+    (check-source-guarded-property "freshened-accounting" freshened-accounting?)))
 
 (define/provide-test-suite PROPERTY-CORE
   #:before

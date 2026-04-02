@@ -1,7 +1,6 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "./search-lattice/canonical-adapter.rkt"
          (prefix-in lang:
                     "./search-lattice/languages/all.rkt")
          (rename-in "./search-lattice/reduction-relations/rail-fused-calls-red.rkt"
@@ -23,8 +22,6 @@
 (provide (struct-out strategy-spec)
          all-strategy-specs
          lookup-strategy-spec
-         canonical-flat->calls-config
-         calls-config->canonical-flat
          lookup-search-step-once
          search-config-in-domain?
          search-config-well-formed?
@@ -97,37 +94,25 @@
                      normalized))))
 
 (define (lookup-search-step-once strategy)
-  (match-define (strategy-spec normalized step-internal _ _) (lookup-strategy-spec strategy))
-  (lambda (cfg)
-    (define next* (step-internal (canonical-flat->calls-config cfg)))
-    (match next*
-      ['() '()]
-      [(list (list name cfg^))
-       (list (list name (calls-config->canonical-flat cfg^)))]
-      [_ (error 'lookup-search-step-once
-                "unexpected successor set for ~e under ~e: ~e"
-                cfg
-                normalized
-                next*)])))
+  (match-define (strategy-spec _ step-once _ _) (lookup-strategy-spec strategy))
+  step-once)
 
 (define (search-config-in-domain? strategy cfg)
   ((strategy-spec-in-domain? (lookup-strategy-spec strategy))
-   (canonical-flat->calls-config cfg)))
+   cfg))
 
 (define (search-config-well-formed? strategy cfg)
   ((strategy-spec-well-formed? (lookup-strategy-spec strategy))
-   (canonical-flat->calls-config cfg)))
+   cfg))
 
 (define (check-search-config strategy cfg)
   (match-define (strategy-spec normalized _ in-domain? well-formed?)
     (lookup-strategy-spec strategy))
-  (unless (in-domain?
-           (canonical-flat->calls-config cfg))
+  (unless (in-domain? cfg)
     (error 'check-search-config
            "program is outside the internal search target for strategy ~e"
            (search-strategy->jsexpr normalized)))
-  (unless (well-formed?
-           (canonical-flat->calls-config cfg))
+  (unless (well-formed? cfg)
     (error 'check-search-config
            "program failed internal search wf check for strategy ~e"
            (search-strategy->jsexpr normalized))))

@@ -5,8 +5,7 @@
          "./core-wf.rkt")
 
 (provide wf-goal/disj?
-         wf-tree/disj?
-         wf-answer-stream/disj?
+         wf-frontier/disj?
          wf-cfg/disj?)
 
 (check-redundancy #t)
@@ -43,54 +42,49 @@
 
 (define-judgment-form
   disj-seq-lang
-  #:contract (wf-tree/disj? s c)
-  #:mode (wf-tree/disj? I I)
-  [------------------- "empty tree is wf/disj"
-   (wf-tree/disj? (empty-tree) c)]
-  [(lvars-subset? c c_i)
+  #:contract (wf-frontier/disj? cfg c)
+  #:mode (wf-frontier/disj? I I)
+  [------------------- "empty frontier residual is wf/disj"
+   (wf-frontier/disj? (empty-tree) c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "single answer/state wf/disj"
-   (wf-tree/disj? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
+   ------------------- "raw answer/state wf/disj"
+   (wf-frontier/disj? (⊤ (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
+   (wf-frontier/disj? cfg_tail c)
+   ------------------- "observable answer prefix wf/disj"
+   (wf-frontier/disj? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) c)]
+  [(wf-frontier/disj? cfg_tail c)
+   ------------------- "bounced prefix wf/disj"
+   (wf-frontier/disj? (Bounced + cfg_tail) c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-frontier/disj? cfg_tail c_2)
+   ------------------- "freshened scope wf/disj"
+   (wf-frontier/disj? (Freshened c_1 tag_1 cfg_tail) c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/disj? g () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "goal/state wf/disj"
-   (wf-tree/disj? (g (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/disj? s c_i)
+   (wf-frontier/disj? (g (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-frontier/disj? f c_i)
    (wf-goal/disj? g () c_i)
    ------------------- "conj wf/disj"
-   (wf-tree/disj? (s × g c_i) c)]
-  [(wf-tree/disj? s_1 c)
-   (wf-tree/disj? s_2 c)
+   (wf-frontier/disj? (f × g c_i) c)]
+  [(wf-frontier/disj? f_1 c)
+   (wf-frontier/disj? f_2 c)
    ------------------- "left disj wf/disj"
-   (wf-tree/disj? (s_1 <-+ s_2) c)])
-
-(define-judgment-form
-  disj-seq-lang
-  #:contract (wf-answer-stream/disj? as c)
-  #:mode (wf-answer-stream/disj? I I)
-  [------------------- "empty answer stream wf/disj"
-   (wf-answer-stream/disj? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/disj"
-   (wf-answer-stream/disj? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/disj? as_tail c)
-   ------------------- "answer stream wf/disj"
-   (wf-answer-stream/disj? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   (wf-frontier/disj? (f_1 <-+ f_2) c)])
 
 (define-judgment-form
   disj-seq-lang
   #:contract (wf-cfg/disj? cfg)
   #:mode (wf-cfg/disj? I)
-  [(wf-tree/disj? s ())
-   (wf-answer-stream/disj? as ())
+  [(wf-frontier/disj? cfg ())
    ----------------------- "cfg-wf/disj"
-   (wf-cfg/disj? (s as))])
+   (wf-cfg/disj? cfg)])

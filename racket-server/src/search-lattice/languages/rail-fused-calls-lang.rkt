@@ -13,4 +13,14 @@
   rail-fused-lang)
 
 (define-extended-language rail-fused-calls-lang
-  rail-fused-calls/join)
+  rail-fused-calls/join
+  [K ::= hole
+        (K × g c)]
+  [KCorePath ::= hole
+                 (Freshened c tag KCorePath)
+                 (KCorePath <-+ f)
+                 (f +-> KCorePath)]
+  [KScopePath ::= hole
+                  (Freshened c tag KScopePath)
+                  (KScopePath <-+ f)
+                  (f +-> KScopePath)])

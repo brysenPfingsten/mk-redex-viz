@@ -13,4 +13,12 @@
   disj-seq-lang)
 
 (define-extended-language search-base-seq-calls-lang
-  search-base-seq-calls/join)
+  search-base-seq-calls/join
+  [K ::= hole
+        (K × g c)]
+  [KCorePath ::= hole
+                 (Freshened c tag KCorePath)
+                 (KCorePath <-+ f)]
+  [KScopePath ::= hole
+                  (Freshened c tag KScopePath)
+                  (KScopePath <-+ f)])

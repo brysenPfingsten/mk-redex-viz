@@ -1,46 +1,9 @@
 import React, { forwardRef, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { conf, language } from '../utils/minikanren-language';
+import { parseTaggedText } from '../utils/tagged_source.js';
+import { selectedSourceSegments } from '../utils/source_mapping.js';
 import '../styles.css';
-
-function parseTaggedText(raw) {
-  const segments = [];
-  let plain = "";
-  let lastIndex = 0;
-  const stack = [];
-
-  const markerRE = /\[\[\/?([A-Za-z0-9]+)\]\]/g;
-  let m;
-  while ((m = markerRE.exec(raw))) {
-    const full  = m[0];
-    const id    = m[1];
-    const close = full.startsWith("[[/");
-    const idx   = m.index;
-
-    // 1) copy everything up to this marker into "plain" code
-    plain += raw.slice(lastIndex, idx);
-
-    if (!close) {
-      // 2) opening tag: push its start position
-      stack.push({ id, start: plain.length });
-    } else {
-      // 3) closing tag: pop the matching opener
-      for (let i = stack.length - 1; i >= 0; --i) {
-        if (stack[i].id === id) {
-          const { start } = stack[i];
-          stack.splice(i, 1);
-          // record one segment from opener to current plain‐text length
-          segments.push({ id, start, end: plain.length });
-          break;
-        }
-      }
-    }
-    lastIndex = idx + full.length;
-  }
-  // 4) append whatever’s left after the last marker
-  plain += raw.slice(lastIndex);
-  return { plain, segments };
-}
 
 const CodeEditor = forwardRef(({ 
   codeText, setCodeText, 
@@ -113,8 +76,7 @@ const CodeEditor = forwardRef(({
       };
     });
 
-    const selDecs = goalId == null ? [] : segmentsRef.current
-      .filter(s => s.id === goalId)
+    const selDecs = selectedSourceSegments(segmentsRef.current, goalId)
       .map(seg => {
         const start = model.getPositionAt(seg.start);
         const end = model.getPositionAt(seg.end);

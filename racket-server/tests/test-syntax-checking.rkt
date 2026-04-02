@@ -8,11 +8,10 @@
          "../src/syntax-checking.rkt"
          "../src/transpiler.rkt")
 
-(define WELL-FORMED-CONFIG (term (() (empty-tree) (empty-stream))))
+(define WELL-FORMED-CONFIG (term (() (empty-tree))))
 (define BAD-FORMED-CONFIG
   (term (() ((u:1 =? (sym "a") (label "t"))
-             (state () () () () (label "s")))
-            (empty-stream))))
+             (state () () () () (label "s"))))))
 
 (define-test-suite WELL-FORMED
   (test-case "Well-formed canonical config is accepted"
@@ -31,15 +30,14 @@
   (test-case "Canonical core gate rejects malformed canonical core program"
              (define bad-canonical
                '(() ((u:1 =? (sym "a") (label "t"))
-                     (state () () () () (label "s")))
-                    (empty-stream)))
+                     (state () () () () (label "s")))))
              (check-true (canonical-core-shape? bad-canonical))
              (check-false (canonical-well-formed? bad-canonical))
              (check-exn exn:fail?
                         (λ () (check-canonical-well-formed bad-canonical))))
 
   (test-case "Canonical gate accepts non-core shape directly"
-             (define non-core-canonical '(() (delay (empty-tree)) (empty-stream)))
+             (define non-core-canonical '(() (delay (empty-tree))))
              (check-false (canonical-core-shape? non-core-canonical))
              (check-true (canonical-target-in-domain? non-core-canonical "canonical/config"))
              (check-true (canonical-target-well-formed? non-core-canonical "canonical/config"))

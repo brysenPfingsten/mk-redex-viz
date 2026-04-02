@@ -154,11 +154,12 @@
   [((and ses (session (and z (zipper prev curr _ _)) _ nqv _)))
    (define init-step
      (cond
-       [(step? curr) curr]
-       [else
+       [(pair? prev)
         (for/first ([entry (in-list (reverse prev))]
                     #:when (step? entry))
-          entry)]))
+          entry)]
+       [(step? curr) curr]
+       [else #f]))
    (unless (step? init-step)
      (error 'reset! "session has no initial program to reset to"))
    (define ses^

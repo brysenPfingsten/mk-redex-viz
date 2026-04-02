@@ -13,27 +13,47 @@
 
 (define rail-seq-calls-red
   (extend-reduction-relation
-   (extend-reduction-relation search-base-seq-calls-red rail-seq-calls-lang)
+   search-base-seq-calls-red
    rail-seq-calls-lang
-   [--> (Γ ((in-hole KDisj ((delay s_1) <-+ s_2)) as_1))
-        (Γ ((in-hole KDisj (delay (s_1 +-> s_2))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K ((delay f_1) <-+ f_2)))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (delay (f_1 +-> f_2))))))
         "rail-seq-calls/enter-right"]
-   [--> (Γ ((in-hole KDisj (s_2 +-> (delay s_1))) as_1))
-        (Γ ((in-hole KDisj (delay (s_2 <-+ s_1))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_2 +-> (delay f_1))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (delay (f_2 <-+ f_1))))))
         "rail-seq-calls/return-left"]
-   [--> (Γ ((in-hole KDisj (in-hole K (s_left +-> ((⊤ σ_new) <-+ s_right)))) as_1))
-        (Γ ((in-hole KDisj (in-hole K (s_left +-> s_right)))
-            ,(append-answer-host (term as_1) (term σ_new))))
-        "rail-seq-calls/promote-right-left-answer"]
-   [--> (Γ ((in-hole KDisj (in-hole K (s_left +-> ((empty-tree) <-+ s_right)))) as_1))
-        (Γ ((in-hole KDisj (in-hole K (s_left +-> s_right))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (head_1 <-+ f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + (f_left +-> f_right))))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-seq-calls/promote-right-left-head"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> ((empty-tree) <-+ f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> f_right)))))
         "rail-seq-calls/skip-right-left-fail"]
-   [--> (Γ ((in-hole KDisj (in-hole K (s_left +-> (⊤ σ_new)))) as_1))
-        (Γ ((in-hole KDisj (in-hole K s_left))
-            ,(append-answer-host (term as_1) (term σ_new))))
-        "rail-seq-calls/promote-right-answer"]
-   [--> (Γ ((in-hole KDisj (in-hole K (s_left +-> (empty-tree)))) as_1))
-        (Γ ((in-hole KDisj (in-hole K s_left)) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (Freshened c_1 tag_1 (head_1 + f_right)))))))
+        (Γ
+         (in-hole Q
+                  (in-hole KScopePath
+                           (in-hole K
+                                    ((Freshened c_1 tag_1 head_1)
+                                     + (f_left +-> (Freshened c_1 tag_1 f_right)))))))
+        "rail-seq-calls/preserve-scoped-right-prefix"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (Freshened c_1 tag_1 (head_1 <-+ f_right)))))))
+        (Γ
+         (in-hole Q
+                  (in-hole KScopePath
+                           (in-hole K
+                                    ((Freshened c_1 tag_1 head_1)
+                                     + (f_left +-> (Freshened c_1 tag_1 f_right)))))))
+        "rail-seq-calls/bubble-scoped-right-branch"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (head_1 + f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + (f_left +-> f_right))))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-seq-calls/preserve-right-prefix"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> head_1)))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + f_left)))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-seq-calls/promote-right-observable"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (empty-tree))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K f_left))))
         "rail-seq-calls/skip-right-fail"]))
 
 (define (step-once prog)

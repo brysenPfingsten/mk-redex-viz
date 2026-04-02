@@ -13,4 +13,14 @@
   rail-seq-lang)
 
 (define-extended-language rail-seq-calls-lang
-  rail-seq-calls/join)
+  rail-seq-calls/join
+  [K ::= hole
+        (K × g c)]
+  [KCorePath ::= hole
+                 (Freshened c tag KCorePath)
+                 (KCorePath <-+ f)
+                 (f +-> KCorePath)]
+  [KScopePath ::= hole
+                  (Freshened c tag KScopePath)
+                  (KScopePath <-+ f)
+                  (f +-> KScopePath)])

@@ -72,8 +72,10 @@
                            acc*)]))
 
 (define (strategy-matches-generated? strategy cfg)
-  (and (search-config-in-domain? strategy cfg)
-       (search-config-well-formed? strategy cfg)))
+  (match-define (strategy-spec _ _ in-domain? well-formed?)
+    (lookup-strategy-spec strategy))
+  (and (in-domain? cfg)
+       (well-formed? cfg)))
 
 (define (generate-random-config strategy
                                 rng
@@ -88,17 +90,13 @@
     (parameterize ([current-pseudo-random-generator rng])
       (match normalized
         [(search-strategy "early" "rail")
-         (calls-config->canonical-flat
-          (generate-term lang:rail-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH))]
+         (generate-term lang:rail-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" "rail")
-         (calls-config->canonical-flat
-          (generate-term lang:rail-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH))]
+         (generate-term lang:rail-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "early" _)
-         (calls-config->canonical-flat
-          (generate-term lang:search-base-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH))]
+         (generate-term lang:search-base-seq-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" _)
-         (calls-config->canonical-flat
-          (generate-term lang:search-base-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH))])))
+         (generate-term lang:search-base-fused-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)])))
   (cond
     [(strategy-matches-generated? normalized cfg) cfg]
     [else

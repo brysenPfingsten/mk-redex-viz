@@ -6,8 +6,7 @@
          "./core-wf.rkt")
 
 (provide wf-goal/calls?
-         wf-tree/calls?
-         wf-answer-stream/calls?
+         wf-frontier/calls?
          wf-rel-env/calls?
          wf-config/calls?)
 
@@ -59,47 +58,43 @@
 
 (define-judgment-form
   calls-lang
-  #:contract (wf-tree/calls? s Γ c)
-  #:mode (wf-tree/calls? I I I)
-  [------------------- "empty tree is wf/calls"
-   (wf-tree/calls? (empty-tree) Γ c)]
-  [(lvars-subset? c c_i)
+  #:contract (wf-frontier/calls? cfg Γ c)
+  #:mode (wf-frontier/calls? I I I)
+  [------------------- "empty frontier residual is wf/calls"
+   (wf-frontier/calls? (empty-tree) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "single answer/state wf/calls"
-   (wf-tree/calls? (⊤ (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
+   ------------------- "raw answer/state wf/calls"
+   (wf-frontier/calls? (⊤ (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
+   (wf-frontier/calls? cfg_tail Γ c)
+   ------------------- "observable answer prefix wf/calls"
+   (wf-frontier/calls? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) Γ c)]
+  [(wf-frontier/calls? cfg_tail Γ c)
+   ------------------- "bounced prefix wf/calls"
+   (wf-frontier/calls? (Bounced + cfg_tail) Γ c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-frontier/calls? cfg_tail Γ c_2)
+   ------------------- "freshened scope wf/calls"
+   (wf-frontier/calls? (Freshened c_1 tag_1 cfg_tail) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/calls? g Γ () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "goal/state wf/calls"
-   (wf-tree/calls? (g (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/calls? s Γ c_i)
+   (wf-frontier/calls? (g (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
+   (wf-frontier/calls? f Γ c_i)
    (wf-goal/calls? g Γ () c_i)
    ------------------- "conj wf/calls"
-   (wf-tree/calls? (s × g c_i) Γ c)]
-  [(wf-tree/calls? s Γ c)
+   (wf-frontier/calls? (f × g c_i) Γ c)]
+  [(wf-frontier/calls? f Γ c)
    ------------------- "delay wf/calls"
-   (wf-tree/calls? (delay s) Γ c)])
-
-(define-judgment-form
-  calls-lang
-  #:contract (wf-answer-stream/calls? as c)
-  #:mode (wf-answer-stream/calls? I I)
-  [------------------- "empty answer stream wf/calls"
-   (wf-answer-stream/calls? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/calls"
-   (wf-answer-stream/calls? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/calls? as_tail c)
-   ------------------- "answer stream wf/calls"
-   (wf-answer-stream/calls? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   (wf-frontier/calls? (delay f) Γ c)])
 
 (define-judgment-form
   calls-lang
@@ -114,7 +109,6 @@
   #:contract (wf-config/calls? config)
   #:mode (wf-config/calls? I)
   [(wf-rel-env/calls? Γ)
-   (wf-tree/calls? s Γ ())
-   (wf-answer-stream/calls? as ())
+   (wf-frontier/calls? cfg Γ ())
    ----------------------- "program-wf/calls"
-   (wf-config/calls? (Γ (s as)))])
+   (wf-config/calls? (Γ cfg))])

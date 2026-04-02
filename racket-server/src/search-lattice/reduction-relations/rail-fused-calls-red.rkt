@@ -13,27 +13,47 @@
 
 (define rail-fused-calls-red
   (extend-reduction-relation
-   (extend-reduction-relation search-base-fused-calls-red rail-fused-calls-lang)
+   search-base-fused-calls-red
    rail-fused-calls-lang
-   [--> (Γ ((in-hole K ((delay s_1) <-+ s_2)) as_1))
-        (Γ ((in-hole K (delay (s_1 +-> s_2))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K ((delay f_1) <-+ f_2)))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (delay (f_1 +-> f_2))))))
         "rail-fused-calls/enter-right"]
-   [--> (Γ ((in-hole K (s_2 +-> (delay s_1))) as_1))
-        (Γ ((in-hole K (delay (s_2 <-+ s_1))) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_2 +-> (delay f_1))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (delay (f_2 <-+ f_1))))))
         "rail-fused-calls/return-left"]
-   [--> (Γ ((in-hole K (s_left +-> ((⊤ σ_new) <-+ s_right))) as_1))
-        (Γ ((in-hole K (s_left +-> s_right))
-            ,(append-answer-host (term as_1) (term σ_new))))
-        "rail-fused-calls/promote-right-left-answer"]
-   [--> (Γ ((in-hole K (s_left +-> ((empty-tree) <-+ s_right))) as_1))
-        (Γ ((in-hole K (s_left +-> s_right)) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (head_1 <-+ f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + (f_left +-> f_right))))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-fused-calls/promote-right-left-head"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> ((empty-tree) <-+ f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> f_right)))))
         "rail-fused-calls/skip-right-left-fail"]
-   [--> (Γ ((in-hole K (s_left +-> (⊤ σ_new))) as_1))
-        (Γ ((in-hole K s_left)
-            ,(append-answer-host (term as_1) (term σ_new))))
-        "rail-fused-calls/promote-right-answer"]
-   [--> (Γ ((in-hole K (s_left +-> (empty-tree))) as_1))
-        (Γ ((in-hole K s_left) as_1))
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (Freshened c_1 tag_1 (head_1 + f_right)))))))
+        (Γ
+         (in-hole Q
+                  (in-hole KScopePath
+                           (in-hole K
+                                    ((Freshened c_1 tag_1 head_1)
+                                     + (f_left +-> (Freshened c_1 tag_1 f_right)))))))
+        "rail-fused-calls/preserve-scoped-right-prefix"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (Freshened c_1 tag_1 (head_1 <-+ f_right)))))))
+        (Γ
+         (in-hole Q
+                  (in-hole KScopePath
+                           (in-hole K
+                                    ((Freshened c_1 tag_1 head_1)
+                                     + (f_left +-> (Freshened c_1 tag_1 f_right)))))))
+        "rail-fused-calls/bubble-scoped-right-branch"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (head_1 + f_right))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + (f_left +-> f_right))))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-fused-calls/preserve-right-prefix"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> head_1)))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K (head_1 + f_left)))))
+        (side-condition (not (empty-freshened-head? (term head_1))))
+        "rail-fused-calls/promote-right-observable"]
+   [--> (Γ (in-hole Q (in-hole KScopePath (in-hole K (f_left +-> (empty-tree))))))
+        (Γ (in-hole Q (in-hole KScopePath (in-hole K f_left))))
         "rail-fused-calls/skip-right-fail"]))
 
 (define (step-once prog)

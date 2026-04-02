@@ -25,12 +25,12 @@
 
 (define (query-goal-of cfg)
   (match cfg
-    [`(,_ ((∃ ,_ ,goal ,_) ,_) ,_) goal]
+    [`(,_ ((∃ ,_ ,goal ,_) ,_)) goal]
     [_ (error 'query-goal-of "unexpected canonical cfg shape: ~e" cfg)]))
 
 (define (relation-goal-of cfg rel-name)
   (match cfg
-    [`(,rels ,_ ,_)
+    [`(,rels ,_)
      (define maybe-goal
        (for/first ([rel (in-list rels)]
                    #:when (match rel

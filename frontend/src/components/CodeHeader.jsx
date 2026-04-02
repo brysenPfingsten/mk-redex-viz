@@ -19,6 +19,7 @@ export default function CodeHeader({
   schedulerOptions = [],
   onSearchStrategyChange,
   isFrozen,
+  isExampleLoading = false,
 }) {
   const availableExamples = exampleOptions();
 
@@ -73,7 +74,7 @@ export default function CodeHeader({
                 className="select"
                 value={exampleValue}
                 onChange={(e) => onExampleChange(e.target.value)}
-                disabled={isFrozen}
+                disabled={isExampleLoading}
               >
                 {renderOptions(availableExamples)}
               </select>

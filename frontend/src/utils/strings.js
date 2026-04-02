@@ -19,6 +19,9 @@ function arrayToString(arr) {
 
 function nonListTermToString(t) {
     if (t.var) { return `${t.var}`; }
+    if (t.pair) {
+        return `(${termToString(t.pair[0])} . ${termToString(t.pair[1])})`;
+    }
     if (t.sym) { return `'${t.sym}`; }
     if (typeof t === "object" && "num" in t) { return `${t.num}`; }
     if (Array.isArray(t)) { return arrayToString(t); }
@@ -30,6 +33,7 @@ function nonListTermToString(t) {
 
 export function termToString(term) {
     if (term.var) { return `${term.var}`; }   
+    if (term.pair) { return `(${termToString(term.pair[0])} . ${termToString(term.pair[1])})`; }
     if (term.sym) { return `'${term.sym}`; } 
     if (typeof term === "object" && "num" in term) { return `${term.num}`; }
     if (Array.isArray(term)) { return arrayToString(term); }

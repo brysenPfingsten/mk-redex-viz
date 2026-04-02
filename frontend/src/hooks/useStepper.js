@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { buildInitOptions } from '../utils/source_defaults.js';
 import {
+  emptyResponseMessage,
   parseStepperPayload,
   readStepperHeaders,
   responseErrorMessage,
@@ -11,6 +12,11 @@ export default function useStepper({ onSuccess = () => {} } = {}) {
   const initialTree = { name: "Empty", children: [] };
   const [tree, setTree] = useState(initialTree);
   const [stepInfo, setStep] = useState({ step: 0, stepName: '' });
+
+  const clear = () => {
+    setTree(initialTree);
+    setStep({ step: 0, stepName: '' });
+  };
 
   const send = async (method, url, payload) => {
     let response;
@@ -24,6 +30,13 @@ export default function useStepper({ onSuccess = () => {} } = {}) {
 
       const headers = readStepperHeaders(response);
       const payloadText = await response.text();
+      if (payloadText.trim() === '') {
+        return {
+          success: false,
+          error: emptyResponseMessage(response),
+          headers,
+        };
+      }
       const data = parseStepperPayload(payloadText);
 
       if (!response.ok) {
@@ -57,6 +70,7 @@ export default function useStepper({ onSuccess = () => {} } = {}) {
   return {
     tree,
     stepInfo,
+    clear,
     init: async (codeText, sourceMode, compileProfile, searchStrategy) => {
       const result = await send(
         'POST',

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { deriveToolbarState, nextSelectedExampleId } from "../src/utils/app_state.js";
+import { deriveToolbarState } from "../src/utils/app_state.js";
 
 test("deriveToolbarState enables editing controls only when runnable", () => {
   assert.deepEqual(
@@ -39,21 +39,20 @@ test("deriveToolbarState exposes step navigation from semantic start/end flags",
   );
 });
 
-test("nextSelectedExampleId preserves selection only when the code still matches the loaded example", () => {
-  assert.equal(
-    nextSelectedExampleId({
-      selectedExampleId: "same",
-      selectedExampleSource: "(run* (q) (== q 'cat))",
-      nextCode: "(run* (q) (== q 'cat))",
+test("deriveToolbarState disables reset at semantic start", () => {
+  assert.deepEqual(
+    deriveToolbarState({
+      isFrozen: true,
+      code: "(run* (q) (== q 'cat))",
+      isExampleLoading: false,
+      isAtStart: true,
+      isAtEnd: false,
     }),
-    "same",
-  );
-  assert.equal(
-    nextSelectedExampleId({
-      selectedExampleId: "same",
-      selectedExampleSource: "(run* (q) (== q 'cat))",
-      nextCode: "(run* (q) (== q 'dog))",
-    }),
-    "",
+    {
+      canStart: false,
+      canReset: false,
+      canBack: false,
+      canStep: true,
+    },
   );
 });

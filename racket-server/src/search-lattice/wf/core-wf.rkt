@@ -6,8 +6,7 @@
 
 (provide (all-from-out "./kernel.rkt")
          wf-goal/core?
-         wf-tree/core?
-         wf-answer-stream/core?
+         wf-frontier/core?
          wf-cfg/core?)
 
 (check-redundancy #t)
@@ -40,50 +39,45 @@
 
 (define-judgment-form
   core-lang
-  #:contract (wf-tree/core? s c)
-  #:mode (wf-tree/core? I I)
-  [------------------- "empty tree is wf/core"
-   (wf-tree/core? (empty-tree) c)]
-  [(lvars-subset? c c_i)
+  #:contract (wf-frontier/core? cfg c)
+  #:mode (wf-frontier/core? I I)
+  [------------------- "empty frontier residual is wf/core"
+   (wf-frontier/core? (empty-tree) c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "single answer/state wf/core"
-   (wf-tree/core? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
+   ------------------- "raw answer/state wf/core"
+   (wf-frontier/core? (⊤ (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
+   (wf-frontier/core? cfg_tail c)
+   ------------------- "observable answer prefix wf/core"
+   (wf-frontier/core? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) c)]
+  [(wf-frontier/core? cfg_tail c)
+   ------------------- "bounced prefix wf/core"
+   (wf-frontier/core? (Bounced + cfg_tail) c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-frontier/core? cfg_tail c_2)
+   ------------------- "freshened scope wf/core"
+   (wf-frontier/core? (Freshened c_1 tag_1 cfg_tail) c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/core? g () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "goal/state wf/core"
-   (wf-tree/core? (g (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/core? s c_i)
+   ------------------- "goal/state frontier wf/core"
+   (wf-frontier/core? (g (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-frontier/core? f c_i)
    (wf-goal/core? g () c_i)
-   ------------------- "conj wf/core"
-   (wf-tree/core? (s × g c_i) c)])
-
-(define-judgment-form
-  core-lang
-  #:contract (wf-answer-stream/core? as c)
-  #:mode (wf-answer-stream/core? I I)
-  [------------------- "empty answer stream wf/core"
-   (wf-answer-stream/core? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/core"
-   (wf-answer-stream/core? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/core? as_tail c)
-   ------------------- "answer stream wf/core"
-   (wf-answer-stream/core? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   ------------------- "conj frontier wf/core"
+   (wf-frontier/core? (f × g c_i) c)])
 
 (define-judgment-form
   core-lang
   #:contract (wf-cfg/core? cfg)
   #:mode (wf-cfg/core? I)
-  [(wf-tree/core? s ())
-   (wf-answer-stream/core? as ())
+  [(wf-frontier/core? cfg ())
    ----------------------- "cfg-wf/core"
-   (wf-cfg/core? (s as))])
+   (wf-cfg/core? cfg)])

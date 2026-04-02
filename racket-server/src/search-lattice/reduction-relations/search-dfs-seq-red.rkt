@@ -14,8 +14,8 @@
   (extend-reduction-relation
    search-base-seq-red
    search-base-seq-lang
-   [--> ((in-hole KDisj ((delay s_1) <-+ s_2)) as_1)
-        ((in-hole KDisj (delay (s_1 <-+ s_2))) as_1)
+   [--> (in-hole Q (in-hole KScopePath ((delay f_1) <-+ f_2)))
+        (in-hole Q (in-hole KScopePath (delay (f_1 <-+ f_2))))
         "search-dfs-seq/delay-through-left"]))
 
 (define (step-once prog)

@@ -47,6 +47,35 @@ const hoistWitness = `(run 2 (q)
     [(== q 'witness)])
   (== q q))`;
 
+const freshWitness = `(run* (q)
+  (fresh (x)
+    (== x 'fresh)
+    (== q x)))`;
+
+const freshSharedDisj = `(run* (q)
+  (fresh (x)
+    (conde
+      [(== x 'left) (== q 'left)]
+      [(== x 'right) (== q 'right)])))`;
+
+const freshBranchDisj = `(run* (q)
+  (conde
+    [(fresh (x)
+       (== x 'left)
+       (== q 'left))]
+    [(fresh (x)
+       (== x 'right)
+       (== q 'right))]))`;
+
+const freshSplitConj = `(run* (q)
+  (fresh (y)
+    (== y 'left)
+    (== (cons y 'tail) (cons 'left 'tail)))
+  (fresh (x)
+    (== x 'tail)
+    (== (cons 'left x) (cons 'left 'tail)))
+  (== q (cons 'left 'tail)))`;
+
 const div3o = `(defrel (same-counto bn)
   (conde
    [(== bn \`(1 1))]
@@ -111,6 +140,26 @@ export const semanticExamples = Object.freeze([
     id: "core-fresh-conj-unify",
     label: "core/fresh+conj+unify",
     miniSource: coreFreshConjUnify,
+  }),
+  Object.freeze({
+    id: "fresh-witness",
+    label: "fresh witness",
+    miniSource: freshWitness,
+  }),
+  Object.freeze({
+    id: "fresh-shared-disj",
+    label: "fresh shared disj",
+    miniSource: freshSharedDisj,
+  }),
+  Object.freeze({
+    id: "fresh-branch-disj",
+    label: "fresh branch disj",
+    miniSource: freshBranchDisj,
+  }),
+  Object.freeze({
+    id: "fresh-split-conj",
+    label: "fresh split conj",
+    miniSource: freshSplitConj,
   }),
   Object.freeze({
     id: "appendo",

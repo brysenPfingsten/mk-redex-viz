@@ -2,7 +2,7 @@
 
 (provide instantiate-call-host
          subst-goal-host
-         append-answer-host)
+         empty-freshened-head?)
 
 (define (x-symbol? s)
   (and (symbol? s)
@@ -67,14 +67,7 @@
            (length ts)))
   (subst-goal-host g (map list d ts)))
 
-(define (append-answer-host as sigma-new)
-  (match as
-    ['(empty-stream)
-     `(⊤ ,sigma-new)]
-    [`(⊤ ,sigma-old)
-     `((⊤ ,sigma-old) + (⊤ ,sigma-new))]
-    [`((⊤ ,sigma-old) + ,as-tail)
-     `((⊤ ,sigma-old) + ,(append-answer-host as-tail sigma-new))]
-    [_ (error 'append-answer-host
-              "unsupported answer stream shape: ~e"
-              as)]))
+(define (empty-freshened-head? h)
+  (match h
+    [`(Freshened () ,_ ,_) #t]
+    [_ #f]))

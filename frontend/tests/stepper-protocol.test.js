@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  emptyResponseMessage,
   parseStepperPayload,
   readStepperHeaders,
   responseErrorMessage,
@@ -41,6 +42,24 @@ test("parseStepperPayload reports malformed JSON clearly", () => {
   assert.throws(
     () => parseStepperPayload("<html>boom</html>"),
     /Failed to parse server response/,
+  );
+});
+
+test("parseStepperPayload reports empty responses as backend/proxy failures", () => {
+  assert.throws(
+    () => parseStepperPayload(""),
+    /Server returned an empty response/,
+  );
+});
+
+test("emptyResponseMessage explains empty response failures", () => {
+  assert.equal(
+    emptyResponseMessage(makeResponse()),
+    "Server returned an empty response. The backend may be unavailable or the proxy lost its connection.",
+  );
+  assert.equal(
+    emptyResponseMessage(makeResponse({ status: 502, statusText: "Bad Gateway" })),
+    "Request failed (502 Bad Gateway); server returned an empty response.",
   );
 });
 

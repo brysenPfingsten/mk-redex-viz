@@ -14,8 +14,8 @@
   (extend-reduction-relation
    search-base-fused-red
    search-base-fused-lang
-   [--> ((in-hole K ((delay s_1) <-+ s_2)) as_1)
-        ((in-hole K (delay (s_1 <-+ s_2))) as_1)
+   [--> (in-hole Q (in-hole KScopePath (in-hole K ((delay f_1) <-+ f_2))))
+        (in-hole Q (in-hole KScopePath (in-hole K (delay (f_1 <-+ f_2)))))
         "search-dfs-fused/delay-through-left"]))
 
 (define (step-once prog)

@@ -8,5 +8,11 @@
 (check-redundancy #t)
 
 (define-extended-language disj-seq-lang disj-lang
-  [KDisj ::= hole
-             (KDisj <-+ s)])
+  [K ::= hole
+        (K × g c)]
+  [KCorePath ::= hole
+                 (Freshened c tag KCorePath)
+                 (KCorePath <-+ f)]
+  [KScopePath ::= hole
+                  (Freshened c tag KScopePath)
+                  (KScopePath <-+ f)])

@@ -6,6 +6,9 @@
 
 (provide lvar-member?
          lvars-subset?
+         lvars-same-members?
+         lvars-fresh-extension?
+         scope-pop/host
          wf-term?
          wf-sub?
          wf-dis?
@@ -73,6 +76,42 @@
    (lvars-subset? (u_rest ...) c_2)
    ------------------- "cons ⊆"
    (lvars-subset? (u u_rest ...) c_2)])
+
+(define (lvars-same-members?/host c_1 c_2)
+  (and (for/and ([u (in-list c_1)])
+         (and (member u c_2) #t))
+       (for/and ([u (in-list c_2)])
+         (and (member u c_1) #t))))
+
+(define-judgment-form
+  core-lang
+  #:contract (lvars-same-members? (u ...) (u ...))
+  #:mode (lvars-same-members? I I)
+  [(where #t ,(lvars-same-members?/host (term c_1) (term c_2)))
+   ------------------- "same lvars, order irrelevant"
+   (lvars-same-members? c_1 c_2)])
+
+(define (lvars-fresh-extension?/host c-intro c-outer)
+  (and (positive? (length c-intro))
+       (= (length c-intro)
+          (length (remove-duplicates c-intro)))
+       (for/and ([u (in-list c-intro)])
+         (not (member u c-outer)))))
+
+(define (scope-pop/host intro current)
+  (define n (length intro))
+  (cond
+    [(< (length current) n) #f]
+    [(equal? intro (take current n)) (drop current n)]
+    [else #f]))
+
+(define-judgment-form
+  core-lang
+  #:contract (lvars-fresh-extension? c c)
+  #:mode (lvars-fresh-extension? I I)
+  [(where #t ,(lvars-fresh-extension?/host (term c_1) (term c_2)))
+   ------------------- "fresh lvar extension"
+   (lvars-fresh-extension? c_1 c_2)])
 
 (define-judgment-form
   core-lang

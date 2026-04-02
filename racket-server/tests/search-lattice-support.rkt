@@ -25,19 +25,21 @@
          cfg-call-branch
          cfg-call-rail)
 
-(define (final-answer-stream? as)
-  (match as
-    ['(empty-stream) #t]
-    [`(⊤ ,_) #t]
-    [`((⊤ ,_) + ,rest) (final-answer-stream? rest)]
+(define (final-frontier? f)
+  (match f
+    ['(empty-tree) #t]
+    [`(Freshened ,_ ,_ ,inner) (final-frontier? inner)]
+    [`((Freshened ,_ ,_ ,_) + ,rest) (final-frontier? rest)]
+    [`((⊤ ,_) + ,rest) (final-frontier? rest)]
+    [`(Bounced + ,rest) (final-frontier? rest)]
     [_ #f]))
 
 (define (final-program? prog)
   (match prog
-    [`((empty-tree) ,as)
-     (final-answer-stream? as)]
-    [`(,_gamma ((empty-tree) ,as))
-     (final-answer-stream? as)]
+    [`(,_gamma ,f)
+     (final-frontier? f)]
+    [f
+     (final-frontier? f)]
     [_ #f]))
 
 (define (progress? rel prog)
@@ -90,48 +92,48 @@
                            (label "zz"))))))
 
 (define cfg-disj
-  (term (((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
-         (empty-stream))))
+  (term ((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))))
 
 (define cfg-delay-goal
-  (term (((suspend (succeed (label "inner")) (label "delay"))
-          ,sigma-s)
-         (empty-stream))))
+  (term ((suspend (succeed (label "inner")) (label "delay"))
+         ,sigma-s)))
 
 (define cfg-flip
-  (term (((delay (empty-tree))
-          <-+
-          (⊤ ,sigma-b))
-         (empty-stream))))
+  (term ((delay (empty-tree))
+         <-+
+         (⊤ ,sigma-b))))
 
-(define cfg-rail cfg-flip)
+(define cfg-rail
+  (term ((delay (empty-tree))
+         <-+
+         (⊤ ,sigma-b))))
 
 (define cfg-mixed-answer
-  (term (((((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
-           × (succeed (label "k"))
-           ())
-          <-+
-          (empty-tree))
-         (empty-stream))))
+  (term ((((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
+          × (succeed (label "k"))
+          ())
+         <-+
+         (empty-tree))))
 
 (define cfg-mixed-fail
-  (term (((((empty-tree) <-+ (⊤ ,sigma-b))
-           × (succeed (label "k"))
-           ())
-          <-+
-          (empty-tree))
-         (empty-stream))))
+  (term ((((empty-tree) <-+ (⊤ ,sigma-b))
+          × (succeed (label "k"))
+          ())
+         <-+
+         (empty-tree))))
 
 (define cfg-call
   (term (,gamma-delay
-         (((r:delay (label "call")) ,sigma-a)
-          (empty-stream)))))
+         ((r:delay (label "call")) ,sigma-a))))
 
 (define cfg-call-branch
   (term (,gamma-delay
-         ((((r:delay (label "call")) ,sigma-a)
-           <-+
-           (⊤ ,sigma-b))
-          (empty-stream)))))
+         (((r:delay (label "call")) ,sigma-a)
+          <-+
+          (⊤ ,sigma-b)))))
 
-(define cfg-call-rail cfg-call-branch)
+(define cfg-call-rail
+  (term (,gamma-delay
+         (((r:delay (label "call")) ,sigma-a)
+          <-+
+          (⊤ ,sigma-b)))))

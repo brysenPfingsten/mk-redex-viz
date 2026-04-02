@@ -101,7 +101,7 @@
     [ref #:when (reified? ref) (symbol->string ref)]
     [sym #:when (symbol? sym) (hasheq 'sym (symbol->string sym))]
     [nat #:when (natural? nat) (hasheq 'num nat)]
-    [(cons t1 t2) (cons (mk->json t1) (mk->json t2))]
+    [(cons t1 t2) (hasheq 'pair (list (mk->json t1) (mk->json t2)))]
     [_ expr]))
 
 (define (underscore-symbol n)
@@ -171,19 +171,22 @@
     [else (mk->json result)]))
 
 (define (reify/canonical sub dis c n)
-  (let* ([fresh-names (generate-fresh-names c)]
-         [query-vars (generate-query-vars n)]
-         [unify-clauses (map (lambda (p) (make-unify-clause query-vars n p)) sub)]
-         [diseq-clauses (map (lambda (p) (make-diseq-clause query-vars n p)) dis)]
-         [clauses (append unify-clauses diseq-clauses)]
-         [ns (prepare-minikanren-namespace)]
-         [raw-result (run-in-namespace ns
-                                       query-vars
-                                       fresh-names
-                                       (if (null? clauses)
-                                           (list '(== 1 1))
-                                           clauses))])
-    (process-reify-result raw-result)))
+  (cond
+    [(zero? n) '()]
+    [else
+     (let* ([fresh-names (generate-fresh-names c)]
+            [query-vars (generate-query-vars n)]
+            [unify-clauses (map (lambda (p) (make-unify-clause query-vars n p)) sub)]
+            [diseq-clauses (map (lambda (p) (make-diseq-clause query-vars n p)) dis)]
+            [clauses (append unify-clauses diseq-clauses)]
+            [ns (prepare-minikanren-namespace)]
+            [raw-result (run-in-namespace ns
+                                          query-vars
+                                          fresh-names
+                                          (if (null? clauses)
+                                              (list '(== 1 1))
+                                              clauses))])
+       (process-reify-result raw-result))]))
 
 (define (sub->reify/canonical sub)
   (for/list ([pr (in-list sub)])
@@ -200,16 +203,20 @@
 (define (goal->json/canonical g)
   (match g
     [`(succeed ,_tag)
-     (hasheq 'name "Succeed")]
+     (hasheq 'name "Succeed"
+             'renderRole "terminal")]
     [`(fail ,_tag)
-     (hasheq 'name "Fail")]
+     (hasheq 'name "Fail"
+             'renderRole "terminal")]
     [`(,t_1 =? ,t_2 ,tag)
      (hasheq 'name "Unify"
+             'renderRole "goal-leaf"
              'id (label->id tag)
              'left (term->json/canonical t_1)
              'right (term->json/canonical t_2))]
     [`(,t_1 != ,t_2 ,tag)
      (hasheq 'name "Disequality"
+             'renderRole "goal-leaf"
              'id (label->id tag)
              'left (term->json/canonical t_1)
              'right (term->json/canonical t_2))]
@@ -217,80 +224,215 @@
      #:when (and (symbol? r)
                  (regexp-match? #rx"^r:" (symbol->string r)))
      (hasheq 'name "Rel-Call"
+             'renderRole "goal-leaf"
              'id (label->id tag)
              'rel (extract-name (symbol->string r))
              'args (map term->json/canonical t))]
     [`(,g_1 ∨ ,g_2 ,tag)
      (hasheq 'name "Goal-Disj"
+             'renderRole "goal-branch"
              'id (label->id tag)
+             'focusColor "#ff8000"
+             'activeChildIndex 0
              'children (list (goal->json/canonical g_1)
                              (goal->json/canonical g_2)))]
     [`(,g_1 ∧ ,g_2 ,tag)
      (hasheq 'name "Goal-Conj"
+             'renderRole "goal-branch"
              'id (label->id tag)
+             'focusColor "blue"
+             'activeChildIndex 0
              'children (list (goal->json/canonical g_1)
                              (goal->json/canonical g_2)))]
     [`(suspend ,g_1 ,tag)
      (hasheq 'name "Goal-Delay"
+             'renderRole "delay"
              'id (label->id tag)
+             'activeChildIndex 0
              'children (list (goal->json/canonical g_1)))]
     [`(∃ ,d ,g_1 ,tag)
      (hasheq 'name "Fresh"
+             'renderRole "goal-fresh"
              'id (label->id tag)
+             'activeChildIndex 0
              'vars (map term->json/canonical d)
              'children (list (goal->json/canonical g_1)))]
-    [_ (hasheq 'name "Goal")]))
+    [_ (hasheq 'name "Goal"
+               'renderRole "goal")]))
 
-(define (state->answer-json/canonical σ num-query-variables [rest #f])
+(define (state->answer-leaf-json/canonical σ num-query-variables)
   (match σ
     [`(state ,sub ,dis ,c ,trail ,tag)
-     (define base
-       (hasheq 'name "Answer"
-               'stateId (label->id tag)
-               'sub (sub->json/canonical sub)
-               'disequalities (dis->json/canonical dis)
-               'trail (trail->json/canonical trail)
-               'reified (reify/canonical (sub->reify/canonical sub)
-                                         (dis->reify/canonical dis)
-                                         (state-c-bound/canonical c)
-                                         num-query-variables)))
-     (if rest
-         (hash-set base 'children (list rest))
-         base)]
-    [_ (hasheq 'name "Answer")]))
+     (hasheq 'name "Answer"
+             'renderRole "answer-node"
+             'nodeColor "green"
+             'stateId (label->id tag)
+             'sub (sub->json/canonical sub)
+             'disequalities (dis->json/canonical dis)
+             'trail (trail->json/canonical trail)
+             'reified (reify/canonical (sub->reify/canonical sub)
+                                       (dis->reify/canonical dis)
+                                       (state-c-bound/canonical c)
+                                       num-query-variables))]
+    [_ (hasheq 'name "Answer"
+               'renderRole "answer-node"
+               'nodeColor "green")]))
 
-(define (project-work-tree/canonical s)
-  (match s
-    [`(,s_1 × ,g ,c)
-     `(,(project-work-tree/canonical s_1) × ,g ,c)]
-    [`(,s_1 <-+ ,s_2)
-     `(,(project-work-tree/canonical s_1) <-+ ,(project-work-tree/canonical s_2))]
-    [`(,s_1 +-> ,s_2)
-     `(,(project-work-tree/canonical s_1) +-> ,(project-work-tree/canonical s_2))]
-    [`(delay ,s_1)
-     `(delay ,(project-work-tree/canonical s_1))]
-    [_ s]))
-
-(define (append-stream-prefix/canonical as s)
-  (match as
-    ['(empty-stream) s]
-    [`(⊤ ,σ) `((⊤ ,σ) + ,s)]
-    [`((⊤ ,σ) + ,as_tail)
-     `((⊤ ,σ) + ,(append-stream-prefix/canonical as_tail s))]
-    [_ s]))
+(define (normalize-config/canonical cfg)
+  (match cfg
+    [`(,_gamma ,_f) cfg]
+    [f f]))
 
 (define (project-config-tree/canonical cfg)
-  (match cfg
-    [`(,_gamma ,s_work ,as)
-     (append-stream-prefix/canonical as (project-work-tree/canonical s_work))]
-    [`(,_gamma ,s)
-     (project-work-tree/canonical s)]
+  (match (normalize-config/canonical cfg)
+    [`(,_gamma ,f) f]
+    [f f]
     [_ '(empty-tree)]))
+
+(define (empty-json/canonical)
+  (hasheq 'name "Empty"
+          'renderRole "terminal"))
+
+(define (empty-json? node)
+  (match node
+    [(hash* ['name "Empty"] #:open) #t]
+    [_ #f]))
+
+(define (emit->json/canonical answer-json rest-json)
+  (if (empty-json? rest-json)
+      answer-json
+      (hasheq 'name "Emit"
+              'renderRole "stream-emit"
+              'resolvedChildIndices '(0)
+              'resolvedColor "green"
+              'activeChildIndex 1
+              'children (list answer-json rest-json))))
+
+(define (answer-freshened->json/canonical c-intro tag child-json)
+  (hasheq 'name "Answer-Freshened"
+          'renderRole "answer-freshened"
+          'id (label->id tag)
+          'nodeColor "green"
+          'resolvedChildIndices '(0)
+          'resolvedColor "green"
+          'vars (map term->json/canonical c-intro)
+          'children (list child-json)))
+
+(define (stream-freshened->json/canonical c-intro tag child-json)
+  (hasheq 'name "Stream-Freshened"
+          'renderRole "stream-freshened"
+          'id (label->id tag)
+          'activeChildIndex 0
+          'vars (map term->json/canonical c-intro)
+          'children (list child-json)))
+
+(define (fragment-freshened->json/canonical c-intro tag fragment-json rest-json)
+  (hasheq 'name "Fragment-Freshened"
+          'renderRole "fragment-freshened"
+          'id (label->id tag)
+          'resolvedChildIndices '(0)
+          'resolvedColor "green"
+          'activeChildIndex 1
+          'vars (map term->json/canonical c-intro)
+          'children (list fragment-json rest-json)))
+
+(define (pref->answer-node/canonical pref num-query-variables)
+  (match pref
+    [`(⊤ ,σ)
+     (state->answer-leaf-json/canonical σ num-query-variables)]
+    [`(Freshened ,c-intro ,tag ,obs)
+     (define maybe-answer (obs->answer-node/canonical obs num-query-variables))
+     (and maybe-answer
+          (answer-freshened->json/canonical c-intro tag maybe-answer))]
+    [_ #f]))
+
+(define (obs->answer-node/canonical obs num-query-variables)
+  (match obs
+    [`(⊤ ,σ)
+     (state->answer-leaf-json/canonical σ num-query-variables)]
+    [`(Freshened ,c-intro ,tag ,obs-tail)
+     (define maybe-answer (obs->answer-node/canonical obs-tail num-query-variables))
+     (and maybe-answer
+          (answer-freshened->json/canonical c-intro tag maybe-answer))]
+    [`(,head + (empty-tree))
+     (pref->answer-node/canonical head num-query-variables)]
+    [_ #f]))
+
+(define (obs->json/canonical obs num-query-variables [rest-json #f])
+  (define rest^ (or rest-json (empty-json/canonical)))
+  (match obs
+    ['(empty-tree)
+     rest^]
+    [`(⊤ ,σ)
+     (emit->json/canonical
+      (state->answer-leaf-json/canonical σ num-query-variables)
+      rest^)]
+    ['Bounced
+     (hasheq 'name "Bounced"
+             'renderRole "stream-bounced"
+             'activeChildIndex 0
+             'children (list rest^))]
+    [`(Freshened ,c-intro ,tag ,obs-tail)
+     (define maybe-answer
+       (obs->answer-node/canonical obs num-query-variables))
+     (if maybe-answer
+         (emit->json/canonical maybe-answer rest^)
+         (fragment-freshened->json/canonical
+          c-intro
+          tag
+          (obs->json/canonical obs-tail num-query-variables (empty-json/canonical))
+          rest^))]
+    [`(,head + ,obs-tail)
+     (prefix->json/canonical head
+                             num-query-variables
+                             (obs->json/canonical obs-tail
+                                                  num-query-variables
+                                                  rest^))]
+    [_ (error 'obs->json/canonical
+              "unknown observable fragment shape: ~e"
+              obs)]))
+
+(define (prefix->json/canonical pref num-query-variables [rest-json #f])
+  (define rest^ (or rest-json (empty-json/canonical)))
+  (match pref
+    [`(⊤ ,σ)
+     (emit->json/canonical
+      (state->answer-leaf-json/canonical σ num-query-variables)
+      rest^)]
+    ['Bounced
+     (hasheq 'name "Bounced"
+             'renderRole "stream-bounced"
+             'activeChildIndex 0
+             'children (list rest^))]
+    [`(Freshened ,c-intro ,tag ,obs)
+     (define maybe-answer
+       (pref->answer-node/canonical pref num-query-variables))
+     (if maybe-answer
+         (emit->json/canonical maybe-answer rest^)
+         (fragment-freshened->json/canonical
+          c-intro
+          tag
+          (obs->json/canonical obs num-query-variables (empty-json/canonical))
+          rest^))]
+    [_ (error 'prefix->json/canonical
+              "unknown frontier prefix shape: ~e"
+              pref)]))
 
 (define (tree->json/canonical s num-query-variables)
   (match s
     ['(empty-tree)
-     (hasheq 'name "Empty")]
+     (empty-json/canonical)]
+    [`(Freshened ,c-intro ,tag ,s_1)
+     (stream-freshened->json/canonical
+      c-intro
+      tag
+      (tree->json/canonical s_1 num-query-variables))]
+    ['Bounced
+     (prefix->json/canonical 'Bounced num-query-variables)]
+    [`(,head + ,s_tail)
+     (prefix->json/canonical head
+                             num-query-variables
+                             (tree->json/canonical s_tail num-query-variables))]
     [`(,g (state ,sub ,dis ,c ,trail ,tag))
      #:when (not (equal? g '⊤))
      (hash-union (goal->json/canonical g)
@@ -304,29 +446,43 @@
                                                    num-query-variables)))]
     [`(,s_1 <-+ ,s_2)
      (hasheq 'name "<-+"
+             'renderRole "search-branch"
+             'focusColor "#ff8000"
+             'activeChildIndex 0
              'children (list (tree->json/canonical s_1 num-query-variables)
                              (tree->json/canonical s_2 num-query-variables)))]
     [`(,s_1 +-> ,s_2)
      (hasheq 'name "+->"
+             'renderRole "search-branch"
+             'focusColor "#ff8000"
+             'activeChildIndex 1
              'children (list (tree->json/canonical s_1 num-query-variables)
                              (tree->json/canonical s_2 num-query-variables)))]
     [`(,s_1 × ,g ,_c)
      (hasheq 'name "Conjunction"
+             'renderRole "search-conjunction"
+             'focusColor "blue"
+             'activeChildIndex 0
              'children (list (tree->json/canonical s_1 num-query-variables)
                              (goal->json/canonical g)))]
     [`(delay ,s_1)
      (hasheq 'name "Delay"
+             'renderRole "delay"
+             'activeChildIndex 0
              'children (list (tree->json/canonical s_1 num-query-variables)))]
+    [`(state ,sub ,dis ,c ,trail ,tag)
+     (emit->json/canonical
+      (state->answer-leaf-json/canonical
+       `(state ,sub ,dis ,c ,trail ,tag)
+       num-query-variables)
+      (empty-json/canonical))]
     [`(⊤ ,σ)
-     (state->answer-json/canonical σ num-query-variables)]
-    [`((⊤ ,σ) + ,s_tail)
-     (define tail-json (tree->json/canonical s_tail num-query-variables))
-     (match-define (hash* ['name tail-name] #:open) tail-json)
-     (define tail-empty? (equal? tail-name "Empty"))
-     (state->answer-json/canonical σ
-                                   num-query-variables
-                                   (and (not tail-empty?) tail-json))]
-    [_ (hasheq 'name "Unknown")]))
+     (emit->json/canonical
+      (state->answer-leaf-json/canonical σ num-query-variables)
+      (empty-json/canonical))]
+    [_ (error 'tree->json/canonical
+              "unknown tree/frontier shape: ~e"
+              s)]))
 
 (define (config->tree-json/canonical cfg num-query-variables)
   (tree->json/canonical
@@ -346,8 +502,17 @@
                             (goal-query-vars/canonical g_2))]
     [_ 0]))
 
+(define (prefix-query-vars/work pref)
+  (match pref
+    [_ 0]))
+
 (define (num-query-vars/work s)
   (match s
+    [`(Freshened ,_ ,_ ,s_1)
+     (num-query-vars/work s_1)]
+    [`(,pref + ,s_1)
+     (max (prefix-query-vars/work pref)
+          (num-query-vars/work s_1))]
     [`(,g ,_σ)
      (goal-query-vars/canonical g)]
     [`(,s_1 × ,g ,_c)
@@ -359,16 +524,12 @@
     [`(,s_1 +-> ,s_2)
      (max (num-query-vars/work s_1)
           (num-query-vars/work s_2))]
-    [`((⊤ ,_σ) + ,s_1)
-     (num-query-vars/work s_1)]
     [`(delay ,s_1)
      (num-query-vars/work s_1)]
     [_ 0]))
 
 (define (num-query-vars/canonical cfg)
   (match cfg
-    [`(,_gamma ,s_work ,_as)
-     (num-query-vars/work s_work)]
     [`(,_gamma ,s)
      (num-query-vars/work s)]
     [_ 0]))

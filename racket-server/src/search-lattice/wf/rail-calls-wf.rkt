@@ -6,8 +6,7 @@
          "./core-wf.rkt")
 
 (provide wf-goal/rail-calls?
-         wf-tree/rail-calls?
-         wf-answer-stream/rail-calls?
+         wf-frontier/rail-calls?
          wf-rel-env/rail-calls?
          wf-config/rail-calls?)
 
@@ -63,55 +62,51 @@
 
 (define-judgment-form
   rail-seq-calls-lang
-  #:contract (wf-tree/rail-calls? s Γ c)
-  #:mode (wf-tree/rail-calls? I I I)
-  [------------------- "empty tree is wf/rail-calls"
-   (wf-tree/rail-calls? (empty-tree) Γ c)]
-  [(lvars-subset? c c_i)
+  #:contract (wf-frontier/rail-calls? cfg Γ c)
+  #:mode (wf-frontier/rail-calls? I I I)
+  [------------------- "empty frontier residual is wf/rail-calls"
+   (wf-frontier/rail-calls? (empty-tree) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "single answer/state wf/rail-calls"
-   (wf-tree/rail-calls? (⊤ (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
+   ------------------- "raw answer/state wf/rail-calls"
+   (wf-frontier/rail-calls? (⊤ (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
+   (wf-frontier/rail-calls? cfg_tail Γ c)
+   ------------------- "observable answer prefix wf/rail-calls"
+   (wf-frontier/rail-calls? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) Γ c)]
+  [(wf-frontier/rail-calls? cfg_tail Γ c)
+   ------------------- "bounced prefix wf/rail-calls"
+   (wf-frontier/rail-calls? (Bounced + cfg_tail) Γ c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-frontier/rail-calls? cfg_tail Γ c_2)
+   ------------------- "freshened scope wf/rail-calls"
+   (wf-frontier/rail-calls? (Freshened c_1 tag_1 cfg_tail) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/rail-calls? g Γ () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "goal/state wf/rail-calls"
-   (wf-tree/rail-calls? (g (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/rail-calls? s Γ c_i)
+   (wf-frontier/rail-calls? (g (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
+   (wf-frontier/rail-calls? f Γ c_i)
    (wf-goal/rail-calls? g Γ () c_i)
    ------------------- "conj wf/rail-calls"
-   (wf-tree/rail-calls? (s × g c_i) Γ c)]
-  [(wf-tree/rail-calls? s_1 Γ c)
-   (wf-tree/rail-calls? s_2 Γ c)
+   (wf-frontier/rail-calls? (f × g c_i) Γ c)]
+  [(wf-frontier/rail-calls? f_1 Γ c)
+   (wf-frontier/rail-calls? f_2 Γ c)
    ------------------- "left disj wf/rail-calls"
-   (wf-tree/rail-calls? (s_1 <-+ s_2) Γ c)]
-  [(wf-tree/rail-calls? s_1 Γ c)
-   (wf-tree/rail-calls? s_2 Γ c)
+   (wf-frontier/rail-calls? (f_1 <-+ f_2) Γ c)]
+  [(wf-frontier/rail-calls? f_1 Γ c)
+   (wf-frontier/rail-calls? f_2 Γ c)
    ------------------- "right disj wf/rail-calls"
-   (wf-tree/rail-calls? (s_1 +-> s_2) Γ c)]
-  [(wf-tree/rail-calls? s Γ c)
+   (wf-frontier/rail-calls? (f_1 +-> f_2) Γ c)]
+  [(wf-frontier/rail-calls? f Γ c)
    ------------------- "delay wf/rail-calls"
-   (wf-tree/rail-calls? (delay s) Γ c)])
-
-(define-judgment-form
-  rail-seq-calls-lang
-  #:contract (wf-answer-stream/rail-calls? as c)
-  #:mode (wf-answer-stream/rail-calls? I I)
-  [------------------- "empty answer stream wf/rail-calls"
-   (wf-answer-stream/rail-calls? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/rail-calls"
-   (wf-answer-stream/rail-calls? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/rail-calls? as_tail c)
-   ------------------- "answer stream wf/rail-calls"
-   (wf-answer-stream/rail-calls? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   (wf-frontier/rail-calls? (delay f) Γ c)])
 
 (define-judgment-form
   rail-seq-calls-lang
@@ -126,7 +121,6 @@
   #:contract (wf-config/rail-calls? config)
   #:mode (wf-config/rail-calls? I)
   [(wf-rel-env/rail-calls? Γ)
-   (wf-tree/rail-calls? s Γ ())
-   (wf-answer-stream/rail-calls? as ())
+   (wf-frontier/rail-calls? cfg Γ ())
    ----------------------- "program-wf/rail-calls"
-   (wf-config/rail-calls? (Γ (s as)))])
+   (wf-config/rail-calls? (Γ cfg))])

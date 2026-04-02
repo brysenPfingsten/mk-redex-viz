@@ -3,24 +3,38 @@
 (require redex/reduction-semantics)
 
 (provide core-lang
+         c-append
          unify
          walk
          extend
          occurs?
          invalid?
-         fresh-substitution
-         append-answer)
+         fresh-substitution)
 
 (check-redundancy #t)
 
 (define-language core-lang
-  [cfg (s as)]
+  [cfg w
+       (head + cfg)]
   [d (x_!_ ...)]
 
-  [s (empty-tree)
+  [f w
+     (head + f)]
+
+  [obs (empty-tree)
+       head
+       (head + obs)]
+
+  [head cell
+        Bounced
+        (Freshened c tag obs)]
+  [cell (⊤ σ)]
+
+  [w (empty-tree)
      (g σ)
-     (s × g c)
-     (⊤ σ)]
+     (f × g c)
+     (⊤ σ)
+     (Freshened c tag cfg)]
 
   [eq (t =? t tag)]
   [neq (t != t tag)]
@@ -52,27 +66,20 @@
   [dis ((t t) ...)]
   [maybe-sub sub #f]
   [trail (eq ...)]
-  [as (empty-stream)
-      (⊤ σ)
-      ((⊤ σ) + as)]
-  [end-cfg ((empty-tree) as)]
   [c (u_!_ ...)]
 
   ;; Base active-work context.
   [K ::= hole
          (K × g c)]
+  [Q ::= hole
+         (head + Q)
+         (Freshened c tag Q)]
+  [P ::= hole
+         (head + P)
+         (Freshened c tag P)]
 
   #:binding-forms
   (∃ (x ...) g #:refers-to (shadow x ...)))
-
-(define-metafunction core-lang
-  append-answer : as σ -> as
-  [(append-answer (empty-stream) σ_new)
-   (⊤ σ_new)]
-  [(append-answer (⊤ σ_old) σ_new)
-   ((⊤ σ_old) + (⊤ σ_new))]
-  [(append-answer ((⊤ σ_old) + as_tail) σ_new)
-   ((⊤ σ_old) + (append-answer as_tail σ_new))])
 
 (define-metafunction core-lang
   walk : t sub -> t
@@ -108,6 +115,11 @@
           (values (cons (list x u) rev-pairs)
                   (cons u used))))
       (reverse rev-pairs))])
+
+(define-metafunction core-lang
+  c-append : c c -> c
+  [(c-append (u_1 ...) (u_2 ...))
+   (u_1 ... u_2 ...)])
 
 (define-relation core-lang
   occurs? ⊆ u × t × sub

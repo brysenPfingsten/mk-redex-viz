@@ -1,67 +1,66 @@
+function validIndex(children, idx) {
+  return Number.isInteger(idx)
+    && Array.isArray(children)
+    && idx >= 0
+    && idx < children.length;
+}
+
+function activeChild(node) {
+  const idx = node?.activeChildIndex;
+  return validIndex(node?.children, idx) ? node.children[idx] : null;
+}
+
+function resolvedChildIndices(node) {
+  if (!Array.isArray(node?.resolvedChildIndices)) return [];
+  return node.resolvedChildIndices.filter((idx) => validIndex(node?.children, idx));
+}
+
+function nodeFocusColor(node) {
+  if (!node) return null;
+  if (typeof node.focusColor === "string") return node.focusColor;
+  return nodeFocusColor(activeChild(node));
+}
+
+function paintResolved(node, color) {
+  if (!node || typeof color !== "string") return;
+  node.color = color;
+  node.edgeColor = color;
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      paintResolved(child, color);
+    }
+  }
+}
+
+export const ACTIVE_PATH_NODE_NAMES = Object.freeze([]);
+
 export function addColors(tree) {
+  if (!tree || tree.partial) return tree;
 
-    const ACTIVE_INDEX = { Conjunction: 0, "<-+": 0, "+->": 1 };
-    const TERMINALS1   = new Set(["Answer", "Succeed", "Empty", "Delay", "Goal-Delay"]);
-    const TERMINALS2   = new Set(["Answer", "Succeed"]);
-    const DISJ         = new Set(["<-+", "+->"]);
+  if (typeof tree.nodeColor === "string") {
+    tree.color = tree.nodeColor;
+  }
 
-    const activeChild = n => {
-        if (!n) return null;
-        const idx = ACTIVE_INDEX[n.name];
-        return idx == null ? null : (n.children?.[idx] ?? null);
-    };
+  for (const idx of resolvedChildIndices(tree)) {
+    paintResolved(tree.children[idx], tree.resolvedColor ?? tree.nodeColor ?? "green");
+  }
 
-    function stopColoringHere(node) {
-        // Depth 0 check
-        // Goal-states should not be colored
-        if (node.sub && node.name !== "Answer") return true;
-
-        // Depth 1 check
-        // Disjunctions and conjunctions with answers, empty, or delays
-        // Excepting disjunctions with conjunctions in their active position
-        const d1 = activeChild(node);
-        if (DISJ.has(node?.name) && d1?.name === "Conjunction") return false; 
-        if (d1 && TERMINALS1.has(d1.name)) return true;
-
-        // Depth 2 check
-        // Combinations of disjunctions and conjunctions with answers in the active position
-        const d2 = activeChild(d1);
-        return !!(d2 && TERMINALS2.has(d2.name));
-    }
-
-    if (stopColoringHere(tree)) return tree;
-    if (tree.partial) return tree;
-
-    let children = tree.children;
-
-    switch (tree.name) {
-        case "<-+":
-            children[0].color = "#ff8000";
-            addColors(children[0]);
-            break;
-        case "+->":
-            children[1].color = "#ff8000";
-            addColors(children[1]);
-            break;
-        case "Disjunction":
-            children[0].color = "#FFA500";
-            addColors(children[0]);
-            break;
-        case "Conjunction":
-            children[0].color = "blue";
-            addColors(children[0]);
-            break;
-        case "Delay":
-        case "Goal-Delay":
-            return tree;
-        case "Answer":
-            if (children) {
-                children[0].color = "green";
-                addColors(children[0]);
-            }
-            break;
-        default: return tree;
-    }
-
+  const active = activeChild(tree);
+  if (!active) {
     return tree;
+  }
+
+  const color = tree.color ?? nodeFocusColor(tree);
+  if (typeof color !== "string") {
+    return tree;
+  }
+
+  tree.color = color;
+  active.edgeColor = color;
+  if (typeof active.color !== "string") {
+    active.color = color;
+  }
+  addColors(active);
+
+  return tree;
 }

@@ -12,28 +12,35 @@
 (check-redundancy #t)
 
 (define core-redex/delay (extend-core-redex delay-lang))
-(define core-collector/delay (make-core-collector delay-lang))
-(define-search-cfg/one-stage core-cfg/delay core-redex/delay delay-lang K)
+(define-search-frontier/one-stage core-frontier/delay core-redex/delay delay-lang K)
 
-(define delay-extra
+(define delay-local
+  (reduction-relation
+   delay-lang
+   #:domain f
+   [--> (in-hole K ((suspend g tag) σ))
+        (in-hole K (delay (g σ)))
+        "delay/suspend-goal"]
+   [--> (in-hole K ((delay f_1) × g c))
+        (in-hole K (delay (f_1 × g c)))
+        "delay/delay-through-conj"]))
+
+(define delay-frontier-extra
   (reduction-relation
    delay-lang
    #:domain cfg
-   [--> ((in-hole K ((suspend g tag) σ)) as_1)
-        ((in-hole K (delay (g σ))) as_1)
-        "delay/suspend-goal"]
-   [--> ((delay s_1) as_1)
-        (s_1 as_1)
-        "delay/invoke-delay"]
-   [--> ((in-hole K ((delay s_1) × g c)) as_1)
-        ((in-hole K (delay (s_1 × g c))) as_1)
-        "delay/delay-through-conj"]))
+   [--> (in-hole Q (delay f_1))
+        (in-hole Q (Bounced + f_1))
+        "delay/invoke-delay"]))
+
+(define delay-extra
+  (context-closure delay-local delay-lang Q))
 
 (define delay-red
   (union-reduction-relations
-   delay-extra
-   core-cfg/delay
-   core-collector/delay))
+   delay-frontier-extra
+   core-frontier/delay
+   delay-extra))
 
 (define (step-once prog)
   (step-once/deterministic delay-red prog))

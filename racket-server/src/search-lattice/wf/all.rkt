@@ -1,7 +1,6 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../canonical-adapter.rkt"
          "../languages/canonical-lang.rkt"
          "./calls-wf.rkt"
          "./canonical-core-wf.rkt"
@@ -34,7 +33,5 @@
   (case (string->symbol target-id)
     [(canonical/config)
      (and (redex-match? canonical-lang config cfg)
-          (judgment-holds
-           (wf-config/search-base-calls?
-            ,(canonical-flat->calls-config cfg))))]
+          (judgment-holds (wf-config/search-base-calls? ,cfg)))]
     [else #f]))

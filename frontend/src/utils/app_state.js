@@ -9,19 +9,8 @@ export function deriveToolbarState({
 
   return {
     canStart: !isFrozen && hasRunnableCode && !isExampleLoading,
-    canReset: isFrozen,
+    canReset: isFrozen && !isAtStart,
     canBack: isFrozen && !isAtStart,
     canStep: isFrozen && !isAtEnd,
   };
-}
-
-export function nextSelectedExampleId({
-  selectedExampleId,
-  selectedExampleSource,
-  nextCode,
-}) {
-  if (!selectedExampleId) {
-    return "";
-  }
-  return nextCode === selectedExampleSource ? selectedExampleId : "";
 }

@@ -6,12 +6,10 @@
 
 (provide (all-from-out "./kernel.rkt")
          core-goal-shape?/canonical
-         core-tree-shape?/canonical
-         core-answer-stream-shape?/canonical
+         core-work-shape?/canonical
          core-shape?/canonical
          wf-goal/canonical-core?
-         wf-tree/canonical-core?
-         wf-answer-stream/canonical-core?
+         wf-work/canonical-core?
          wf-rel-env/canonical-core?
          wf-config/canonical-core?)
 
@@ -65,82 +63,51 @@
 
 (define-judgment-form
   canonical-core-lang
-  #:contract (core-tree-shape?/canonical s)
-  #:mode (core-tree-shape?/canonical I)
+  #:contract (core-work-shape?/canonical w)
+  #:mode (core-work-shape?/canonical I)
   [------------------- "core-empty-tree-shape/canonical"
-   (core-tree-shape?/canonical (empty-tree))]
+   (core-work-shape?/canonical (empty-tree))]
   [------------------- "core-answer-shape/canonical"
-   (core-tree-shape?/canonical (⊤ σ))]
+   (core-work-shape?/canonical (⊤ σ))]
   [(core-goal-shape?/canonical g)
    ------------------- "core-goal-state-shape/canonical"
-   (core-tree-shape?/canonical (g σ))]
-  [(core-tree-shape?/canonical s)
+   (core-work-shape?/canonical (g σ))]
+  [(core-work-shape?/canonical w)
    (core-goal-shape?/canonical g)
    ------------------- "core-conj-tree-shape/canonical"
-   (core-tree-shape?/canonical (s × g c))])
-
-(define-judgment-form
-  canonical-core-lang
-  #:contract (core-answer-stream-shape?/canonical as)
-  #:mode (core-answer-stream-shape?/canonical I)
-  [------------------- "core-empty-answer-stream-shape/canonical"
-   (core-answer-stream-shape?/canonical (empty-stream))]
-  [------------------- "core-single-answer-stream-shape/canonical"
-   (core-answer-stream-shape?/canonical (⊤ σ))]
-  [(core-answer-stream-shape?/canonical as_tail)
-   ------------------- "core-answer-stream-tail-shape/canonical"
-   (core-answer-stream-shape?/canonical ((⊤ σ) + as_tail))])
+   (core-work-shape?/canonical (w × g c))])
 
 (define-judgment-form
   canonical-core-lang
   #:contract (core-shape?/canonical config)
   #:mode (core-shape?/canonical I)
   [(core-goal-shape?/canonical g) ...
-   (core-tree-shape?/canonical s)
-   (core-answer-stream-shape?/canonical as)
+   (core-work-shape?/canonical w)
    ------------------- "core-config-shape/canonical"
-   (core-shape?/canonical (((r d g) ...) s as))])
+   (core-shape?/canonical (((r d g) ...) w))])
 
 (define-judgment-form
   canonical-core-lang
-  #:contract (wf-tree/canonical-core? s Γ c)
-  #:mode (wf-tree/canonical-core? I I I)
+  #:contract (wf-work/canonical-core? w Γ c)
+  #:mode (wf-work/canonical-core? I I I)
   [------------------- "empty tree is wf/canonical-core"
-   (wf-tree/canonical-core? (empty-tree) Γ c)]
-  [(lvars-subset? c c_i)
+   (wf-work/canonical-core? (empty-tree) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "single answer/state wf/canonical-core"
-   (wf-tree/canonical-core? (⊤ (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
+   (wf-work/canonical-core? (⊤ (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/canonical-core? g Γ () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "goal/state wf/canonical-core"
-   (wf-tree/canonical-core? (g (state sub dis c_i trail tag)) Γ c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/canonical-core? s Γ c_i)
+   (wf-work/canonical-core? (g (state sub dis c_i trail tag)) Γ c)]
+  [(lvars-same-members? c c_i)
+   (wf-work/canonical-core? w Γ c_i)
    (wf-goal/canonical-core? g Γ () c_i)
    ------------------- "conj wf/canonical-core"
-   (wf-tree/canonical-core? (s × g c_i) Γ c)])
-
-(define-judgment-form
-  canonical-core-lang
-  #:contract (wf-answer-stream/canonical-core? as c)
-  #:mode (wf-answer-stream/canonical-core? I I)
-  [------------------- "empty answer stream wf/canonical-core"
-   (wf-answer-stream/canonical-core? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/canonical-core"
-   (wf-answer-stream/canonical-core? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/canonical-core? as_tail c)
-   ------------------- "answer stream wf/canonical-core"
-   (wf-answer-stream/canonical-core? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   (wf-work/canonical-core? (w × g c_i) Γ c)])
 
 (define-judgment-form
   canonical-core-lang
@@ -155,7 +122,6 @@
   #:contract (wf-config/canonical-core? config)
   #:mode (wf-config/canonical-core? I)
   [(wf-rel-env/canonical-core? ((r d g) ...))
-   (wf-tree/canonical-core? s ((r d g) ...) ())
-   (wf-answer-stream/canonical-core? as ())
+   (wf-work/canonical-core? w ((r d g) ...) ())
    ----------------------- "program-wf/canonical-core"
-   (wf-config/canonical-core? (((r d g) ...) s as))])
+   (wf-config/canonical-core? (((r d g) ...) w))])

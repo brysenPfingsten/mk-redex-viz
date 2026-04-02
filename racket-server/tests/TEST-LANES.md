@@ -12,6 +12,8 @@ raco test racket-server/tests/test-all-headless.rkt
 
 Includes:
 - Core property/judgment checks
+- Frontier observable/scoping checks
+- Visible-step / visible-node contract checks across all surfaced strategies
 - Internal search-lattice tests
 - Structured search-runtime registry + overlap audit
 - Frontend example compatibility gate
@@ -49,26 +51,13 @@ Coverage policy:
 raco test racket-server/tests/model-example-matrix-tests.rkt
 ```
 
-## Lane E: Legacy Ladder Research Coverage
-
-Runs the archived eager/lazy/proceed-era ladder suites. This lane is not part
-of the default modern runtime gate.
-
-```sh
-raco test racket-server/tests/test-all-legacy.rkt
-```
-
-Implementation note:
-- the root lane wrapper delegates to `racket-server/archive/legacy-ladder/tests/test-all-legacy.rkt`
-
 ## Notes
 
 - Public GUI/API runs are now selected structurally by:
   - `sourceMode`
   - optional `compileProfile` for `mini`
   - `searchStrategy = { hoist, scheduler }`
-- The app boundary adapts canonical flat configs into the internal
-  `search-lattice` `+calls` machines before stepping.
+- The app boundary parses directly into the canonical `search-lattice`
+  `+calls` machines before stepping.
 - The default headless lane is modern-only.
-- The eager/lazy/proceed ladder remains available only through the archived legacy lane.
-- Supported lanes are `A`/`B`/`C`/`D`/`E` above.
+- Supported lanes are `A`/`B`/`C`/`D` above.

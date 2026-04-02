@@ -5,8 +5,7 @@
          "./core-wf.rkt")
 
 (provide wf-goal/search-base?
-         wf-tree/search-base?
-         wf-answer-stream/search-base?
+         wf-frontier/search-base?
          wf-cfg/search-base?)
 
 (check-redundancy #t)
@@ -46,57 +45,52 @@
 
 (define-judgment-form
   search-base-seq-lang
-  #:contract (wf-tree/search-base? s c)
-  #:mode (wf-tree/search-base? I I)
-  [------------------- "empty tree is wf/search-base"
-   (wf-tree/search-base? (empty-tree) c)]
-  [(lvars-subset? c c_i)
+  #:contract (wf-frontier/search-base? cfg c)
+  #:mode (wf-frontier/search-base? I I)
+  [------------------- "empty frontier residual is wf/search-base"
+   (wf-frontier/search-base? (empty-tree) c)]
+  [(lvars-same-members? c c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
-   ------------------- "single answer/state wf/search-base"
-   (wf-tree/search-base? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
+   ------------------- "raw answer/state wf/search-base"
+   (wf-frontier/search-base? (⊤ (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-sub/wf+equiv-trail? sub c_i trail)
+   (wf-dis? dis c_i)
+   (wf-frontier/search-base? cfg_tail c)
+   ------------------- "observable answer prefix wf/search-base"
+   (wf-frontier/search-base? ((⊤ (state sub dis c_i trail tag)) + cfg_tail) c)]
+  [(wf-frontier/search-base? cfg_tail c)
+   ------------------- "bounced prefix wf/search-base"
+   (wf-frontier/search-base? (Bounced + cfg_tail) c)]
+  [(lvars-fresh-extension? c_1 c)
+   (where c_2 (c-append c_1 c))
+   (wf-frontier/search-base? cfg_tail c_2)
+   ------------------- "freshened scope wf/search-base"
+   (wf-frontier/search-base? (Freshened c_1 tag_1 cfg_tail) c)]
+  [(lvars-same-members? c c_i)
    (wf-goal/search-base? g () c_i)
    (wf-sub/wf+equiv-trail? sub c_i trail)
    (wf-dis? dis c_i)
    ------------------- "goal/state wf/search-base"
-   (wf-tree/search-base? (g (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-tree/search-base? s c_i)
+   (wf-frontier/search-base? (g (state sub dis c_i trail tag)) c)]
+  [(lvars-same-members? c c_i)
+   (wf-frontier/search-base? f c_i)
    (wf-goal/search-base? g () c_i)
    ------------------- "conj wf/search-base"
-   (wf-tree/search-base? (s × g c_i) c)]
-  [(wf-tree/search-base? s_1 c)
-   (wf-tree/search-base? s_2 c)
-   ------------------- "left disj wf/search-base"
-   (wf-tree/search-base? (s_1 <-+ s_2) c)]
-  [(wf-tree/search-base? s c)
+   (wf-frontier/search-base? (f × g c_i) c)]
+  [(wf-frontier/search-base? f_1 c)
+   (wf-frontier/search-base? f_2 c)
+   ------------------- "disj wf/search-base"
+   (wf-frontier/search-base? (f_1 <-+ f_2) c)]
+  [(wf-frontier/search-base? f c)
    ------------------- "delay wf/search-base"
-   (wf-tree/search-base? (delay s) c)])
-
-(define-judgment-form
-  search-base-seq-lang
-  #:contract (wf-answer-stream/search-base? as c)
-  #:mode (wf-answer-stream/search-base? I I)
-  [------------------- "empty answer stream wf/search-base"
-   (wf-answer-stream/search-base? (empty-stream) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   ------------------- "single answer stream wf/search-base"
-   (wf-answer-stream/search-base? (⊤ (state sub dis c_i trail tag)) c)]
-  [(lvars-subset? c c_i)
-   (wf-sub/wf+equiv-trail? sub c_i trail)
-   (wf-dis? dis c_i)
-   (wf-answer-stream/search-base? as_tail c)
-   ------------------- "answer stream wf/search-base"
-   (wf-answer-stream/search-base? ((⊤ (state sub dis c_i trail tag)) + as_tail) c)])
+   (wf-frontier/search-base? (delay f) c)])
 
 (define-judgment-form
   search-base-seq-lang
   #:contract (wf-cfg/search-base? cfg)
   #:mode (wf-cfg/search-base? I)
-  [(wf-tree/search-base? s ())
-   (wf-answer-stream/search-base? as ())
+  [(wf-frontier/search-base? cfg ())
    ----------------------- "cfg-wf/search-base"
-   (wf-cfg/search-base? (s as))])
+   (wf-cfg/search-base? cfg)])

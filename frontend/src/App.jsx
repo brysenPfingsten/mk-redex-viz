@@ -25,14 +25,18 @@ import {
   SOURCE_MODE_OPTIONS,
 } from './utils/source_defaults.js';
 import {
+  emptyResponseMessage,
+  parseStepperPayload,
+} from './utils/stepper_protocol.js';
+import {
   deriveToolbarState,
-  nextSelectedExampleId,
 } from './utils/app_state.js';
 import './styles.css';
 
 function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
+  const initialTaggedCodeRef = useRef('');
   const [selectedExampleId, setSelectedExampleId] = useState('');
   const [selectedExampleSource, setSelectedExampleSource] = useState('');
   const [sourceMode, setSourceMode] = useState(DEFAULT_SOURCE_MODE);
@@ -43,12 +47,6 @@ function App() {
   const [isAtEnd, setIsAtEnd] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const treeRef = useRef();
-  const {
-    tree, stepInfo,
-    init, step, reset, back
-  } = useStepper({
-    onSuccess: () => { setGoalId(null); }
-  });
   const [substitutionData, setSubstitutionData] = useState([]);
   const [trailData, setTrailData] = useState([]);
   const [goalId, setGoalId] = useState(null);
@@ -56,6 +54,18 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+
+  const clearSelection = () => {
+    setGoalId(null);
+    setStateId(null);
+    setSubstitutionData([]);
+    setTrailData([]);
+  };
+
+  const {
+    tree, stepInfo,
+    init, step, reset, back, clear: clearStepper
+  } = useStepper();
 
   const convertExampleToMicro = async (sourceText, profile = compileProfile) => {
     const response = await fetch('/api/post/source-convert', {
@@ -67,7 +77,11 @@ function App() {
       }),
       credentials: "include",
     });
-    const payload = await response.json();
+    const payloadText = await response.text();
+    if (payloadText.trim() === '') {
+      throw new Error(emptyResponseMessage(response));
+    }
+    const payload = parseStepperPayload(payloadText);
     if (!response.ok) {
       throw new Error(payload?.error || `Unable to convert example (${response.status})`);
     }
@@ -102,8 +116,10 @@ function App() {
     originalCodeRef.current = code;
     const [success, progOrError] = await init(code, sourceMode, compileProfile, searchStrategy);
     if (success) {
+      clearSelection();
+      initialTaggedCodeRef.current = progOrError || code;
       setFrozen(true);
-      setCode(progOrError);
+      setCode(initialTaggedCodeRef.current);
       setIsAtStart(true);
       setIsAtEnd(false);
     } else {
@@ -137,8 +153,9 @@ function App() {
       setAlert({ isOpen: true, message: error });
       return;
     }
-    setCode(originalCodeRef.current);
-    setFrozen(false);
+    clearSelection();
+    setCode(initialTaggedCodeRef.current || originalCodeRef.current);
+    setFrozen(true);
     setIsAtStart(true);
     setIsAtEnd(false);
   };
@@ -151,7 +168,7 @@ function App() {
   }, [tree, stateId]);
 
   useEffect(() => {
-    if (isFrozen || !selectedExampleId) {
+    if (!selectedExampleId) {
       setIsExampleLoading(false);
       return undefined;
     }
@@ -182,7 +199,7 @@ function App() {
 
     load();
     return () => { active = false; };
-  }, [selectedExampleId, sourceMode, compileProfile, isFrozen]);
+  }, [selectedExampleId, sourceMode, compileProfile]);
 
   const toolbarState = deriveToolbarState({
     isFrozen,
@@ -206,7 +223,14 @@ function App() {
   };
 
   const handleExampleChange = (exampleId) => {
-    if (isFrozen) return;
+    if (isFrozen) {
+      clearSelection();
+      clearStepper();
+      setFrozen(false);
+      setIsAtStart(true);
+      setIsAtEnd(false);
+      initialTaggedCodeRef.current = '';
+    }
     setIsExampleLoading(Boolean(exampleId));
     if (!exampleId) {
       setSelectedExampleSource('');
@@ -220,12 +244,6 @@ function App() {
   };
 
   const handleCodeChange = (nextCode) => {
-    setSelectedExampleId((currentId) =>
-      nextSelectedExampleId({
-        selectedExampleId: currentId,
-        selectedExampleSource,
-        nextCode,
-      }));
     setCode(nextCode);
   };
 
@@ -250,6 +268,7 @@ function App() {
             schedulerOptions={SCHEDULER_OPTIONS}
             onSearchStrategyChange={handleSearchStrategyChange}
             isFrozen={isFrozen}
+            isExampleLoading={isExampleLoading}
           />
           <div className="editor-area">
             <CodeEditor
