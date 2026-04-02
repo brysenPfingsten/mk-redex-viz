@@ -2,28 +2,26 @@
 
 (require redex
          redex/reduction-semantics
-         redex/gui)
+         rackunit)
 
 (require "../src/reduction-relations/dmitry-and-dmitry.rkt")
 
-#;(stepper
- dmitry-and-dmitry
- (term (prog ((r:appendo (x:l x:s x:out)
-                         (((x:l =? empty "u2") ∧ (x:out =? x:s "u3") "c1")
-                          ∨
-                          (∃ (x:a)
-                             (∃ (x:d)
-                                (∃ (x:res)
-                                   (((x:l =? (x:a : x:d) "u7") ∧ (x:out =? (x:a : x:res) "u8") "c6")
-                                    ∧
-                                    (r:appendo x:d x:s x:res "r9")
-                                    "c5")
-                                   "f4") "f5") "f6")
-                                "d0")))
-             ((∃ (x:q)
-                 (r:appendo ((sym "dog") : ((sym "cat") : ((sym "bear") : ((sym "lion") : empty))))
-                             ((sym "bear") : empty)
-                             x:q
-                             "r21")
-                 "f20")
-              (state () 0 ())))))
+(module+ test
+  (define eq-prog
+    (term ((((sym "a") =? (sym "a") (sym "u"))
+            (state () 0 () (sym "s")))
+           ())))
+
+  (define next
+    (apply-reduction-relation/tag-with-names dmitry-and-dmitry eq-prog))
+
+  (test-true "dmitry relation can take one step on simple equality program" (pair? next))
+  (test-true "dmitry stepping remains deterministic on this input"
+             (or (null? next) (null? (cdr next)))))
+
+(module+ main
+  (stepper
+   dmitry-and-dmitry
+   (term ((((sym "a") =? (sym "a") (sym "u"))
+           (state () 0 () (sym "s")))
+          ()))))

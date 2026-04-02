@@ -1,6 +1,6 @@
 #lang racket
-(require redex)
-(require "definitions.rkt")
+(require redex/reduction-semantics
+         "definitions.rkt")
 (provide reify term->mk mk->json reified?
          generate-fresh-names generate-query-vars
          make-unify-clause prepare-minikanren-namespace

@@ -1,6 +1,8 @@
 #lang racket
 
-(require redex racket/port racket/sandbox)
+(require redex/reduction-semantics
+         racket/port
+         racket/sandbox)
 (require "judgment-forms.rkt")
 (provide check-well-formed check-syntax-capture-error)
 

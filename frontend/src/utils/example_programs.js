@@ -78,11 +78,18 @@ const div3o = `(defrel (same-counto bn)
 
 (run* (q) (multiple-of-threeo q))`
 
+const ALL_MODELS = ["microKanren", "dmitry", "dfs"];
+
 export const exampleProgs = [
-  { value: "", label: "Examples"},
-  { value: appendo, label: "appendo" },
-  { value: appendoh1, label: "appendoh 1" },
-  { value: appendoh2, label: "appendoh 2" },
-  { value: same, label: "same"},
-  { value: div3o, label: "div3o" },
-]
+  { value: "", label: "Examples", models: ALL_MODELS },
+  { value: appendo, label: "appendo", models: ALL_MODELS },
+  { value: appendoh1, label: "appendoh 1", models: ALL_MODELS },
+  { value: appendoh2, label: "appendoh 2", models: ALL_MODELS },
+  { value: same, label: "same", models: ALL_MODELS },
+  { value: div3o, label: "div3o", models: ALL_MODELS },
+];
+
+export function examplesForModel(model) {
+  if (!model) return exampleProgs;
+  return exampleProgs.filter((opt) => (opt.models || []).includes(model));
+}

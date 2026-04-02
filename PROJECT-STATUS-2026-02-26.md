@@ -100,6 +100,23 @@ This note is a restart map: what has been decided, what is provisional, and what
    - delayful DFS model with no interleaving (possibly UI-collapsing administrative delay steps).
 5. **Theorem surface**: exact claim set for progress/preservation/frame/locality across model variants.
 6. **Frontend syntax/UI axis** (miniKanren + microKanren surfaces with shared backend): desired, but currently tabled.
+7. **Interleaving policy family coverage**:
+   - whether to add Dmitri-style deterministic interleaving (rotate at every disjunction node)
+   - as a first-class relation variant, alongside current `flip` and `railroad` branches.
+8. **Disequality constraints axis**:
+   - whether to add disequality constraints as an extension family in this paper cycle,
+   - and whether to phase-gate it to selected variants vs full lattice cross-product.
+9. **JS dispatch architecture**:
+   - parser profile may differ by selected language/semantics,
+   - example dropdown should be model-compatible rather than global.
+
+### 3.1) Legacy-to-Variant Migration Targets (working map)
+- `reduction-relations.rkt` (legacy "microKanren" backend) -> **`Rrail-l`** as closest lattice target.
+  - Rationale: lazy call expansion + railroad left/right delay transitions are the closest behavioral match.
+- `dfs.rkt` (legacy DFS backend) -> **`Rbase-l`** as closest current lattice target.
+  - Caveat: this is the closest available branch today; an exact "delay-free DFS + calls + disj" target is still a candidate sibling variant.
+- `dmitry-and-dmitry.rkt` -> **no 1:1 lattice target yet**.
+  - This remains an explicitly different semantics family pending transformation/embedding strategy.
 
 ## 4) Dependency Map (what constrains what)
 
@@ -164,6 +181,15 @@ Dependencies:
 Dependencies:
 - `F3` requires conflict resolution between disjunction scheduling (`D*`) and call expansion policy (`E*`).
 - This split reduces design risk by validating each extension independently before composition.
+
+### J. Constraint-store expressivity
+- `J1 = equality-only`
+- `J2 = equality + disequality`
+
+Dependencies:
+- `J2` adds a new semantic/testing/proof axis (constraint-store behavior and WF invariants).
+- If combined with every scheduler/call-timing branch, matrix size grows quickly (cross-product effect).
+- Recommended containment: stage `J2` on a selected baseline branch first, then widen only if needed.
 
 ### G. Answer-stream placement
 - `G1 = external ans* list` (current core)
@@ -236,6 +262,15 @@ Dependencies:
    - current handling: deferred as an extension issue (not a blocker for core path).
 8. `DECIDED`: **`c` discipline for paper-primary metatheory**
    - **subset-`c` primary** (global-`c` as simplification baseline only).
+9. `OPEN`: **Interleaving policy coverage**
+   - current implemented branches: `flip`, `railroad`.
+   - candidate additional branch: Dmitri-style "interleave at every disjunction node."
+10. `OPEN`: **Disequality constraints**
+   - add as extension family or defer.
+   - if added, choose full-lattice rollout vs phased rollout (recommended).
+11. `OPEN`: **Frontend/backend variant dispatch**
+   - one shared parser/example set vs model registry with parser+example compatibility.
+   - currently: partial guardrails on frontend example filtering; full parser-profile dispatch still open.
 
 ## 6) Testing Quality Upgrade Plan (concrete)
 - Add a "property inventory" doc: each property, intended bug class, generator assumptions.

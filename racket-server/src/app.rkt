@@ -5,17 +5,17 @@
          net/uri-codec
          json)
 
-(require (prefix-in mmk:    "reduction-relations/reduction-relations.rkt")
-         (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
-         (prefix-in dfs:    "reduction-relations/dfs.rkt")
-         "metafunctions.rkt"
+(require "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt"
-         "zipper.rkt")
+         "zipper.rkt"
+         "model-registry.rkt"
+         "legacy-variant-adapter.rkt")
 
 (provide step! back! reset! init! init-session! 
          make-stepper step step-name 
-         session session-zipper session-stepper session-nqv)
+         session session-zipper session-stepper session-nqv
+         switch-model! list-models!)
 
 (define-struct step (name prog) #:transparent)
 (define-struct session 
@@ -32,7 +32,13 @@
   (let ([z (session-zipper s)])
     (zipper-init! z)
     (zipper-add! z (step "Initialize Program" p))
-    (set-session-nqv! s (num-query-vars p))))
+    (set-session-nqv! s (num-query-vars (canonical-config->legacy-program p)))))
+
+
+;; program->display-prog: program -> legacy-program
+;; Purpose: Keep existing JSON/transpiler view logic while stepping L4 configs.
+(define (program->display-prog prog)
+  (canonical-config->legacy-program prog))
 
 
 ;; step->response: step nat nat-> response
@@ -41,7 +47,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step a-idx
-                            'program (to-json prog nqv))])
+                            'program (to-json (program->display-prog prog) nqv))])
       (response/jsexpr response #:mime-type #"application/json; charset=utf-8"))))
 
 
@@ -51,7 +57,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step 0
-                            'program (to-json prog nqv))])
+                            'program (to-json (program->display-prog prog) nqv))])
       (response/jsexpr response
                        #:mime-type #"application/json; charset=utf-8"
                        #:headers (list (make-header #"X-Is-Last" #"true"))))))
@@ -63,7 +69,7 @@
   (match-let ([(step name prog) a-step])
     (let ([response (hasheq 'stepName name
                             'step 0
-                            'program (to-json prog nqv)
+                            'program (to-json (program->display-prog prog) nqv)
                             'htmlGuids tagged-prog)])
       (response/jsexpr response
                        #:mime-type #"application/json; charset=utf-8"
@@ -117,9 +123,13 @@
   (define raw-prog (hash-ref (bytes->jsexpr json-data) 'text))        ;; Get the program from that JSON
   (check-syntax-capture-error raw-prog)                               ;; Check for syntax errors
   (define sexpr-prog (read-all (open-input-string raw-prog)))         ;; Read the program into sexpressions
-  (define-values (model-prog html-prog) (parse-prog sexpr-prog))      ;; Parse the sexpressions
-  (check-well-formed model-prog)                                      ;; Check if the program is well-formed
-  (init-session! ses model-prog)                                      ;; Initialize all state variables
+  (define-values (legacy-prog html-prog) (parse-prog sexpr-prog))      ;; Parse the sexpressions
+  (check-well-formed legacy-prog)                                      ;; Legacy parser/wf gate
+  (define model-prog (legacy-program->canonical-config legacy-prog))   ;; Target syntax migration
+  (unless (canonical-config? model-prog)
+    (error 'init! (format "transpiler produced a program outside canonical target ~a"
+                          canonical-target-id)))
+  (init-session! ses model-prog)                                       ;; Initialize all state variables
   (match-define (session zip _ nqv) ses)                              ;; Get zipper and number query vars
   (define init-step (zipper-curr zip))                                ;; Get the initial program
   (step/html/cookie->response init-step html-prog ses-id nqv))        ;; Send the initial program and HTML
@@ -161,32 +171,54 @@
 ;; Purpose: Switches the model that is being used to step with
 (define (switch-model! ses req)
   (define json-data (request-post-data/raw req))
-  (define new-model (hash-ref (bytes->jsexpr json-data) 'model))
-  (match new-model
-    ["microKanren" (set-session-stepper! ses (make-stepper mmk:step-once))]
-    ["dmitry"      (set-session-stepper! ses (make-stepper dmitry:step-once))]
-    ["dfs"         (set-session-stepper! ses (make-stepper dfs:step-once))])
-  (response/jsexpr (json-null) #:code 200))
+  (define new-model (hash-ref (bytes->jsexpr json-data) 'model #f))
+  (define maybe-step-once (lookup-model-step-once new-model))
+  (if maybe-step-once
+      (begin
+        (set-session-stepper! ses (make-stepper maybe-step-once))
+        (response/jsexpr (hasheq 'model new-model) #:code 200))
+      (response/jsexpr (hasheq 'error (format "Unknown model: ~a" new-model))
+                       #:code 400)))
+
+
+;; list-models!: -> response
+;; Purpose: Returns known backend model ids and metadata for UI dispatch.
+(define (list-models!)
+  (response/jsexpr
+   (for/list ([spec (in-list all-model-specs)])
+     (model-spec->jsexpr spec))
+   #:mime-type #"application/json; charset=utf-8"
+   #:code 200))
 
 
 ;; get-or-create-session-id: req -> string
 ;; Purpose: Gets the session id from cookies or creates a new one
+(define (cookie-field->string v)
+  (cond
+    [(string? v) v]
+    [(bytes? v) (bytes->string/utf-8 v)]
+    [(symbol? v) (symbol->string v)]
+    [else (format "~a" v)]))
+
 (define (get-or-create-session-id req)
-  (let* ([cookies (map (λ (c) (cons (client-cookie-name c)
-                                    (client-cookie-value c)))
-                       (request-cookies req))]
-         [maybe-session (assoc "session-id" cookies)])
-    (if maybe-session
-        (cdr maybe-session)
-        (symbol->string (gensym 'sess-)))))
+  (or
+   (for/first ([c (in-list (request-cookies req))]
+               #:when (string=? (cookie-field->string (client-cookie-name c))
+                                "session-id"))
+     (cookie-field->string (client-cookie-value c)))
+   (symbol->string (gensym 'sess-))))
 
 
 ;; get-session: string -> session
 (define (get-session session-id)
   (hash-ref session-table session-id
             (lambda ()
+              (define default-step-once (lookup-model-step-once default-model-id))
+              (when (not default-step-once)
+                (error 'get-session
+                       (format "No default model found for id: ~a" default-model-id)))
               (define new-session (session (zipper '() #f '() 0) 
-                                           (make-stepper mmk:step-once)
+                                           (make-stepper default-step-once)
                                            1))
               (hash-set! session-table session-id new-session)
               new-session)))
@@ -203,6 +235,7 @@
   (let* ([session-id (get-or-create-session-id req)]
          [session (get-session session-id)])
     (match (get-path req)
+      ["get/models" (list-models!)]
       ["get/next"   (step! session)]
       ["post/init"  (init! session req session-id)]
       ["post/reset" (reset! session session-table session-id)]

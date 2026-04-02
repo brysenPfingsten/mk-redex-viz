@@ -108,6 +108,39 @@ Use this as a working sheet. Mark one option per decision (or mark `DEFER`) and 
   - [ ] `DEFER`
 - Rationale:
 
+## D11) Interleaving Semantics Family (`DECIDE-NEXT`)
+- Status: `OPEN`
+- Choose:
+  - [ ] Keep only the currently implemented interleaving branches (`flip` and `railroad`)
+  - [ ] Add Dmitri-style deterministic interleaving that rotates at every disjunction node
+  - [ ] `DEFER`
+- Rationale:
+  - This is a distinct semantics axis (scheduler policy), not just syntax.
+  - It should be represented as its own relation variant so comparisons are explicit.
+
+## D12) Disequality Constraints (`DECIDE-NEXT`)
+- Status: `OPEN`
+- Choose:
+  - [ ] Keep equality-only for this paper iteration
+  - [ ] Add disequality constraints as an extension family
+  - [ ] `DEFER`
+- If adding disequality, choose rollout policy:
+  - [ ] Full cross-product with all existing variants
+  - [ ] Phase-gated subset (core + selected branch only), then widen
+- Rationale:
+  - Disequality is valuable but introduces another binary axis.
+  - Full matrix expansion can become combinatorial; phase-gating limits complexity while preserving comparison value.
+
+## D13) Frontend/Backend Variant Dispatch (`DECIDE-NEXT`)
+- Status: `OPEN`
+- Choose:
+  - [ ] Keep one parser and one shared example set for all selectable models
+  - [ ] Add model registry with explicit parser profile + example compatibility per model
+  - [ ] `DEFER`
+- Rationale:
+  - Multiple semantics/languages require explicit dispatch to avoid invalid parser/example/model combinations.
+  - This is mostly orthogonal to semantic correctness, but blocks robust JS-side UX.
+
 ## Milestone Gate
 - Before coding next semantic layer, decisions required: `D1-D6`.
-- Before theorem/proof write-up, decisions required: `D7-D10`.
+- Before theorem/proof write-up, decisions required: `D7-D13`.

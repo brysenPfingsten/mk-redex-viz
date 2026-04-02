@@ -1,7 +1,7 @@
 #lang racket
 (require racket/struct
          racket/generic
-         redex
+         redex/reduction-semantics
          syntax/to-string
          racket/pretty
          "definitions.rkt")

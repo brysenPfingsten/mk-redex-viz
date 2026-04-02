@@ -6,6 +6,7 @@
          "../src/extensions/variant-languages.rkt")
 
 (provide final-config?
+         wf-config-term?
          progress?
          unique-decomposition?
          states-wf?
@@ -24,6 +25,9 @@
 
 (define (final-config? cfg)
   (redex-match? Core end-config cfg))
+
+(define (wf-config-term? cfg)
+  (judgment-holds (wf-config? ,cfg)))
 
 (define (progress? rel cfg)
   (or (final-config? cfg)

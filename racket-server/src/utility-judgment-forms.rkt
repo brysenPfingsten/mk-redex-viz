@@ -1,7 +1,6 @@
 #lang racket
-(require redex)
-(require redex/reduction-semantics)
-(require rackunit)
+(require redex/reduction-semantics
+         rackunit)
 (check-redundancy #t)
 
 (provide same-length?)

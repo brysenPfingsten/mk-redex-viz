@@ -6,8 +6,8 @@
          net/url-structs
          json
          "../src/app.rkt"
-         (prefix-in mmk: "../src/reduction-relations/reduction-relations.rkt")
-         "../src/zipper.rkt")
+         "../src/zipper.rkt"
+         "../src/legacy-variant-adapter.rkt")
 
 (define sample-tree
   '(((∃
@@ -24,6 +24,21 @@
   (let ([out (open-output-string)])
     ((response-output response) out)
     (get-output-string out)))
+
+(define (make-post-model-request model)
+  (make-request
+   #"POST"
+   (make-url #f #f #f #f #t
+             (list (make-path/param "post" empty)
+                   (make-path/param "model" empty))
+             empty
+             #f)
+   (list (make-header #"content-type" #"application/json"))
+   (delay '())
+   (string->bytes/utf-8 (format "{\"model\":\"~a\"}" model))
+   "127.0.0.1"
+   5000
+   "127.0.0.1"))
 
 (define-test-suite STEP!
   #:before (thunk (displayln "Running tests for step!..."))
@@ -43,9 +58,9 @@
               (define new-zipper (session-zipper ses))
               (check-equal? zip new-zipper))
 
-  (test-case "step! steps the current program if there is no future cache and updates state"
+  (test-case "step! advances via stepper when no future cache and updates state"
               (define zip (zipper '() (step "foo" sample-tree) '() 1))
-              (define stepper (make-stepper mmk:step-once))
+              (define stepper step/const-tree-output)
               (define ses (session zip stepper 1))
               (define response (step! ses))
               (check-equal? (response-code response) 200)
@@ -53,10 +68,10 @@
               (check-equal? (response-mime response) APPLICATION/JSON-MIME-TYPE)
               (check-equal? (response-headers response) '())
               (check-equal? (get-response-out response)
-                            "{\"program\":\"{\\\"id\\\":\\\"u5\\\",\\\"left\\\":{\\\"sym\\\":\\\"tree1\\\"},\\\"name\\\":\\\"Unify\\\",\\\"reified\\\":[],\\\"right\\\":{\\\"sym\\\":\\\"horse\\\"},\\\"stateId\\\":\\\"s\\\",\\\"sub\\\":[],\\\"trail\\\":[]}\",\"step\":2,\"stepName\":\"Substitute Fresh Variables\"}")
+                            "{\"program\":\"{\\\"children\\\":[{\\\"id\\\":\\\"u5\\\",\\\"left\\\":{\\\"sym\\\":\\\"tree1\\\"},\\\"name\\\":\\\"Unify\\\",\\\"right\\\":{\\\"sym\\\":\\\"horse\\\"}}],\\\"id\\\":\\\"f0\\\",\\\"name\\\":\\\"Fresh\\\",\\\"reified\\\":[],\\\"stateId\\\":\\\"s\\\",\\\"sub\\\":[],\\\"trail\\\":[],\\\"vars\\\":[{\\\"var\\\":\\\"q\\\"}]}\",\"step\":2,\"stepName\":\"foo\"}")
               (define new-zipper (session-zipper ses))
               (check-equal? (zipper-prev new-zipper) (list (step "foo" sample-tree)))
-              (check-equal? (step-name (zipper-curr new-zipper)) "Substitute Fresh Variables")
+              (check-equal? (step-name (zipper-curr new-zipper)) "foo")
               (check-equal? (zipper-next new-zipper) '())
               (check-equal? (zipper-idx   new-zipper) 2))
 
@@ -215,6 +230,50 @@
               (check-equal? (zipper-idx new-zipper) 1))
   )
 
+(define-test-suite SWITCH-MODEL!
+  #:before (thunk (displayln "Running tests for switch-model!..."))
+  #:after (thunk (displayln "Finished running tests for switch-model!."))
+
+  (test-case "switch-model! updates stepper for known model id"
+             (define zip (zipper '() (step "foo" sample-tree) '() 1))
+             (define old-stepper step/const-tree-output)
+             (define ses (session zip old-stepper 1))
+             (define req (make-post-model-request "dfs"))
+             (define response (switch-model! ses req))
+             (check-equal? (response-code response) 200)
+             (check-true (procedure? (session-stepper ses)))
+             (check-false (eq? (session-stepper ses) old-stepper))
+             (check-equal? (string->jsexpr (get-response-out response))
+                           (hasheq 'model "dfs")))
+
+  (test-case "switch-model! rejects unknown model id and keeps existing stepper"
+             (define zip (zipper '() (step "foo" sample-tree) '() 1))
+             (define old-stepper step/const-tree-output)
+             (define ses (session zip old-stepper 1))
+             (define req (make-post-model-request "nope"))
+             (define response (switch-model! ses req))
+             (check-equal? (response-code response) 400)
+             (check-true (eq? (session-stepper ses) old-stepper))
+             (check-true (hash-has-key? (string->jsexpr (get-response-out response)) 'error))))
+
+(define-test-suite LIST-MODELS!
+  #:before (thunk (displayln "Running tests for list-models!..."))
+  #:after (thunk (displayln "Finished running tests for list-models!."))
+
+  (test-case "list-models! returns known backend models with parser contract"
+             (define response (list-models!))
+             (check-equal? (response-code response) 200)
+             (define models (string->jsexpr (get-response-out response)))
+             (check-true (list? models))
+             (check-true (>= (length models) 3))
+             (check-true (for/or ([m (in-list models)])
+                           (equal? (hash-ref m 'id #f) "microKanren")))
+             (check-true (for/and ([m (in-list models)])
+                           (and (hash-has-key? m 'parserProfile)
+                                (hash-has-key? m 'parserTarget)
+                                (equal? (hash-ref m 'parserTarget #f)
+                                        canonical-target-id))))))
+
 (define/provide-test-suite APP
   #:before (thunk (displayln "Running tests for app.rkt..."))
   #:after (thunk (displayln "Finished running tests for app.rkt"))
@@ -222,7 +281,8 @@
   INIT!
   RESET!
   BACK!
-  ;; TODO: switch-model!
+  SWITCH-MODEL!
+  LIST-MODELS!
 )
 
 (run-tests APP)

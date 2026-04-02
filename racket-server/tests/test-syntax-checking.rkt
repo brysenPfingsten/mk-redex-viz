@@ -3,7 +3,7 @@
 (require "../src/definitions.rkt"
          "../src/syntax-checking.rkt"
          "../src/judgment-forms.rkt")
-(require redex
+(require redex/reduction-semantics
          rackunit
          rackunit/text-ui)
 

@@ -6,21 +6,32 @@
 
 (check-redundancy #t)
 
-(provide Rcall-eager)
+(provide call-eager-extra/l1
+         Rcall-eager)
 
-(define Rcall-eager
-  (extend-reduction-relation
-    core-base-l1
+(define call-eager-extra/l1
+  (reduction-relation
     L1/K
-    [--> (Γ ans* (in-hole K1 ((r t ... tag) σ)))
-         (Γ ans* (in-hole K1 (delay (proceed (g_new σ)))))
+    #:domain config
+    [--> (Γ ans* (in-hole Kcall ((r t ... tag) σ)))
+         (Γ ans* (in-hole Kcall (delay (proceed (g_new σ)))))
          (where g_new ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
          "call/eager-suspend-expanded"]
 
-    [--> (Γ ans* (in-hole K1 (delay (proceed (g σ)))))
-         (Γ ans* (in-hole K1 (proceed (g σ))))
+    [--> (Γ ans* (in-hole Kcall (delay (proceed (g σ)))))
+         (Γ ans* (in-hole Kcall (proceed (g σ))))
          "call/eager-invoke-delay"]
 
-    [--> (Γ ans* (in-hole K1 (proceed (g σ))))
-         (Γ ans* (in-hole K1 (g σ)))
+    [--> (Γ ans* (in-hole Kcall (proceed (g σ))))
+         (Γ ans* (in-hole Kcall (g σ)))
          "call/eager-resume-goal"]))
+
+(define base-l1/k
+  (extend-reduction-relation
+    core-base-l1
+    L1/K))
+
+(define Rcall-eager
+  (union-reduction-relations
+   call-eager-extra/l1
+   base-l1/k))

@@ -1,9 +1,6 @@
 #lang racket
 
-(require redex redex/gui
-         redex/reduction-semantics
-         rackunit
-         redex/pict)
+(require redex/reduction-semantics)
 (check-redundancy #t)
 
 (provide dmitry-and-dmitry step-once)

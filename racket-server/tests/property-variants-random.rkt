@@ -27,6 +27,8 @@
 (define VR-MIN-LEFT-TREE-HITS 2)
 (define VR-MIN-DELAY-HITS 2)
 (define VR-MIN-RIGHT-TREE-HITS 1)
+(define VR-EXPECTED-ANTE-HITS VR-ATTEMPTS)
+(define VR-K-STEP-DEPTH 3)
 (define VR-MIN-CALL-RULE-HITS 2)
 (define VR-MIN-DISJ-RULE-HITS 2)
 (define VR-MIN-FLIP-RULE-HITS 2)
@@ -46,11 +48,17 @@
 (require-positive 'VR-X-POOL-SIZE VR-X-POOL-SIZE)
 (require-positive 'VR-R-POOL-SIZE VR-R-POOL-SIZE)
 (require-positive 'VR-C-MAX VR-C-MAX)
+(require-positive 'VR-EXPECTED-ANTE-HITS VR-EXPECTED-ANTE-HITS)
+(require-positive 'VR-K-STEP-DEPTH VR-K-STEP-DEPTH)
 (require-nonnegative 'VR-C-EXTRA-MAX VR-C-EXTRA-MAX)
 (unless (<= VR-C-MAX VR-U-POOL-SIZE)
   (error 'property-variants-random
          (format "VR-C-MAX must be <= VR-U-POOL-SIZE, got ~a > ~a"
                  VR-C-MAX VR-U-POOL-SIZE)))
+(unless (<= VR-EXPECTED-ANTE-HITS VR-ATTEMPTS)
+  (error 'property-variants-random
+         (format "VR-EXPECTED-ANTE-HITS must be <= VR-ATTEMPTS, got ~a > ~a"
+                 VR-EXPECTED-ANTE-HITS VR-ATTEMPTS)))
 
 (define U-POOL
   (for/list ([i (in-range VR-U-POOL-SIZE)])
@@ -381,8 +389,35 @@
                    [(string? name) name]
                    [else (format "~a" name)])))
 
+;; Check theorem-style consequents up to k steps:
+;; if cfg is wf, then it stays in-language, remains wf, progresses unless final,
+;; and (optionally) has unique decomposition at each explored node.
+(define (k-step-consequent-failure rel shape-match? cfg k require-unique?)
+  (define (loop cfg fuel)
+    (cond
+      [(not (shape-match? cfg))
+       (list 'shape cfg)]
+      [(not (states-wf? cfg))
+       (list 'state-wf cfg)]
+      [else
+       (define next* (apply-reduction-relation rel cfg))
+       (cond
+         [(and (not (final-config? cfg)) (null? next*))
+          (list 'progress cfg)]
+         [(and require-unique?
+               (if (final-config? cfg)
+                   (not (null? next*))
+                   (not (= (length next*) 1))))
+          (list 'unique cfg (length next*))]
+         [(zero? fuel) #f]
+         [else
+          (for/or ([cfg^ (in-list next*)])
+            (loop cfg^ (sub1 fuel)))])]))
+  (loop cfg k))
+
 (define (run-random-variant label rel shape-match? shape-closed? cfg-generator
                             #:require-unique? [require-unique? #t]
+                            #:expected-ante-hits [expected-ante-hits VR-EXPECTED-ANTE-HITS]
                             #:min-call-gen [min-call-gen 0]
                             #:min-disj-gen [min-disj-gen 0]
                             #:min-left-tree [min-left-tree 0]
@@ -392,11 +427,13 @@
                             #:min-call-rules [min-call-rules 0]
                             #:min-disj-rules [min-disj-rules 0]
                             #:min-flip-rules [min-flip-rules 0]
-                            #:min-rail-rules [min-rail-rules 0])
+                            #:min-rail-rules [min-rail-rules 0]
+                            #:k-depth [k-depth VR-K-STEP-DEPTH])
   (for ([seed (in-list VR-SEEDS)])
     (define rng (h:make-seeded-rng seed))
     (define fail-count 0)
     (define fail-samples '())
+    (define ante-hits 0)
     (define call-gen-hits 0)
     (define disj-gen-hits 0)
     (define left-tree-hits 0)
@@ -408,6 +445,10 @@
     (define flip-rule-hits 0)
     (define rail-rule-hits 0)
     (define max-c-seen 0)
+    (define k-shape-fails 0)
+    (define k-state-wf-fails 0)
+    (define k-progress-fails 0)
+    (define k-unique-fails 0)
 
     (for ([_ (in-range VR-ATTEMPTS)])
       (define cfg (cfg-generator rng))
@@ -453,28 +494,29 @@
                (set! right-next-hits (add1 right-next-hits)))]
             [_ (void)]))
 
-        (unless (progress? rel cfg)
-          (set! fail-count (add1 fail-count))
-          (when (< (length fail-samples) 3)
-            (set! fail-samples (cons (list 'progress cfg) fail-samples))))
-
-        (when require-unique?
-          (unless (unique-decomposition? rel cfg)
-            (set! fail-count (add1 fail-count))
-            (when (< (length fail-samples) 3)
-              (set! fail-samples (cons (list 'unique cfg) fail-samples)))))
-
-        (unless (states-wf? cfg)
-          (set! fail-count (add1 fail-count))
-          (when (< (length fail-samples) 3)
-            (set! fail-samples (cons (list 'state-wf cfg) fail-samples))))
-
-        (for ([cfg^ (in-list (apply-reduction-relation rel cfg))])
-          (unless (states-wf? cfg^)
+        (when (and (shape-match? cfg) (states-wf? cfg))
+          (set! ante-hits (add1 ante-hits))
+          (define fail-info
+            (k-step-consequent-failure rel
+                                       shape-match?
+                                       cfg
+                                       k-depth
+                                       require-unique?))
+          (when fail-info
+            (match fail-info
+              [(list 'shape _)
+               (set! k-shape-fails (add1 k-shape-fails))]
+              [(list 'state-wf _)
+               (set! k-state-wf-fails (add1 k-state-wf-fails))]
+              [(list 'progress _)
+               (set! k-progress-fails (add1 k-progress-fails))]
+              [(list 'unique _ _)
+               (set! k-unique-fails (add1 k-unique-fails))]
+              [_ (void)])
             (set! fail-count (add1 fail-count))
             (when (< (length fail-samples) 3)
               (set! fail-samples
-                    (cons (list 'state-wf-next cfg cfg^) fail-samples)))))
+                    (cons (list 'k-step-consequent-fail fail-info cfg) fail-samples)))))
 
         (unless (shape-closed? rel cfg)
           (set! fail-count (add1 fail-count))
@@ -482,11 +524,16 @@
             (set! fail-samples (cons (list 'shape-closed cfg) fail-samples))))))
 
     (displayln
-     (format "[property-variants-random] ~a seed=~a attempts=~a fails=~a gen(call/disj/left/delay/right)=~a/~a/~a/~a/~a next-right=~a rule(call/disj/flip/rail)=~a/~a/~a/~a max-c=~a"
+     (format "[property-variants-random] ~a seed=~a attempts=~a ante-hits=~a fails=~a k-fails(shape/state/progress/unique)=~a/~a/~a/~a gen(call/disj/left/delay/right)=~a/~a/~a/~a/~a next-right=~a rule(call/disj/flip/rail)=~a/~a/~a/~a max-c=~a"
              label
              seed
              VR-ATTEMPTS
+             ante-hits
              fail-count
+             k-shape-fails
+             k-state-wf-fails
+             k-progress-fails
+             k-unique-fails
              call-gen-hits
              disj-gen-hits
              left-tree-hits
@@ -505,6 +552,26 @@
                           label
                           seed
                           (reverse fail-samples)))
+    (check-equal? ante-hits expected-ante-hits
+                  (format "~a seed=~a: antecedent coverage mismatch (~a != ~a)"
+                          label seed ante-hits expected-ante-hits))
+    (check-equal? k-shape-fails
+                  0
+                  (format "~a seed=~a: k-step shape preservation failures: ~a"
+                          label seed k-shape-fails))
+    (check-equal? k-state-wf-fails
+                  0
+                  (format "~a seed=~a: k-step state-wf preservation failures: ~a"
+                          label seed k-state-wf-fails))
+    (check-equal? k-progress-fails
+                  0
+                  (format "~a seed=~a: k-step progress failures: ~a"
+                          label seed k-progress-fails))
+    (when require-unique?
+      (check-equal? k-unique-fails
+                    0
+                    (format "~a seed=~a: k-step uniqueness failures: ~a"
+                            label seed k-unique-fails)))
     (check-true (>= call-gen-hits min-call-gen)
                 (format "~a seed=~a: call coverage too low (~a < ~a)"
                         label seed call-gen-hits min-call-gen))
@@ -537,100 +604,119 @@
                         label seed rail-rule-hits min-rail-rules))))
 
 (define-test-suite VARIANT-RANDOM-PROPERTIES
-  (test-case "L1 call variants randomized (eager/lazy)"
+  (test-case "L1 Rcall-eager randomized"
     (define opts (gopts #t #f #f #t))
     (run-random-variant "Rcall-eager"
                         Rcall-eager
                         (lambda (cfg) (redex-match? L1 config cfg))
                         shape-closed/L1?
                         (lambda (rng) (gen-config-user/rng rng opts))
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
-                        #:min-call-rules VR-MIN-CALL-RULE-HITS)
+                        #:min-call-rules VR-MIN-CALL-RULE-HITS))
+
+  (test-case "L1 Rcall-lazy randomized"
+    (define opts (gopts #t #f #f #t))
     (run-random-variant "Rcall-lazy"
                         Rcall-lazy
                         (lambda (cfg) (redex-match? L1 config cfg))
                         shape-closed/L1?
                         (lambda (rng) (gen-config-user/rng rng opts))
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS))
 
-  (test-case "L2 disjunction randomized"
+  (test-case "L2 Rdisj-left randomized"
     (define opts (gopts #f #t #f #f))
     (run-random-variant "Rdisj-left"
                         Rdisj-left
                         (lambda (cfg) (redex-match? L2 config cfg))
                         shape-closed/L2?
                         (lambda (rng) (gen-config-user/rng rng opts))
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
 
-  (test-case "L3 base variants randomized (eager/lazy + disj)"
+  (test-case "L3 Rbase-e randomized"
     (define opts (gopts #t #t #f #t))
     (run-random-variant "Rbase-e"
                         Rbase-e
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
                         (lambda (rng) (gen-config-user/rng rng opts))
-                        #:require-unique? #t
-                        #:min-call-gen VR-MIN-CALL-GEN-HITS
-                        #:min-disj-gen VR-MIN-DISJ-GEN-HITS
-                        #:min-call-rules VR-MIN-CALL-RULE-HITS
-                        #:min-disj-rules VR-MIN-DISJ-RULE-HITS)
-    (run-random-variant "Rbase-l"
-                        Rbase-l
-                        (lambda (cfg) (redex-match? L3 config cfg))
-                        shape-closed/L3?
-                        (lambda (rng) (gen-config-user/rng rng opts))
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
                         #:require-unique? #t
                         #:min-call-gen VR-MIN-CALL-GEN-HITS
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-call-rules VR-MIN-CALL-RULE-HITS
                         #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
 
-  (test-case "L3 flip variants randomized admin-fragment"
+  (test-case "L3 Rbase-l randomized"
+    (define opts (gopts #t #t #f #t))
+    (run-random-variant "Rbase-l"
+                        Rbase-l
+                        (lambda (cfg) (redex-match? L3 config cfg))
+                        shape-closed/L3?
+                        (lambda (rng) (gen-config-user/rng rng opts))
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
+                        #:require-unique? #t
+                        #:min-call-gen VR-MIN-CALL-GEN-HITS
+                        #:min-disj-gen VR-MIN-DISJ-GEN-HITS
+                        #:min-call-rules VR-MIN-CALL-RULE-HITS
+                        #:min-disj-rules VR-MIN-DISJ-RULE-HITS))
+
+  (test-case "L3 Rflip-e randomized admin-fragment"
     (run-random-variant "Rflip-e"
                         Rflip-e
                         (lambda (cfg) (redex-match? L3 config cfg))
                         shape-closed/L3?
                         gen-config-flip-admin/rng
-                        #:require-unique? #f
-                        #:min-disj-gen VR-MIN-DISJ-GEN-HITS
-                        #:min-left-tree VR-MIN-LEFT-TREE-HITS
-                        #:min-delay VR-MIN-DELAY-HITS
-                        #:min-flip-rules VR-MIN-FLIP-RULE-HITS)
-    (run-random-variant "Rflip-l"
-                        Rflip-l
-                        (lambda (cfg) (redex-match? L3 config cfg))
-                        shape-closed/L3?
-                        gen-config-flip-admin/rng
-                        #:require-unique? #f
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
+                        #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-left-tree VR-MIN-LEFT-TREE-HITS
                         #:min-delay VR-MIN-DELAY-HITS
                         #:min-flip-rules VR-MIN-FLIP-RULE-HITS))
 
-  (test-case "L4 railroad variants randomized admin-fragment"
+  (test-case "L3 Rflip-l randomized admin-fragment"
+    (run-random-variant "Rflip-l"
+                        Rflip-l
+                        (lambda (cfg) (redex-match? L3 config cfg))
+                        shape-closed/L3?
+                        gen-config-flip-admin/rng
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
+                        #:require-unique? #t
+                        #:min-disj-gen VR-MIN-DISJ-GEN-HITS
+                        #:min-left-tree VR-MIN-LEFT-TREE-HITS
+                        #:min-delay VR-MIN-DELAY-HITS
+                        #:min-flip-rules VR-MIN-FLIP-RULE-HITS))
+
+  (test-case "L4 Rrail-e randomized admin-fragment"
     (run-random-variant "Rrail-e"
                         Rrail-e
                         (lambda (cfg) (redex-match? L4 config cfg))
                         shape-closed/L4?
                         gen-config-rail-admin/rng
-                        #:require-unique? #f
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
+                        #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-left-tree VR-MIN-LEFT-TREE-HITS
                         #:min-delay VR-MIN-DELAY-HITS
                         #:min-right-tree 0
                         #:min-right-next VR-MIN-RIGHT-TREE-HITS
-                        #:min-rail-rules VR-MIN-RAIL-RULE-HITS)
+                        #:min-rail-rules VR-MIN-RAIL-RULE-HITS))
+
+  (test-case "L4 Rrail-l randomized admin-fragment"
     (run-random-variant "Rrail-l"
                         Rrail-l
                         (lambda (cfg) (redex-match? L4 config cfg))
                         shape-closed/L4?
                         gen-config-rail-admin/rng
-                        #:require-unique? #f
+                        #:expected-ante-hits VR-EXPECTED-ANTE-HITS
+                        #:require-unique? #t
                         #:min-disj-gen VR-MIN-DISJ-GEN-HITS
                         #:min-left-tree VR-MIN-LEFT-TREE-HITS
                         #:min-delay VR-MIN-DELAY-HITS

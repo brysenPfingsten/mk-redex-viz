@@ -1,8 +1,5 @@
 #lang racket
-(require redex
-         redex/reduction-semantics
-         rackunit
-         redex/pict)
+(require redex/reduction-semantics)
 (check-redundancy #t)
 
 (provide dfs step-once)
@@ -81,4 +78,3 @@
                       with [(--> (in-hole Ex a) (in-hole Ex b))
                             (==> a b)]
 					  ))
-
