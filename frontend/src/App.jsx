@@ -31,6 +31,12 @@ import {
 import {
   deriveToolbarState,
 } from './utils/app_state.js';
+import {
+  deriveEditableCodeState,
+  deriveFrozenEditorState,
+  deriveLoadedExampleState,
+  deriveThawedEditorState,
+} from './utils/editor_state.js';
 import './styles.css';
 
 function App() {
@@ -101,9 +107,10 @@ function App() {
   };
 
   const applyExampleSource = (nextCode, exampleId) => {
-    setSelectedExampleId(exampleId);
-    setSelectedExampleSource(nextCode);
-    setCode(nextCode);
+    const nextState = deriveLoadedExampleState(exampleId, nextCode);
+    setSelectedExampleId(nextState.selectedExampleId);
+    setSelectedExampleSource(nextState.selectedExampleSource);
+    setCode(nextState.code);
   };
 
   const handleInit = async () => {
@@ -117,11 +124,13 @@ function App() {
     const [success, progOrError] = await init(code, sourceMode, compileProfile, searchStrategy);
     if (success) {
       clearSelection();
-      initialTaggedCodeRef.current = progOrError || code;
-      setFrozen(true);
-      setCode(initialTaggedCodeRef.current);
-      setIsAtStart(true);
-      setIsAtEnd(false);
+      const nextState = deriveFrozenEditorState(code, progOrError);
+      originalCodeRef.current = nextState.originalCode;
+      initialTaggedCodeRef.current = nextState.initialTaggedCode;
+      setFrozen(nextState.isFrozen);
+      setCode(nextState.code);
+      setIsAtStart(nextState.isAtStart);
+      setIsAtEnd(nextState.isAtEnd);
     } else {
       setAlert({ isOpen: true, message: progOrError });
     }
@@ -154,10 +163,11 @@ function App() {
       return;
     }
     clearSelection();
-    setCode(initialTaggedCodeRef.current || originalCodeRef.current);
-    setFrozen(true);
-    setIsAtStart(true);
-    setIsAtEnd(false);
+    const nextState = deriveThawedEditorState(originalCodeRef.current);
+    setCode(nextState.code);
+    setFrozen(nextState.isFrozen);
+    setIsAtStart(nextState.isAtStart);
+    setIsAtEnd(nextState.isAtEnd);
   };
 
   useEffect(() => {
@@ -226,15 +236,15 @@ function App() {
     if (isFrozen) {
       clearSelection();
       clearStepper();
-      setFrozen(false);
-      setIsAtStart(true);
-      setIsAtEnd(false);
+      const nextState = deriveThawedEditorState(originalCodeRef.current);
+      setCode(nextState.code);
+      setFrozen(nextState.isFrozen);
+      setIsAtStart(nextState.isAtStart);
+      setIsAtEnd(nextState.isAtEnd);
       initialTaggedCodeRef.current = '';
     }
     setIsExampleLoading(Boolean(exampleId));
-    if (!exampleId) {
-      setSelectedExampleSource('');
-    }
+    setSelectedExampleSource('');
     setSelectedExampleId(exampleId);
   };
 
@@ -244,7 +254,14 @@ function App() {
   };
 
   const handleCodeChange = (nextCode) => {
-    setCode(nextCode);
+    const nextState = deriveEditableCodeState(
+      nextCode,
+      selectedExampleId,
+      selectedExampleSource,
+    );
+    setCode(nextState.code);
+    setSelectedExampleId(nextState.selectedExampleId);
+    setSelectedExampleSource(nextState.selectedExampleSource);
   };
 
   return (

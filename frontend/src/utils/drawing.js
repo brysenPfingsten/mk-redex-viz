@@ -186,22 +186,10 @@ function freshenedText(data) {
     return vars.map(v => termToString(v)).join(' ');
 }
 
-function drawAnswerFreshenedNode(group, data) {
-    const varsText = freshenedText(data);
-    const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
-    return drawTextNode(group, textContent, 12, "#d9ead3");
-}
-
-function drawStreamFreshenedNode(group, data) {
+function drawFreshenedNode(group, data) {
     const varsText = freshenedText(data);
     const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
     return drawTextNode(group, textContent, 12, "#d9e2f3");
-}
-
-function drawFragmentFreshenedNode(group, data) {
-    const varsText = freshenedText(data);
-    const textContent = varsText ? `Freshened ${varsText}` : "Freshened";
-    return drawTextNode(group, textContent, 12, "#fff2cc");
 }
 
 function drawEmitNode(group) {
@@ -258,9 +246,7 @@ const nodeDrawFunctions = {
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,
     "Emit": drawEmitNode,
-    "Answer-Freshened": drawAnswerFreshenedNode,
-    "Stream-Freshened": drawStreamFreshenedNode,
-    "Fragment-Freshened": drawFragmentFreshenedNode,
+    "Freshened": drawFreshenedNode,
     "Bounced": drawBouncedNode,
     "Rel-Call": drawRelCallNode,
     "Goal-Delay": drawGoalDelayNode,

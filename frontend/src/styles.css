@@ -167,7 +167,6 @@
     display: flex;
     padding: var(--space-xs);
     justify-content: space-around;
-    margin-top: var(--space-xs);
     gap: var(--space-md);
   }
   
@@ -243,6 +242,10 @@
 
   .control-section-search {
     flex: 1 1 18rem;
+  }
+
+  .control-section-trace {
+    width: 100%;
   }
 
   .control-section-title {
@@ -364,6 +367,16 @@
     .control-section-search {
       flex-basis: 100%;
     }
+  }
+
+  .trace-controls {
+    padding: 0 var(--space-md) var(--space-xs);
+    background: var(--color-panel-bg);
+  }
+
+  .control-section-trace .button-container {
+    margin-top: 0;
+    padding: 0;
   }
   /* ============================= */
   /*   Editor & Overlay            */

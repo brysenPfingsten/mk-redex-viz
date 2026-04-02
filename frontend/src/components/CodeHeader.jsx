@@ -66,7 +66,7 @@ export default function CodeHeader({
 
       <div className="header-controls">
         <section className="control-section control-section-program">
-          <div className="control-section-title">Program</div>
+          <div className="control-section-title">Source</div>
           <div className="control-section-body">
             <label className="select-group">
               <span className="select-label">Example</span>
@@ -81,7 +81,7 @@ export default function CodeHeader({
             </label>
 
             {renderRadioGroup(
-              "Surface Language",
+              "Source Mode",
               "source-mode",
               sourceModeValue,
               sourceModeOptions,
@@ -92,7 +92,7 @@ export default function CodeHeader({
 
         {sourceModeValue === "mini" && (
           <section className="control-section control-section-compile">
-            <div className="control-section-title">Compilation</div>
+            <div className="control-section-title">Lowering</div>
             <div className="control-section-body">
               {renderRadioGroup(
                 "Conj Associativity",

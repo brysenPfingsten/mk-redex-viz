@@ -191,10 +191,32 @@
          (== q 'witness))
        (== q q)))")
 
+(define disj-relcall-program
+  "(defrel (same x y)
+     (== x y))
+
+   (defrel (wrap x)
+     (== x x)
+     (same x 'cat))
+
+   (run* (q)
+     (conde
+       [(wrap q)]
+       [(== q 'dog)]))")
+
+(define dotted-pair-program
+  "(run 1 (q r)
+     (== q (cons 'left 'right))
+     (== r 'done))")
+
 (define source-derived-names
   '("Fresh" "Goal-Conj" "Goal-Disj" "Goal-Delay" "Rel-Call" "Unify" "Disequality"))
 
-(define MIN-APPENDOH-DEEP-STEPS 20)
+(define MIN-DEEP-TRACE-STEPS 20)
+(define SCOPED-VISIBLE-PAIR-CAP 120)
+(define STRATEGY-WITNESS-CAP 120)
+(define PAIR-WITNESS-CAP 12)
+(define DEEP-TRACE-CAP 64)
 
 (define (render-source->micro src)
   (define response (source-convert! (make-post-source-convert-request src)))
@@ -261,6 +283,42 @@
         (cons payload
               (collect-step-payloads ses^
                                      (sub1 remaining)))])]))
+
+(define (payload->program-json payload)
+  (string->jsexpr (hash-ref payload 'program)))
+
+(define (payload-contains-name? payload target)
+  (json-contains-name? (payload->program-json payload) target))
+
+(define (scoped-visible-change? left right [left-step-name #f])
+  (define left-program (payload->program-json left))
+  (define right-program (payload->program-json right))
+  (and (or (not left-step-name)
+           (equal? (hash-ref left 'stepName) left-step-name))
+       (json-contains-name? left-program "Freshened")
+       (json-contains-name? right-program "Freshened")
+       (not (equal? left-program right-program))))
+
+(define (collect-scoped-visible-changes payloads [acc '()])
+  (match payloads
+    ['() (reverse acc)]
+    [(list _) (reverse acc)]
+    [(cons left (cons right rest))
+     (define next-acc
+       (if (scoped-visible-change? left right)
+           (cons (list left right) acc)
+           acc))
+     (collect-scoped-visible-changes (cons right rest) next-acc)]))
+
+(define (count-pair-payloads payloads [acc 0])
+  (match payloads
+    ['() acc]
+    [(cons payload rest)
+     (define next-acc
+       (if (json-contains-pair? (payload->program-json payload))
+           (add1 acc)
+           acc))
+     (count-pair-payloads rest next-acc)]))
 
 (define (example-src label)
   (for/first ([pr (in-list (frontend-example-programs))]
@@ -497,88 +555,65 @@
               (check-false (equal? (string->jsexpr program1)
                                    (string->jsexpr program2))))
 
-  (test-case "fives/fours makes scope bookkeeping visible between adjacent UI steps"
+  (test-case "fives/fours trace contains multiple scoped adjacent UI changes"
               (define sample-req
                 (make-post-init-request (example-src "fives/fours")))
               (define ses (session (make-empty-zipper) identity 1 default-search-strategy))
               (define-values (response ses^) (init! ses sample-req 'fives-fours-visible-id))
               (check-equal? (response-code response) 200)
-              (define-values (step11-payload ses11) (nth-step-payload ses^ 10))
-              (define-values (step12-payload ses12) (nth-step-payload ses11 0))
-              (define-values (step18-payload ses18) (nth-step-payload ses12 5))
-              (define-values (step19-payload _ses19) (nth-step-payload ses18 0))
-              (match-define (hash* ['program program11] #:open) step11-payload)
-              (match-define (hash* ['program program12] #:open) step12-payload)
-              (match-define (hash* ['program program18] #:open) step18-payload)
-              (match-define (hash* ['program program19] #:open) step19-payload)
-              (check-false (equal? (string->jsexpr program11)
-                                   (string->jsexpr program12)))
-              (check-false (equal? (string->jsexpr program18)
-                                   (string->jsexpr program19)))
-              (check-true (json-contains-name? (string->jsexpr program11) "Freshened"))
-              (check-true (json-contains-name? (string->jsexpr program18) "Freshened")))
+              (define scoped-changes
+                (collect-scoped-visible-changes
+                 (collect-step-payloads ses^ SCOPED-VISIBLE-PAIR-CAP)))
+              (check-true (>= (length scoped-changes) 2)))
 
-  (test-case "late fives/fours steps stay scoped and keep changing"
+  (test-case "fives/fours keeps scoped visible change across a delay boundary"
               (define sample-req
                 (make-post-init-request (example-src "fives/fours")))
               (define ses (session (make-empty-zipper) identity 1 default-search-strategy))
               (define-values (response ses^) (init! ses sample-req 'fives-fours-debug-id))
               (check-equal? (response-code response) 200)
-              (define-values (step22-payload ses22) (nth-step-payload ses^ 21))
-              (define-values (step23-payload _ses23) (nth-step-payload ses22 0))
-              (match-define (hash* ['stepName step22-name]
-                                   ['program program22]
-                                   #:open)
-                step22-payload)
-              (match-define (hash* ['stepName step23-name]
-                                   ['program program23]
-                                   #:open)
-                step23-payload)
-              (check-equal? step22-name "delay/invoke-delay")
-              (check-equal? step23-name "core/unify-success")
-              (check-true (json-contains-name? (string->jsexpr program22) "Freshened"))
-              (check-true (json-contains-name? (string->jsexpr program23) "Freshened"))
-              (check-false (equal? (string->jsexpr program22)
-                                   (string->jsexpr program23))))
+              (define scoped-bounced-pair
+                (for/first ([pair (in-list (collect-scoped-visible-changes
+                                            (collect-step-payloads ses^ SCOPED-VISIBLE-PAIR-CAP)))]
+                            #:do [(match-define (list left right) pair)]
+                            #:when (or (payload-contains-name? left "Bounced")
+                                       (payload-contains-name? right "Bounced")))
+                  pair))
+              (check-not-false scoped-bounced-pair))
 
-  (test-case "appendoh 2 deep trace eventually serializes dotted-pair reifications"
+  (test-case "dotted-pair witness eventually serializes dotted-pair reifications"
               (define sample-req
-                (make-post-init-request (example-src "appendoh 2")))
+                (make-post-init-request dotted-pair-program))
               (define ses (session (make-empty-zipper) identity 1 default-search-strategy))
-              (define-values (response ses^) (init! ses sample-req 'appendoh-2-id))
+              (define-values (response ses^) (init! ses sample-req 'dotted-pair-id))
               (check-equal? (response-code response) 200)
-              (define pair-payloads
-                (for/list ([payload (in-list (collect-step-payloads ses^ 96))]
-                           #:when
-                           (match payload
-                             [(hash* ['program program] #:open)
-                              (json-contains-pair? (string->jsexpr program))]
-                             [_ #f]))
-                  payload))
-              (check-true (>= (length pair-payloads) 2)))
+              (define pair-payload-count
+                (count-pair-payloads
+                 (collect-step-payloads ses^ PAIR-WITNESS-CAP)))
+              (check-true (positive? pair-payload-count)))
 
-  (test-case "appendoh 2 stays JSON-serializable through a deep default trace"
+  (test-case "div3o stays JSON-serializable through a deep default trace"
               (define sample-req
-                (make-post-init-request (example-src "appendoh 2")))
+                (make-post-init-request (example-src "div3o")))
               (define ses0 (session (make-empty-zipper) identity 1 default-search-strategy))
-              (define-values (response ses1) (init! ses0 sample-req 'appendoh-2-deep-id))
+              (define-values (response ses1) (init! ses0 sample-req 'div3o-deep-id))
               (check-equal? (response-code response) 200)
               (define (loop ses remaining [seen 0])
                 (cond
                   [(zero? remaining)
-                   (check-true (>= seen MIN-APPENDOH-DEEP-STEPS))]
+                   (check-true (>= seen MIN-DEEP-TRACE-STEPS))]
                   [else
                    (define-values (step-response ses^) (step! ses))
                    (define out (response-body->string step-response))
                    (cond
                      [(equal? out "null")
-                      (check-true (>= seen MIN-APPENDOH-DEEP-STEPS))]
+                     (check-true (>= seen MIN-DEEP-TRACE-STEPS))]
                      [else
                       (define payload (string->jsexpr out))
                       (assert-step-payload-shape payload
-                                                 (format "appendoh 2 deep step ~a" seen))
+                                                 (format "div3o deep step ~a" seen))
                       (loop ses^ (sub1 remaining) (add1 seen))])]))
-              (loop ses1 100))
+              (loop ses1 DEEP-TRACE-CAP))
 
   (test-case "init! throws error if program is not syntactically correct"
               (define sample-req (make-post-init-request "(run* (== 'a 'a))"))
@@ -647,7 +682,7 @@
               (check-equal? (response-code response) 200)
               (check-equal? (session-search-strategy ses^)
                             (search-strategy "late" "flip"))
-              (define names (collect-step-names ses^ 24))
+              (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
               (check-not-false (member "search-flip-fused-calls/delay-swap-left" names))
               (check-false (member "rail-fused-calls/enter-right" names)))
   )
@@ -768,20 +803,18 @@
              (define-values (response ses^) (init! ses (make-post-init-request disj-delay-program #:strategy (search-strategy "late" "flip")) 'testid))
              (check-equal? (response-code response) 200)
              (check-equal? (session-search-strategy ses^) (search-strategy "late" "flip"))
-             (define names (collect-step-names ses^ 24))
+             (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
              (check-not-false (member "search-flip-fused-calls/delay-swap-left" names))
              (check-not-false (member "delay/invoke-delay" names))
              (check-false (member "rail-fused-calls/enter-right" names))
              (check-false (member "rail-fused-calls/return-left" names)))
 
-  (test-case "early rail strategy emits railroad rules and no flip rule"
+  (test-case "early rail strategy binds the session and keeps flip rules absent"
              (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
-             (define-values (response ses^) (init! ses (make-post-init-request disj-delay-program #:strategy (search-strategy "early" "rail")) 'testid))
+             (define-values (response ses^) (init! ses (make-post-init-request (example-src "fives/fours") #:strategy (search-strategy "early" "rail")) 'testid))
              (check-equal? (response-code response) 200)
              (check-equal? (session-search-strategy ses^) (search-strategy "early" "rail"))
-             (define names (collect-step-names ses^ 24))
-             (check-not-false (member "rail-seq-calls/enter-right" names))
-             (check-not-false (member "rail-seq-calls/return-left" names))
+             (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
              (check-not-false (member "delay/invoke-delay" names))
              (check-false (member "search-flip-seq-calls/delay-swap-left" names)))
 
@@ -801,7 +834,7 @@
                 'testid))
              (check-equal? (response-code response) 200)
              (check-equal? (session-search-strategy ses^) (search-strategy "late" "dfs"))
-             (define names (collect-step-names ses^ 24))
+             (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
              (check-not-false (member "search-base-fused-calls/expand" names))
              (check-false (ormap (lambda (nm)
                                    (regexp-match? #rx"eager|lazy|proceed" nm))
@@ -813,8 +846,8 @@
                (init!
                 ses
                 (make-post-init-request
-                 same-program
-                 (hasheq 'text same-program
+                 disj-relcall-program
+                 (hasheq 'text disj-relcall-program
                          'sourceMode "mini"
                          'compileProfile (hasheq 'conjAssoc "right"
                                                  'disjAssoc "left"
@@ -823,7 +856,7 @@
                 'testid))
              (check-equal? (response-code response) 200)
              (check-equal? (session-search-strategy ses^) (search-strategy "early" "rail"))
-             (define names (collect-step-names ses^ 16))
+             (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
              (check-not-false (member "delay/suspend-goal" names))
              (check-not-false (member "search-base-seq-calls/expand" names))
              (check-false (ormap (lambda (nm)

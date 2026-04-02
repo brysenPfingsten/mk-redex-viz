@@ -79,7 +79,7 @@ test("addColors keeps the active edge colored when a disjunction points at an an
 
 test("addColors keeps the active edge colored through a spine prefix to an answer", () => {
   const tree = {
-    name: "Stream-Freshened",
+    name: "Freshened",
     activeChildIndex: 0,
     children: [
       {
@@ -113,7 +113,7 @@ test("addColors keeps the active edge colored through a spine prefix to an answe
 
 test("addColors carries spine color through freshened nodes", () => {
   const tree = {
-    name: "Stream-Freshened",
+    name: "Freshened",
     activeChildIndex: 0,
     children: [
       {
@@ -147,7 +147,7 @@ test("addColors carries spine color through freshened nodes", () => {
 
 test("addColors keeps the active edge colored through nested rail disjunctions", () => {
   const tree = {
-    name: "Stream-Freshened",
+    name: "Freshened",
     activeChildIndex: 0,
     children: [
       {
@@ -205,7 +205,7 @@ test("addColors keeps the active edge colored through nested rail disjunctions",
 
 test("addColors carries the active path through delay nodes", () => {
   const tree = {
-    name: "Stream-Freshened",
+    name: "Freshened",
     activeChildIndex: 0,
     children: [
       {
