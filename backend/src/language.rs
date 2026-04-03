@@ -6,7 +6,7 @@ pub struct LexicalVar(pub String);
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LogicVar(pub u32);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RelationDef {
     pub name: String,
     pub params: Vec<LexicalVar>,
@@ -25,13 +25,13 @@ pub enum Term {
     Cons(Box<Term>, Box<Term>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct State {
     pub subst: Vec<(LogicVar, Term)>,
     pub counter: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Goal {
     Success,
     Unify(Term, Term),
@@ -41,7 +41,7 @@ pub enum Goal {
     Fresh(Vec<LexicalVar>, Box<Goal>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tree {
     Fail,
     GoalState(Goal, State),
@@ -55,4 +55,11 @@ pub enum Tree {
 
 pub struct Prog {
     pub relations: HashMap<String, RelationDef>,
+}
+
+pub fn empty_state() -> State {
+    State {
+        subst: vec![],
+        counter: 0,
+    }
 }

@@ -57,6 +57,7 @@ fn unify(st: State, t1: Term, t2: Term) -> Option<State> {
             unify(st1, (*d1).clone(), (*d2).clone())
         }
 
+        // same term shortcut (covers some remaining equalities)
         (x, y) if x == y => Some(st),
 
         _ => None,
@@ -66,17 +67,10 @@ fn unify(st: State, t1: Term, t2: Term) -> Option<State> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::language::{LogicVar, State, Term};
+    use crate::language::{LogicVar, Term};
 
     fn lv(id: u32) -> Term {
         Term::Var(LogicVar(id))
-    }
-
-    fn empty_state() -> State {
-        State {
-            subst: vec![],
-            counter: 0,
-        }
     }
 
     #[test]
