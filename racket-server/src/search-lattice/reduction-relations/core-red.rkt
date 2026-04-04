@@ -69,16 +69,14 @@
    core-lang
    #:domain cfg
    [--> (in-hole QShell (in-hole QFresh+ (⊤ σ)))
-        (in-hole QShell cfg_i)
-        (where cfg_i
-               (shellify-tree-prefix
-                (in-hole QFresh+ (⊤ σ))))
+        (in-hole QShell
+                 (fresh-tree-prefix->shell-prefix
+                  (in-hole QFresh+ (⊤ σ))))
         "core/final-answer-into-shell"]
    [--> (in-hole QShell (in-hole QFresh+ (empty-tree)))
-        (in-hole QShell cfg_i)
-        (where cfg_i
-               (shellify-tree-prefix
-                (in-hole QFresh+ (empty-tree))))
+        (in-hole QShell
+                 (fresh-tree-prefix->shell-prefix
+                  (in-hole QFresh+ (empty-tree))))
         "core/final-fail-into-shell"]))
 
 (define-syntax-rule (extend-core-local-redex lang)

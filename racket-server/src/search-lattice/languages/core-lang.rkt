@@ -4,7 +4,7 @@
 
 (provide core-lang
          c-append
-         shellify-tree-prefix
+         fresh-tree-prefix->shell-prefix
          unify
          walk
          extend
@@ -139,10 +139,10 @@
    (u_1 ... u_2 ...)])
 
 (define-metafunction core-lang
-  shellify-tree-prefix : any -> any
-  [(shellify-tree-prefix (FreshenedTree c any_1 tag))
-   (FreshenedShell c (shellify-tree-prefix any_1) tag)]
-  [(shellify-tree-prefix any_1)
+  fresh-tree-prefix->shell-prefix : any -> any
+  [(fresh-tree-prefix->shell-prefix (FreshenedTree c any_1 tag))
+   (FreshenedShell c (fresh-tree-prefix->shell-prefix any_1) tag)]
+  [(fresh-tree-prefix->shell-prefix any_1)
    any_1])
 
 (define-relation core-lang
