@@ -21,10 +21,10 @@ test("selectedSourceSegments returns every source span sharing the selected UUID
   assert.deepEqual(selectedSourceSegments(segments, null), []);
 });
 
-test("goalIdFromTreeNodeData uses the tree node UUID and preserves fallback for state-only nodes", () => {
-  assert.equal(goalIdFromTreeNodeData({ id: "eq-1", stateId: "st-1" }, "old-id"), "eq-1");
-  assert.equal(goalIdFromTreeNodeData({ stateId: "st-1" }, "old-id"), "old-id");
-  assert.equal(goalIdFromTreeNodeData({ stateId: "st-1" }, null), null);
+test("goalIdFromTreeNodeData only returns a source UUID when the tree node actually has one", () => {
+  assert.equal(goalIdFromTreeNodeData({ id: "eq-1", stateId: "st-1" }), "eq-1");
+  assert.equal(goalIdFromTreeNodeData({ stateId: "st-1" }), null);
+  assert.equal(goalIdFromTreeNodeData(null), null);
 });
 
 test("treeNodesWithGoalId finds all RHS tree nodes that share a source UUID", () => {

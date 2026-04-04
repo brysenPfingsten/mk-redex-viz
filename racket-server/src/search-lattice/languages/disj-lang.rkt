@@ -31,6 +31,7 @@
   ;; the reducers: early restricts itself to immediate hoist at the exposed
   ;; boundary, while late uses the larger helper for descent-first behavior.
   [LateCtx ::= BranchCtx
+             (ScopedTree c (LateCtx × g c) tag)
              (LateCtx × g c)]
   [runnable-root ....
                  (search <-+ search)])

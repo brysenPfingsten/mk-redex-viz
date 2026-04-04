@@ -1,7 +1,7 @@
 {
   "visibleNodeNames": [
     "Answer",
-    "Bounced",
+    "Deferred",
     "Conjunction",
     "Delay",
     "Disequality",
@@ -20,7 +20,7 @@
     "<-+"
   ],
   "activePathCarrierNames": [
-    "Bounced",
+    "Deferred",
     "Conjunction",
     "Delay",
     "Emit",

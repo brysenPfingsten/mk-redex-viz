@@ -19,6 +19,24 @@
 (define (parse-src/canonical src)
   (parse-prog/canonical (read-all-sexprs (open-input-string src))))
 
+(define hoist-witness-micro-program
+  "(run 2 (q)
+     (conj
+       (disj
+         (== q 'hoist)
+         (== q 'witness))
+       (== q q)))")
+
+(define (collect-step-names stepper cfg [remaining 8])
+  (cond
+    [(zero? remaining) '()]
+    [else
+     (match (stepper cfg)
+       ['() '()]
+       [(list (list name next))
+        (cons name
+              (collect-step-names stepper next (sub1 remaining)))])]))
+
 (define/provide-test-suite SEARCH-RUNTIME
   (test-case "strategy registry covers every surfaced structured strategy"
     (define-values (cfg0 _html) (parse-src/canonical (example-src "fives/fours")))
@@ -37,7 +55,23 @@
     (for ([strategy (in-list all-surfaced-search-strategies)])
       (match-define (strategy-spec _ step-once _ _) (lookup-strategy-spec strategy))
       (check-equal? (step-once cfg0)
-                    ((lookup-search-step-once strategy) cfg0)))))
+                    ((lookup-search-step-once strategy) cfg0))))
+
+  (test-case "late flip hoist witness continues past expand-disjunction"
+    (define-values (cfg0 _html)
+      (parse-prog/canonical
+       (read-all-sexprs (open-input-string hoist-witness-micro-program))
+       #:source-mode "micro"))
+    (define names
+      (collect-step-names
+       (lookup-search-step-once (search-strategy "late" "flip"))
+       cfg0
+       6))
+    (check-equal? (take names 4)
+                  '("fresh-substitute"
+                    "conj-distribute-state"
+                    "expand-disjunction"
+                    "unify-success"))))
 
 (module+ test
   (run-tests SEARCH-RUNTIME))

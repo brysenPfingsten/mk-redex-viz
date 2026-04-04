@@ -313,3 +313,11 @@ causes a correctness bug or import failure.
   it created real overlap with delay, disjunction, and rail policy steps.
   L0 owns only final-tail shellification; delay and disjunction own their
   layer-specific tree-prefix commitment rules.
+
+
+What about the `every-disj`---that doesn't seem disjoint with the others. They should be checkboxes. We typically want to ensure that you have at *least* one delay in any path, so you get ... "X good property".
+
+"conde, fresh, and every nevero-style delay gets one too."
+
+Should we, could we, also preserve all the failure nodes? What does that do to the programs? Do you have to do something to find the next redex.
+

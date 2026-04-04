@@ -3,8 +3,8 @@ export function selectedSourceSegments(segments, goalId) {
   return segments.filter((segment) => segment.id === goalId);
 }
 
-export function goalIdFromTreeNodeData(data, fallbackGoalId = null) {
-  return data?.id ?? fallbackGoalId ?? null;
+export function goalIdFromTreeNodeData(data) {
+  return data?.id ?? null;
 }
 
 export function treeNodesWithGoalId(node, goalId, acc = []) {

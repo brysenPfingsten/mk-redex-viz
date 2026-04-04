@@ -24,59 +24,59 @@ The internal stepper family is organized by features instead of numbered levels:
 - `core`
 - `delay`
 - `disj`
-- `search-base`
+- `search`
 - `search-dfs`
 - `search-flip`
 - `rail`
-- `calls` as an overlay
+- `relcall` as an overlay
 
-The important split is that the search lattice is call-free until the `calls`
-overlay is added.
+The important split is that the search lattice is relcall-free until the
+`relcall` overlay is added.
 
 ```mermaid
 flowchart TD
   CORE["core"]
   DELAY["delay"]
   DISJ["disj"]
-  DISJSEQ["disj/seq"]
-  DISJFUSED["disj/fused"]
-  SBSEQ["search-base/seq"]
-  SBFUSED["search-base/fused"]
-  DFSSEQ["search-dfs/seq"]
-  DFSFUSED["search-dfs/fused"]
-  FLIPSEQ["search-flip/seq"]
-  FLIPFUSED["search-flip/fused"]
-  RAILSEQ["rail/seq"]
-  RAILFUSED["rail/fused"]
-  CALLS["calls overlay"]
+  DISJEARLY["disj/early"]
+  DISJLATE["disj/late"]
+  SEARCHEARLY["search/early"]
+  SEARCHLATE["search/late"]
+  DFSEARLY["search-dfs/early"]
+  DFSLATE["search-dfs/late"]
+  FLIPEARLY["search-flip/early"]
+  FLIPLATE["search-flip/late"]
+  RAILEARLY["rail/early"]
+  RAILLATE["rail/late"]
+  RELCALL["relcall overlay"]
 
   CORE --> DELAY
   CORE --> DISJ
-  DISJ --> DISJSEQ
-  DISJ --> DISJFUSED
-  DELAY --> SBSEQ
-  DELAY --> SBFUSED
-  DISJSEQ --> SBSEQ
-  DISJFUSED --> SBFUSED
-  SBSEQ --> DFSSEQ
-  SBFUSED --> DFSFUSED
-  SBSEQ --> FLIPSEQ
-  SBFUSED --> FLIPFUSED
-  SBSEQ --> RAILSEQ
-  SBFUSED --> RAILFUSED
-  DELAY --> CALLS
+  DISJ --> DISJEARLY
+  DISJ --> DISJLATE
+  DELAY --> SEARCHEARLY
+  DELAY --> SEARCHLATE
+  DISJEARLY --> SEARCHEARLY
+  DISJLATE --> SEARCHLATE
+  SEARCHEARLY --> DFSEARLY
+  SEARCHLATE --> DFSLATE
+  SEARCHEARLY --> FLIPEARLY
+  SEARCHLATE --> FLIPLATE
+  SEARCHEARLY --> RAILEARLY
+  SEARCHLATE --> RAILLATE
+  DELAY --> RELCALL
 ```
 
 ## Hoist Axis
 
 The key semantic axis added by the internal lattice is hoisting:
 
-- `seq` means early hoist / staged contexts
+- `early` means early hoist / staged contexts
   - pending conjunction is distributed across visible disjunction promptly
-  - runtime contexts use `K` plus `KDisj`
-- `fused` means late hoist / mixed contexts
+  - reducer contexts stop at the shared `BranchCtx` cut
+- `late` means late hoist / mixed contexts
   - mixed `conj/disj` shapes can remain stable longer
-  - runtime contexts extend `K` directly
+  - reducer contexts continue through the stronger `LateCtx`
 
 This hoist question is separate from scheduler policy:
 
@@ -113,5 +113,5 @@ The app/runtime seam lives in:
 - Delay/suspension and scheduler policy are separate axes from hoisting.
 - The internal search lattice makes those axes explicit without surfacing every
   intermediate machine in the GUI.
-- Relation calls are better understood as an overlay on delayed search, not as
+- Relation calls are better understood as a relcall overlay on delayed search, not as
   part of the core search lattice itself.

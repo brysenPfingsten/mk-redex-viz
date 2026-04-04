@@ -209,7 +209,7 @@ test("addColors carries the active path through delay nodes", () => {
     activeChildIndex: 0,
     children: [
       {
-        name: "Bounced",
+        name: "Deferred",
         activeChildIndex: 0,
         children: [
           {

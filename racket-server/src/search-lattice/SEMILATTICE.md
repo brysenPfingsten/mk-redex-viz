@@ -11,25 +11,25 @@ Those are related, but they are not the same thing.
 
 ```mermaid
 graph TD
-  core["L0 core"]
-  delay["L1 delay"]
-  disj["L2 neutral disj"]
-  disj_seq["L2 early"]
-  disj_fused["L2 late"]
-  sb["L3 neutral search"]
-  sb_seq["L3 early"]
-  sb_fused["L3 late"]
+  coreNode["L0 core"]
+  delayNode["L1 delay"]
+  disjNode["L2 disj"]
+  disjEarlyNode["L2 disj early"]
+  disjLateNode["L2 disj late"]
+  searchNode["L3 search"]
+  searchEarlyNode["L3 search early"]
+  searchLateNode["L3 search late"]
 
-  core --> delay
-  core --> disj
-  disj --> disj_seq
-  disj_seq --> disj_fused
-  delay --> sb
-  disj --> sb
-  sb --> sb_seq
-  disj_seq --> sb_seq
-  sb_seq --> sb_fused
-  disj_fused --> sb_fused
+  coreNode --> delayNode
+  coreNode --> disjNode
+  delayNode --> searchNode
+  disjNode --> searchNode
+  disjNode --> disjEarlyNode
+  disjNode --> disjLateNode
+  searchNode --> searchEarlyNode
+  searchNode --> searchLateNode
+  disjEarlyNode --> searchEarlyNode
+  disjLateNode --> searchLateNode
 ```
 
 Main meet/join claims:
@@ -110,12 +110,12 @@ Late ::= hole
 ```
 
 After the freshening layer is restored, the shared context grammar carries both
-the smaller left-branch helper and the larger late-strength helper. Seq and
+the smaller left-branch helper and the larger late-strength helper. Early and
 late then diverge in their reducers, not by using separate context languages.
 
 For early/eager hoist, we intentionally keep the same underlying runtime grammar
 and make the policy difference live in the contexts and reduction relation, not
-in a early-specific runtime constructor.
+in an early-specific runtime constructor.
 
 ## Scope Overlay
 
@@ -233,13 +233,13 @@ ScopedTree(c1, ⊤σ) <-+ right
 -> ScopedTree(c1, ⊤σ) + right
 ```
 
-The policy split does not change those prefix actions. Seq and late differ
+The policy split does not change those prefix actions. Early and late differ
 only in where they focus inside the unfinished tail, not in how
 `ScopedTree*` and `ScopedShell*` move once the focal redex is chosen.
 
-### Scoped Seq Versus Fused Witnesses
+### Scoped Early Versus Late Witnesses
 
-Seq/eager hoist on an exposed boundary preserves the left branch's
+Early/eager hoist on an exposed boundary preserves the left branch's
 `ScopedTree*` prefix but hoists immediately:
 
 ```text
@@ -247,7 +247,7 @@ Seq/eager hoist on an exposed boundary preserves the left branch's
 -> ((ScopedTree(c1, (a σ)) × h) <-+ ((b σ) × h))
 ```
 
-Fused/late hoist keeps descending into the left branch under that same exposed
+Late hoist keeps descending into the left branch under that same exposed
 boundary, still preserving the left branch's `ScopedTree*` prefix:
 
 ```text
@@ -269,7 +269,7 @@ So the scoped late-only witness is:
 ((ScopedTree(c1, ((a1 σ) × a2)) <-+ (b σ)) × h)
 ```
 
-Fused may reach that shape. Seq may not, because early must hoist as soon as the
+Late may reach that shape. Early may not, because early must hoist as soon as the
 outer `((alpha <-+ beta) × gamma)` boundary is exposed.
 
 ### Full Scoped Source-To-Runtime Traces
@@ -292,7 +292,7 @@ The common prefix of the early and late traces is:
 Here `c1` is the scope bundle introduced by `fresh`, and `σ1` is the state
 after substitution.
 
-Seq diverges immediately at the exposed branch/conjunction boundary:
+Early diverges immediately at the exposed branch/conjunction boundary:
 
 ```text
 ((ScopedTree(c1, ((a1 ∧ a2) σ1)) <-+ (b σ0)) × h)
@@ -303,7 +303,7 @@ Seq diverges immediately at the exposed branch/conjunction boundary:
 So early hoists first, and only then continues local work under the preserved
 `ScopedTree(c1, ...)` prefix.
 
-Fused diverges by descending into the left branch before hoisting:
+Late diverges by descending into the left branch before hoisting:
 
 ```text
 ((ScopedTree(c1, ((a1 ∧ a2) σ1)) <-+ (b σ0)) × h)
@@ -332,16 +332,16 @@ graph TD
   qfresh["FreshCtx (pure tree-fresh prefix)"]
   qshell_delay["ShellCtx(delay)"]
   qshell_disj["ShellCtx(disj)"]
-  qshell_sb["ShellCtx(search via union)"]
+  qshell_search["ShellCtx(search)"]
 
   klocal["LocalCtx (L0 local work path)"]
   kbranch["BranchCtx (shared L2 left-branch path)"]
-  klate["LateCtx (late late-hoist extension)"]
+  klate["LateCtx (late-hoist extension)"]
 
   qfresh --> qshell_delay
   qfresh --> qshell_disj
-  qshell_delay --> qshell_sb
-  qshell_disj --> qshell_sb
+  qshell_delay --> qshell_search
+  qshell_disj --> qshell_search
 
   klocal --> kbranch
   kbranch --> klate
@@ -421,7 +421,7 @@ Important L0 boundary:
 
 Delay-specific shell commitment:
 
-- `delay/invoke-delay` is the layer-specific rule that can take a pure
+- `invoke-delay` is the layer-specific rule that can take a pure
   `ScopedTree*` prefix around `delay` and commit it into `ScopedShell*`
   around `Deferred`
 
@@ -435,9 +435,9 @@ Delay-specific shell commitment:
 
 Neutral disjunction commitment:
 
-- answers answers keep `ScopedTree*` payloads on the left of `+`
+- answers keep `ScopedTree*` payloads on the left of `+`
 - disjunction frontier rules can still commit the enclosing frontier prefix
-  into shell at the point where an answer is reassociated, answers, or erased
+  into shell at the point where an answer is reassociated, promoted, or erased
 
 ### L2 early
 
@@ -447,7 +447,7 @@ Neutral disjunction commitment:
 | Helpers introduced or extended | none; early uses the shared context grammar |
 | First reducer family using them | `disj-early-red` |
 
-Seq policy:
+Early policy:
 
 - decomposition is `ShellCtx ∘ BranchCtx ∘ LocalCtx`
 - early stops at the branch/conjunction cut and hoists there
@@ -460,7 +460,7 @@ Seq policy:
 | Helpers introduced or extended | none; late uses the shared context grammar |
 | First reducer family using them | `disj-late-red` |
 
-Fused policy:
+Late policy:
 
 - decomposition is `ShellCtx ∘ LateCtx`
 - late descends past the early cut and continues or erases only once the left
@@ -472,7 +472,7 @@ Fused policy:
 | --- | --- |
 | Runtime constructors added | none; this is `delay ∪ disj` |
 | Helpers introduced or extended | `ShellCtx(search)` by language union |
-| First reducer family using them | `search-pre-red` |
+| First reducer family using them | `search-local/base`, `search-shell/base` |
 
 ### L3 early
 
@@ -596,7 +596,7 @@ Operationally:
 
 - `ScopedTree` increments the tree-freshened count
 - `ScopedShell` increments the shell-freshened count
-- `⊤` and answers answers increment the answer count
+- `⊤` and answers increment the answer count
 - `Deferred` increments the bounced count
 
 This gives one reusable judgmental source of truth for exact-scope properties,

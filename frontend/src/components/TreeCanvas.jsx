@@ -8,11 +8,6 @@ import { goalIdFromTreeNodeData } from '../utils/source_mapping.js';
 const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId }, ref) => {
     const svgRef = useRef();
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: "" });
-    const goalIdRef = useRef(selectedGoalId);
-
-    useEffect(() => {
-        goalIdRef.current = selectedGoalId;
-    }, [selectedGoalId]);
 
     const clearHighlights = (selection = d3.select(svgRef.current)) => {
         selection.selectAll('g.node')
@@ -29,7 +24,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             .classed('highlighted', true);
     };
 
-    const nodePayload = (d, fallbackGoalId = goalIdRef.current) => {
+    const nodePayload = (d) => {
         const subs = (d.data.sub || []).map(s => ({
             left: termToString(s.key),
             right: termToString(s.value)
@@ -42,7 +37,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
         return {
             substitutionData: subs,
             trailData: trails,
-            gId: goalIdFromTreeNodeData(d.data, fallbackGoalId),
+            gId: goalIdFromTreeNodeData(d.data),
             sId: d.data.stateId ?? null,
         };
     };
@@ -147,7 +142,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             // Draw elements
             drawLinks(g, links);
             drawNodes(g, nodes);
-            applyGoalHighlights(goalIdRef.current, g);
+            applyGoalHighlights(selectedGoalId, g);
 
             // Add click event to show state data
             g.selectAll('g.node')

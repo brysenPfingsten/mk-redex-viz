@@ -809,6 +809,27 @@
              (check-false (member "enter-right" names))
              (check-false (member "return-left" names)))
 
+  (test-case "late flip hoist witness continues to a fourth step"
+             (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
+             (define-values (response ses^)
+               (init!
+                ses
+                (make-post-init-request
+                 hoist-witness-micro-program
+                 (hasheq 'text hoist-witness-micro-program
+                         'sourceMode "micro")
+                 #:strategy (search-strategy "late" "flip"))
+                'hoist-witness-late-flip-id))
+             (check-equal? (response-code response) 200)
+             (define-values (payload _ses^^) (nth-step-payload ses^ 3))
+             (check-not-false payload)
+             (match-define (hash* ['step step]
+                                  ['stepName step-name]
+                                  #:open)
+               payload)
+             (check-equal? step 4)
+             (check-equal? step-name "unify-success"))
+
   (test-case "early rail strategy binds the session and keeps flip rules absent"
              (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
              (define-values (response ses^) (init! ses (make-post-init-request (example-src "fives/fours") #:strategy (search-strategy "early" "rail")) 'testid))

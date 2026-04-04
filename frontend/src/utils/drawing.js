@@ -199,7 +199,7 @@ function drawEmitNode(group) {
 }
 
 function drawBouncedNode(group) {
-    return drawCircle(group, "#fff2cc", "Bounce", "black", "10px");
+    return drawCircle(group, "#fff2cc", "Deferred", "black", "10px");
 }
 
 
@@ -247,7 +247,7 @@ const nodeDrawFunctions = {
     "Fresh": drawFreshNode,
     "Emit": drawEmitNode,
     "Freshened": drawFreshenedNode,
-    "Bounced": drawBouncedNode,
+    "Deferred": drawBouncedNode,
     "Rel-Call": drawRelCallNode,
     "Goal-Delay": drawGoalDelayNode,
     "Goal-Conj": drawGoalConjNode,
