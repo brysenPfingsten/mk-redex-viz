@@ -2,10 +2,11 @@
 
 (require redex/reduction-semantics
          "../languages/delay-lang.rkt"
+         (only-in "../languages/core-lang.rkt"
+                  shellify-tree-prefix)
          (only-in "./core-red.rkt"
                   extend-core-local-redex
                   extend-core-shell-redex)
-         "./private/common.rkt"
          "./private/step-utils.rkt")
 
 (provide delay-local/base
@@ -50,8 +51,8 @@
    [--> (in-hole QShell (in-hole QFresh (delay runnable-search_i)))
         (in-hole QShell cfg_i)
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh (Bounced runnable-search_i)))))
+               (shellify-tree-prefix
+                (in-hole QFresh (Bounced runnable-search_i))))
         "delay/invoke-delay"]))
 
 (define delay-local/under-QShell

@@ -1,13 +1,7 @@
 #lang racket
 
 (provide instantiate-call-host
-         subst-goal-host
-         tree-prefix->shell/host
-         empty-freshened-head?
-         bubble-left-answer-host
-         promote-left-answer-host
-         bubble-left-fail-host
-         skip-left-fail-host)
+         subst-goal-host)
 
 (define (x-symbol? s)
   (and (symbol? s)
@@ -72,83 +66,3 @@
            (length d)
            (length ts)))
   (subst-goal-host g (map list d ts)))
-
-(define (tree-prefix->shell/host t)
-  (match t
-    [`(FreshenedTree ,intro ,inner ,tag)
-     `(FreshenedShell ,intro ,(tree-prefix->shell/host inner) ,tag)]
-    [_ t]))
-
-(define (empty-freshened-head? h)
-  (match h
-    ['(empty-tree) #t]
-    [(or `(FreshenedTree ,_ ,inner ,_)
-         `(FreshenedShell ,_ ,inner ,_))
-     (empty-freshened-head? inner)]
-    [_ #f]))
-
-(define (answer-head?/host t)
-  (match t
-    [`(⊤ ,_) #t]
-    [(or `(FreshenedTree ,_ ,inner ,_)
-         `(FreshenedShell ,_ ,inner ,_))
-     (answer-head?/host inner)]
-    [_ #f]))
-
-(define (lift-bounced-rewrite cfg rewrite-inner rebuild-inner)
-  (match cfg
-    [`(Bounced (,prefix + ,rest))
-     #:when (answer-head?/host prefix)
-     (match (rewrite-inner rest)
-       [#f #f]
-       [rest^ `(Bounced (,prefix + ,rest^))])]
-    [`(Bounced ,inner)
-     (rebuild-inner (rewrite-inner inner))]
-    [_ #f]))
-
-(define (rebuild-bounced-answer result)
-  (match result
-    [#f #f]
-    [`(,left + ,rest)
-     #:when (answer-head?/host left)
-     `(,left + (Bounced ,rest))]
-    [inner^ `(Bounced ,inner^)]))
-
-(define (rebuild-bounced-inner result)
-  (match result
-    [#f #f]
-    [inner^ `(Bounced ,inner^)]))
-
-(define (bubble-left-answer-host cfg)
-  (match cfg
-    [`((,left <-+ ,mid) <-+ ,right)
-     #:when (answer-head?/host left)
-     `(,left + (,mid <-+ ,right))]
-    [_ (lift-bounced-rewrite cfg
-                             bubble-left-answer-host
-                             rebuild-bounced-answer)]))
-
-(define (promote-left-answer-host cfg)
-  (match cfg
-    [`(,left <-+ ,right)
-     #:when (answer-head?/host left)
-     `(,left + ,right)]
-    [_ (lift-bounced-rewrite cfg
-                             promote-left-answer-host
-                             rebuild-bounced-answer)]))
-
-(define (bubble-left-fail-host cfg)
-  (match cfg
-    [`(((empty-tree) <-+ ,mid) <-+ ,right)
-     `(,mid <-+ ,right)]
-    [_ (lift-bounced-rewrite cfg
-                             bubble-left-fail-host
-                             rebuild-bounced-inner)]))
-
-(define (skip-left-fail-host cfg)
-  (match cfg
-    [`((empty-tree) <-+ ,right)
-     right]
-    [_ (lift-bounced-rewrite cfg
-                             skip-left-fail-host
-                             rebuild-bounced-inner)]))

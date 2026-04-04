@@ -2,10 +2,11 @@
 
 (require redex/reduction-semantics
          "../languages/disj-lang.rkt"
+         (only-in "../languages/core-lang.rkt"
+                  shellify-tree-prefix)
          (only-in "./core-red.rkt"
                   extend-core-local-redex
-                  extend-core-shell-redex)
-         "./private/common.rkt")
+                  extend-core-shell-redex))
 
 (provide disj-core-local/base
          disj-core-shell/base
@@ -40,31 +41,27 @@
    [--> (in-hole QFresh_1 (((in-hole QFresh_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
         cfg_i
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh_1
-                                ((in-hole QFresh_2 (⊤ σ))
-                                 <-+
-                                 (search_mid <-+ search_right))))))
+               (shellify-tree-prefix
+                (in-hole QFresh_1
+                         ((in-hole QFresh_2 (⊤ σ))
+                          <-+
+                          (search_mid <-+ search_right)))))
         "disj/reassociate-left-answer"]
    [--> (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ search_right))
         cfg_i
-        (where promoted_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh_2 (⊤ σ)))))
-        (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh_1 (promoted_i + search_right)))))
+        (where promoted_i (shellify-tree-prefix (in-hole QFresh_2 (⊤ σ))))
+        (where cfg_i (shellify-tree-prefix (in-hole QFresh_1 (promoted_i + search_right))))
         "disj/promote-left-answer"]
    [--> (in-hole QFresh_1 (((in-hole QFresh_2 (empty-tree)) <-+ search_mid) <-+ search_right))
         cfg_i
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh_1
-                                (search_mid <-+ search_right)))))
+               (shellify-tree-prefix
+                (in-hole QFresh_1
+                         (search_mid <-+ search_right))))
         "disj/erase-left-fail"]
    [--> (in-hole QFresh_1 ((in-hole QFresh_2 (empty-tree)) <-+ search_right))
         cfg_i
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh_1 search_right))))
+               (shellify-tree-prefix
+                (in-hole QFresh_1 search_right)))
         "disj/skip-left-fail"]))

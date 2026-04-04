@@ -23,6 +23,8 @@
 (define/provide-test-suite SEARCH-LATTICE
   (test-case "feature languages reflect the new split and omit proceed"
     (check-true (redex-match? lang:core-lang QFresh (term (FreshenedTree (u:0) hole (label "fresh")))))
+    (check-false (redex-match? lang:core-lang QFresh+ (term hole)))
+    (check-true (redex-match? lang:core-lang QFresh+ (term (FreshenedTree () hole (label "fresh")))))
     (check-false (redex-match? lang:delay-lang cfg '(delay (empty-tree))))
     (check-true (redex-match? lang:delay-lang cfg (term ,delayed-left-search)))
     (check-false (redex-match? lang:delay-lang cfg '(proceed (empty-tree))))
@@ -211,6 +213,46 @@
                                         (⊤ ,sigma-s)
                                         (label "fresh-empty")))))
 
+  (test-case "core shellification only fires on real fresh prefixes"
+    (check-equal?
+     (apply-reduction-relation/tag-with-names
+      red:core-red
+      (term (⊤ ,sigma-s)))
+     '())
+    (check-equal?
+     (apply-reduction-relation/tag-with-names
+      red:core-red
+      (term (empty-tree)))
+     '())
+    (define fresh-answer
+      (term (FreshenedTree (u:0)
+                           (⊤ ,sigma-s)
+                           (label "fresh-answer"))))
+    (define fresh-fail
+      (term (FreshenedTree (u:0)
+                           (empty-tree)
+                           (label "fresh-fail"))))
+    (define-values (answer-name answer-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:core-red
+        fresh-answer)))
+    (define-values (fail-name fail-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:core-red
+        fresh-fail)))
+    (check-equal? (~a answer-name) "core/final-answer-into-shell")
+    (check-equal? (~a fail-name) "core/final-fail-into-shell")
+    (check-equal? answer-next
+                  (term (FreshenedShell (u:0)
+                                        (⊤ ,sigma-s)
+                                        (label "fresh-answer"))))
+    (check-equal? fail-next
+                  (term (FreshenedShell (u:0)
+                                        (empty-tree)
+                                        (label "fresh-fail")))))
+
   (test-case "nested fresh traces preserve empty middle frames"
     (define nested-fresh
       (term ((∃ (x:0)
@@ -355,6 +397,40 @@
     (check-true (produced-answer-spine-only? fused-next))
     (check-true (redex-match? lang:search-base-lang cfg seq-next))
     (check-true (redex-match? lang:search-base-lang cfg fused-next)))
+
+  (test-case "neutral disjunction shellifies promoted answers and skipped fails"
+    (define fresh-answer
+      (term ((FreshenedTree (u:0)
+                            (⊤ ,sigma-a)
+                            (label "fresh-answer"))
+             <-+
+             (empty-tree))))
+    (define fresh-fail
+      (term (FreshenedTree (u:0)
+                           ((empty-tree) <-+ (⊤ ,sigma-b))
+                           (label "fresh-fail"))))
+    (define-values (answer-name answer-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:disj-seq-red
+        fresh-answer)))
+    (define-values (fail-name fail-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:disj-seq-red
+        fresh-fail)))
+    (check-equal? (~a answer-name) "disj/promote-left-answer")
+    (check-equal? (~a fail-name) "disj/skip-left-fail")
+    (check-equal? answer-next
+                  (term ((FreshenedShell (u:0)
+                                         (⊤ ,sigma-a)
+                                         (label "fresh-answer"))
+                         +
+                         (empty-tree))))
+    (check-equal? fail-next
+                  (term (FreshenedShell (u:0)
+                                        (⊤ ,sigma-b)
+                                        (label "fresh-fail")))))
 
   (test-case "search-base reassociates then closes bounced segments when an answer appears"
     (define bounced-branch

@@ -4,6 +4,7 @@
 
 (provide core-lang
          c-append
+         shellify-tree-prefix
          unify
          walk
          extend
@@ -79,6 +80,9 @@
   ;; Allowed extension direction: reuse as pure FreshenedTree* only.
   [QFresh ::= hole
               (FreshenedTree c QFresh tag)]
+  ;; One-or-more FreshenedTree frames. Used when a shellification step should
+  ;; only fire if it actually has a tree prefix to convert.
+  [QFresh+ ::= (FreshenedTree c QFresh tag)]
   ;; One-or-more pending conjunction layers, each optionally wrapped in
   ;; FreshenedTree* before the next outer layer.
   [KConj ::= (KLocal × g c)
@@ -133,6 +137,13 @@
   c-append : c c -> c
   [(c-append (u_1 ...) (u_2 ...))
    (u_1 ... u_2 ...)])
+
+(define-metafunction core-lang
+  shellify-tree-prefix : any -> any
+  [(shellify-tree-prefix (FreshenedTree c any_1 tag))
+   (FreshenedShell c (shellify-tree-prefix any_1) tag)]
+  [(shellify-tree-prefix any_1)
+   any_1])
 
 (define-relation core-lang
   occurs? ⊆ u × t × sub

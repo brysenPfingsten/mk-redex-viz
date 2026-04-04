@@ -2,7 +2,8 @@
 
 (require redex/reduction-semantics
          "../languages/core-lang.rkt"
-         "./private/common.rkt"
+         (only-in "./private/common.rkt"
+                  subst-goal-host)
          "./private/step-utils.rkt")
 
 (provide core-local/base
@@ -67,23 +68,17 @@
   (reduction-relation
    core-lang
    #:domain cfg
-   [--> (in-hole QShell (in-hole QFresh (⊤ σ)))
+   [--> (in-hole QShell (in-hole QFresh+ (⊤ σ)))
         (in-hole QShell cfg_i)
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh (⊤ σ)))))
-        (side-condition
-         (not (equal? (term cfg_i)
-                      (term (in-hole QFresh (⊤ σ))))))
+               (shellify-tree-prefix
+                (in-hole QFresh+ (⊤ σ))))
         "core/final-answer-into-shell"]
-   [--> (in-hole QShell (in-hole QFresh (empty-tree)))
+   [--> (in-hole QShell (in-hole QFresh+ (empty-tree)))
         (in-hole QShell cfg_i)
         (where cfg_i
-               ,(tree-prefix->shell/host
-                 (term (in-hole QFresh (empty-tree)))))
-        (side-condition
-         (not (equal? (term cfg_i)
-                      (term (in-hole QFresh (empty-tree))))))
+               (shellify-tree-prefix
+                (in-hole QFresh+ (empty-tree))))
         "core/final-fail-into-shell"]))
 
 (define-syntax-rule (extend-core-local-redex lang)
@@ -100,9 +95,7 @@
 
 ;; Core splits unfinished tree work from the one final lift into the shell.
 (define core-red
-  (union-reduction-relations
-   core-local
-   core-shell/base))
+  (union-reduction-relations core-local core-shell/base))
 
 (define (step-once prog)
   (step-once/deterministic core-red prog))
