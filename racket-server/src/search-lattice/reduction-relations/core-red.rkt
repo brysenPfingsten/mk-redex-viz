@@ -8,8 +8,6 @@
 
 (provide core-local/base
          core-shell/base
-         extend-core-local-redex
-         extend-core-shell-redex
          core-red
          step-once)
 
@@ -78,12 +76,6 @@
                  (fresh-tree-prefix->shell-prefix
                   (in-hole QFresh+ (empty-tree))))
         "core/final-fail-into-shell"]))
-
-(define-syntax-rule (extend-core-local-redex lang)
-  (extend-reduction-relation core-local/base lang))
-
-(define-syntax-rule (extend-core-shell-redex lang)
-  (extend-reduction-relation core-shell/base lang))
 
 (define core-local/search
   (context-closure core-local/base core-lang KLocal))

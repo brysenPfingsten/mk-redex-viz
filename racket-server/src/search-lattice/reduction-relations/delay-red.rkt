@@ -5,8 +5,8 @@
          (only-in "../languages/core-lang.rkt"
                   fresh-tree-prefix->shell-prefix)
          (only-in "./core-red.rkt"
-                  extend-core-local-redex
-                  extend-core-shell-redex)
+                  core-local/base
+                  core-shell/base)
          "./private/step-utils.rkt")
 
 (provide delay-local/base
@@ -17,20 +17,20 @@
 
 (check-redundancy #t)
 
-(define core-local/delay/base
-  (extend-core-local-redex delay-lang))
+(define delay-core-local/base
+  (context-closure
+   (extend-reduction-relation core-local/base delay-lang)
+   delay-lang
+   KLocal))
 
-(define core-local/delay
-  (context-closure core-local/delay/base delay-lang KLocal))
-
-(define core-shell/delay/base
-  (extend-core-shell-redex delay-lang))
+(define delay-core-shell/base
+  (extend-reduction-relation core-shell/base delay-lang))
 
 ;; Delay lifts core local work under the first committed shell: QShell ∘ KLocal.
 (define core-red/delay
   (union-reduction-relations
-   (context-closure core-local/delay delay-lang QShell)
-   core-shell/delay/base))
+   (context-closure delay-core-local/base delay-lang QShell)
+   delay-core-shell/base))
 
 (define delay-local/base
   (reduction-relation

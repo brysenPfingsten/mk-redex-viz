@@ -5,8 +5,8 @@
          (only-in "../languages/core-lang.rkt"
                   fresh-tree-prefix->shell-prefix)
          (only-in "./core-red.rkt"
-                  extend-core-local-redex
-                  extend-core-shell-redex))
+                  core-local/base
+                  core-shell/base))
 
 (provide disj-core-local/base
          disj-core-shell/base
@@ -15,16 +15,14 @@
 
 (check-redundancy #t)
 
-(define core-local/disj/base
-  (extend-core-local-redex disj-lang))
-
-(define core-shell/disj/base
-  (extend-core-shell-redex disj-lang))
-
 (define disj-core-local/base
-  (context-closure core-local/disj/base disj-lang KLocal))
+  (context-closure
+   (extend-reduction-relation core-local/base disj-lang)
+   disj-lang
+   KLocal))
 
-(define disj-core-shell/base core-shell/disj/base)
+(define disj-core-shell/base
+  (extend-reduction-relation core-shell/base disj-lang))
 
 (define disj-goal-local/base
   (reduction-relation

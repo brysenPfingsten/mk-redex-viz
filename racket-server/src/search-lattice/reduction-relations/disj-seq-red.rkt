@@ -22,24 +22,12 @@
 (define disj-seq-local/under-QShell
   (context-closure disj-seq-local/base disj-lang QShell))
 
-(define lifted-disj-core-local/base
-  (extend-reduction-relation disj-core-local/base disj-lang))
-
-(define lifted-disj-core-shell/base
-  (extend-reduction-relation disj-core-shell/base disj-lang))
-
-(define lifted-disj-goal-local/base
-  (extend-reduction-relation disj-goal-local/base disj-lang))
-
-(define lifted-disj-frontier/local-base
-  (extend-reduction-relation disj-frontier/local-base disj-lang))
-
 ;; Seq exposes shared local rules under the nested cut QShell ∘ KBranch ∘ KLocal.
 (define disj-core-local/under-branch
-  (context-closure lifted-disj-core-local/base disj-lang KBranch))
+  (context-closure disj-core-local/base disj-lang KBranch))
 
 (define disj-goal-local/under-branch
-  (context-closure lifted-disj-goal-local/base disj-lang KBranch))
+  (context-closure disj-goal-local/base disj-lang KBranch))
 
 (define disj-base-core
   (context-closure disj-core-local/under-branch disj-lang QShell))
@@ -48,16 +36,15 @@
   (context-closure disj-goal-local/under-branch disj-lang QShell))
 
 (define disj-frontier/base
-  (context-closure lifted-disj-frontier/local-base disj-lang QShell))
+  (context-closure disj-frontier/local-base disj-lang QShell))
 
 (define disj-seq-red
   (union-reduction-relations
-   lifted-disj-core-shell/base
+   disj-core-shell/base
    disj-base-core
    disj-goal-local/under-QShell
    disj-frontier/base
-   disj-seq-local/under-QShell
-   ))
+   disj-seq-local/under-QShell))
 
 (define (step-once prog)
   (step-once/deterministic disj-seq-red prog))
