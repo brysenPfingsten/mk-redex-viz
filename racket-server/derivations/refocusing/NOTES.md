@@ -1,4 +1,4 @@
-# L3 Derivation Side Project
+# Refocusing
 
 This directory is an off-to-the-side derivation playground for a single
 miniKanren fragment:
@@ -83,7 +83,7 @@ artifact-local.
 
 ## Tests
 
-The tests live in `tests/pipeline-l3-tests.rkt` and are intentionally separate
+The tests live in `tests/refocusing-tests.rkt` and are intentionally separate
 from the main runtime test suites. They check:
 
 - determinism on a shared L3 corpus
@@ -95,5 +95,5 @@ from the main runtime test suites. They check:
 Run them with:
 
 ```bash
-racket racket-server/derivations/pipeline/tests/run.rkt
+racket racket-server/derivations/refocusing/tests/run.rkt
 ```

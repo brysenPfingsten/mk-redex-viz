@@ -8,7 +8,7 @@
          "../bridge/main.rkt"
          "../corpus.rkt")
 
-(provide danvy-l3-tests)
+(provide refocusing-tests)
 
 (define (trace/final stepper cfg [limit 128])
   (define-values (_steps final-cfg status)
@@ -67,9 +67,9 @@
         string<?
         #:key ~s))
 
-(define danvy-l3-tests
+(define refocusing-tests
   (test-suite
-   "danvy-l3"
+   "refocusing"
 
    (test-case
     "each artifact is deterministic on the shared corpus"
@@ -160,4 +160,4 @@
         (check-true (current-c-scope-agrees? cfg) label))))))
 
 (module+ test
-  (run-tests danvy-l3-tests))
+  (run-tests refocusing-tests))
