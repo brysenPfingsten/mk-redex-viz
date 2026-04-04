@@ -66,6 +66,7 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow: hidden;
   }
   
   body {
@@ -147,11 +148,24 @@
   .scroll-container {
     flex: 1;
     overflow: auto;
-    padding: var(--space-md);
+    padding: 0;
     box-sizing: border-box;
-    cursor: grab;
-    display: flex;
-    justify-content: center;
+    position: relative;
+    text-align: center;
+  }
+
+  .scroll-container.dragging {
+    cursor: grabbing;
+  }
+
+  /* Hide scrollbars but keep scrolling functionality */
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-container {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 
   .tree-wrapper {

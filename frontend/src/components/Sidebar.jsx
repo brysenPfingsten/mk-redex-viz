@@ -17,17 +17,17 @@ const Sidebar = ({ substitutionData = [], trailData = [], isOpen, onToggle }) =>
 
 
       <Drawer
-        variant="persistent"
+        variant="temporary"
         anchor="right"
         open={isOpen}
+        onClose={onToggle}
+        ModalProps={{
+          keepMounted: true,
+        }}
         sx={{
-          width: isOpen ? 'var(--sidebar-width)' : 0,
-          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1)',
-          flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: 'var(--sidebar-width)',
             boxSizing: 'border-box',
-            position: 'relative',
           },
         }}
       >

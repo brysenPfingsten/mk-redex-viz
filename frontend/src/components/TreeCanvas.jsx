@@ -6,7 +6,12 @@ import { flattenGoalConj, addColors } from '../utils/treeSetup.js'
 
 const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId }, ref) => {
     const svgRef = useRef();
+    const containerRef = useRef();
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: "" });
+    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef({ x: 0, y: 0 });
+    const baseTranslateXRef = useRef(0);
 
     const goalIdRef = useRef(selectedGoalId);
     const stateIdRef = useRef(selectedStateId);
@@ -15,6 +20,53 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
         goalIdRef.current = selectedGoalId;
         stateIdRef.current = selectedStateId;
     }, [selectedGoalId, selectedStateId]);
+
+    const handleMouseDown = (e) => {
+        if (e.button !== 0) return; // Only left mouse button
+        setIsDragging(true);
+        dragStartRef.current = { x: e.clientX, y: e.clientY };
+        if (containerRef.current) {
+            containerRef.current.classList.add('dragging');
+        }
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStartRef.current.x;
+        const dy = e.clientY - dragStartRef.current.y;
+        setPanOffset(prev => ({
+            x: prev.x + dx,
+            y: prev.y + dy
+        }));
+        dragStartRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+        if (containerRef.current) {
+            containerRef.current.classList.remove('dragging');
+        }
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDragging]);
+
+    // Update transform when pan offset changes
+    useEffect(() => {
+        const svg = d3.select(svgRef.current);
+        const g = svg.select('g');
+        if (!g.empty()) {
+            g.attr('transform', `translate(${baseTranslateXRef.current + panOffset.x},${panOffset.y})`);
+        }
+    }, [panOffset]);
 
     const clearHighlights = () => {
         const svg = d3.select(svgRef.current);
@@ -53,6 +105,9 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             .dispatch('click');
         },
         redraw: (treeData) => {
+            // Reset pan offset when redrawing tree
+            setPanOffset({ x: 0, y: 0 });
+
             const svg = d3.select(svgRef.current).html('');
             const g = svg.append('g');
             
@@ -83,9 +138,9 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             const treeLayout = d3.tree()
             .nodeSize([1, 100]) // Base horizontal unit, vertical spacing
             .separation((a, b) => {
-                const padding = 20; 
+                const padding = 20;
                 if (a.parent === b.parent) return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding;
-                else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;s
+                else return (a.data.measuredWidth + b.data.measuredWidth) / 2 + padding + 100;
             });
             
             // Compute the layout with adjusted spacing
@@ -119,6 +174,9 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
             const rootCenterX = root.x;
             const svgCenterX = (trueMinX - padding) + svgWidth/2;
             const translateX = svgCenterX - rootCenterX;
+
+            // Store base translation for pan calculations
+            baseTranslateXRef.current = translateX;
 
             // 5. Apply translation to the <g> element
             g.attr("transform", `translate(${translateX},0)`);
@@ -167,8 +225,15 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
         }
     }));
     return (
-        <>
-            <svg ref={svgRef} />
+        <div
+            ref={containerRef}
+            style={{
+                display: 'inline-block',
+                cursor: isDragging ? 'grabbing' : 'grab'
+            }}
+            onMouseDown={handleMouseDown}
+        >
+            <svg ref={svgRef} style={{ userSelect: 'none', display: 'block' }} />
             {tooltip.visible && (
                 <div className="reified-tooltip"
                     style={{
@@ -181,7 +246,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId, selectedStateId },
                     dangerouslySetInnerHTML={{ __html: tooltip.content }}
                 />
             )}
-        </>
+        </div>
     );
 });
 

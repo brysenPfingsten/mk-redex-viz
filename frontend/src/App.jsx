@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Scrollbar } from 'react-scrollbars-custom';
 import CodeHeader      from './components/CodeHeader.jsx';
 import CodeEditor      from './components/CodeEditor';
 import Toolbar         from './components/Toolbar';
@@ -120,21 +119,19 @@ function App() {
         
         <div className="right-pane">
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
-          <Scrollbar style={{ width: '100%', height: '100%' }}>
-            <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
-              <TreeCanvas 
-                ref={treeRef}
-                onNodeClick={({ substitutionData, trailData, gId, sId }) => {
-                  setSubstitutionData(substitutionData);
-                  setTrailData(trailData);
-                  setGoalId(gId);
-                  setStateId(sId);
-                }}
-                selectedGoalId={goalId}
-                selectedStateId={stateId}
-                />
-            </div>
-          </Scrollbar>
+          <div className="scroll-container">
+            <TreeCanvas
+              ref={treeRef}
+              onNodeClick={({ substitutionData, trailData, gId, sId }) => {
+                setSubstitutionData(substitutionData);
+                setTrailData(trailData);
+                setGoalId(gId);
+                setStateId(sId);
+              }}
+              selectedGoalId={goalId}
+              selectedStateId={stateId}
+            />
+          </div>
         </div>
       </Resizable>  
       <Sidebar
