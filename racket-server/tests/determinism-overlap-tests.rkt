@@ -185,7 +185,7 @@
     (check-false (overlap-kind shell-next*))
     (check-equal? (tagged-successor-name (first early-next*)) "distribute-over-conj")
     (check-equal? (tagged-successor-name (first late-next*)) "succeed")
-    (check-equal? (tagged-successor-name (first shell-next*)) "reassociate-left-answer"))
+    (check-equal? (tagged-successor-name (first shell-next*)) "reassociate-left-result"))
 
   (test-case "overlap audit: surfaced structured strategies over frontend examples"
     (define events

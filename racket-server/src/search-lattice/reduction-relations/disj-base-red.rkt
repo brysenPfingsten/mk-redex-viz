@@ -18,17 +18,14 @@
          (reduction-relation
            disj-lang
            #:domain cfg
-           [--> (in-hole FreshCtx_1 (((in-hole FreshCtx_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
+           [--> (in-hole FreshCtx_1 ((settled_1 <-+ search_mid) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
-                 (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) <-+ (search_mid <-+ search_right))))
-                "reassociate-left-answer"]
+                 (in-hole FreshCtx_1 (settled_1 <-+ (search_mid <-+ search_right))))
+                "reassociate-left-result"]
            [--> (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
                  (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) + search_right)))
                 "promote-left-answer"]
-           [--> (in-hole FreshCtx_1 (((in-hole FreshCtx_2 (empty-tree)) <-+ search_mid) <-+ search_right))
-                (fresh-tree-prefix->shell-prefix (in-hole FreshCtx_1 (search_mid <-+ search_right)))
-                "erase-left-fail"]
            [--> (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (empty-tree)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix (in-hole FreshCtx_1 search_right))
                 "skip-left-fail"])])

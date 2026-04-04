@@ -11,6 +11,8 @@
 (define-extended-language disj-lang core-lang
   [answers answer
             (ScopedTree c answers tag)]
+  [settled (in-hole FreshCtx (⊤ σ))
+           (in-hole FreshCtx (empty-tree))]
   [g ....
      (g ∨ g tag)]
   [cfg ....

@@ -275,8 +275,8 @@
     (check-equal? goal-late-name "expand-disjunction")
     (check-equal? early-name "distribute-over-conj")
     (check-equal? late-pending-name "succeed")
-    (check-equal? late-answer-name "continue-left-answer")
-    (check-equal? late-fail-name "continue-left-fail")
+    (check-equal? late-answer-name "distribute-over-conj")
+    (check-equal? late-fail-name "distribute-over-conj")
     (define nested-answer
       (term (((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
              <-+
@@ -298,25 +298,32 @@
         (named-step rel reassoc-answer-next))
       (define-values (reassoc-fail-name reassoc-fail-next)
         (named-step rel nested-fail))
-      (define-values (consume-fail-name consume-fail-next)
+      (define-values (skip-fail-name skip-fail-next)
         (named-step rel reassoc-fail-next))
-      (check-equal? reassoc-answer-name "reassociate-left-answer")
+      (define-values (consume-fail-name consume-fail-next)
+        (named-step rel skip-fail-next))
+      (check-equal? reassoc-answer-name "reassociate-left-result")
       (check-equal? consume-answer-name "promote-left-answer")
-      (check-equal? reassoc-fail-name "erase-left-fail")
+      (check-equal? reassoc-fail-name "reassociate-left-result")
+      (check-equal? skip-fail-name "skip-left-fail")
       (check-equal? consume-fail-name "promote-left-answer")
       (check-equal? reassoc-answer-next
                     (term ((⊤ ,sigma-a) <-+ ((⊤ ,sigma-b) <-+ (empty-tree)))))
       (check-equal? consume-answer-next
                     (term ((⊤ ,sigma-a) + ((⊤ ,sigma-b) <-+ (empty-tree)))))
       (check-equal? reassoc-fail-next
+                    (term ((empty-tree) <-+ ((⊤ ,sigma-b) <-+ (empty-tree)))))
+      (check-equal? skip-fail-next
                     (term ((⊤ ,sigma-b) <-+ (empty-tree))))
       (check-equal? consume-fail-next
                     (term ((⊤ ,sigma-b) + (empty-tree)))))
-    (check-equal? late-fresh-name "continue-left-answer")
+    (check-equal? late-fresh-name "distribute-over-conj")
     (check-equal? late-fresh-next
-                  (term ((ScopedTree (u:0)
-                                    ((succeed (label "k")) ,sigma-a)
-                                    (label "fresh"))
+                  (term (((ScopedTree (u:0)
+                                     (⊤ ,sigma-a)
+                                     (label "fresh"))
+                          × (succeed (label "k"))
+                          ())
                          <-+
                          ((⊤ ,sigma-b) × (succeed (label "k")) ()))))
     (for ([rel (in-list (list red:disj-early-red red:disj-late-red))])
@@ -372,7 +379,7 @@
         (named-step rel bounced-branch))
       (define-values (bounce-step-2-name bounce-step-2)
         (named-step rel bounce-step-1))
-      (check-equal? bounce-step-1-name "reassociate-left-answer")
+      (check-equal? bounce-step-1-name "reassociate-left-result")
       (check-equal? bounce-step-2-name "promote-left-answer")
       (check-equal? bounce-step-1
                     (term (Deferred ((⊤ ,sigma-a)
@@ -403,10 +410,7 @@
       (check-true (shape-closed? search-shape? rel cfg-delay-goal))
       (define-values (early/late-name _seq/late-next)
         (named-step rel cfg-mixed-answer))
-      (check-not-false
-       (member early/late-name
-               '("distribute-over-conj"
-                 "continue-left-answer")))))
+      (check-equal? early/late-name "distribute-over-conj")))
 
 (module+ test
   (run-tests STABILIZATION-GATES))

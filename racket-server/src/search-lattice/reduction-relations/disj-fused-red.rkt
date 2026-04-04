@@ -21,12 +21,9 @@
          (reduction-relation
           disj-lang
           #:domain cfg
-          [--> (in-hole LateCtx (((in-hole FreshCtx (⊤ σ_new)) <-+ search_rest) × g c))
-               (in-hole LateCtx ((in-hole FreshCtx (g σ_new)) <-+ (search_rest × g c)))
-               "continue-left-answer"]
-          [--> (in-hole LateCtx (((in-hole FreshCtx (empty-tree)) <-+ search_rest) × g c))
-               (in-hole LateCtx (search_rest × g c))
-               "continue-left-fail"])])
+          [--> (in-hole LateCtx ((settled_1 <-+ search_rest) × g c))
+               (in-hole LateCtx ((settled_1 × g c) <-+ (search_rest × g c)))
+               "distribute-over-conj"])])
     (context-closure disj-late-local/base disj-lang ShellCtx)))
 
 (define disj-late-red

@@ -16,12 +16,9 @@
          (reduction-relation
           search-lang
           #:domain cfg
-          [--> (in-hole LateCtx (((in-hole FreshCtx (⊤ σ_new)) <-+ search_rest) × g c))
-               (in-hole LateCtx ((in-hole FreshCtx (g σ_new)) <-+ (search_rest × g c)))
-               "continue-left-answer"]
-          [--> (in-hole LateCtx (((in-hole FreshCtx (empty-tree)) <-+ search_rest) × g c))
-               (in-hole LateCtx (search_rest × g c))
-               "continue-left-fail"])])
+          [--> (in-hole LateCtx ((settled_1 <-+ search_rest) × g c))
+               (in-hole LateCtx ((settled_1 × g c) <-+ (search_rest × g c)))
+               "distribute-over-conj"])])
     (context-closure search-late-branch-local/base search-lang ShellCtx)))
 
 (define search-late-red

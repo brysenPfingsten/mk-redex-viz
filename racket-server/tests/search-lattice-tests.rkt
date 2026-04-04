@@ -79,10 +79,10 @@
         cfg-mixed-fail)))
     (check-equal? (~a early-name) "distribute-over-conj")
     (check-equal? (~a late-pending-name) "succeed")
-    (check-equal? (~a late-answer-name) "continue-left-answer")
-    (check-equal? (~a late-fail-name) "continue-left-fail"))
+    (check-equal? (~a late-answer-name) "distribute-over-conj")
+    (check-equal? (~a late-fail-name) "distribute-over-conj"))
 
-  (test-case "disj-late continues freshened answers structurally"
+  (test-case "disj-late distributes freshened answers before inherited consequence steps"
     (define freshened-answer
       (term (((ScopedTree (u:0) (⊤ ,sigma-a) (label "fresh")) <-+ (⊤ ,sigma-b))
              × (succeed (label "k"))
@@ -92,11 +92,13 @@
        (apply-reduction-relation/tag-with-names
         red:disj-late-red
         freshened-answer)))
-    (check-equal? (~a step-name) "continue-left-answer")
+    (check-equal? (~a step-name) "distribute-over-conj")
     (check-equal? next
-                  (term ((ScopedTree (u:0)
-                                    ((succeed (label "k")) ,sigma-a)
-                                    (label "fresh"))
+                  (term (((ScopedTree (u:0)
+                                     (⊤ ,sigma-a)
+                                     (label "fresh"))
+                          × (succeed (label "k"))
+                          ())
                          <-+
                          ((⊤ ,sigma-b) × (succeed (label "k")) ())))))
 
@@ -475,9 +477,9 @@
        (apply-reduction-relation/tag-with-names
         red:search-late-red
         late-mid)))
-    (check-equal? (~a early-name-1) "reassociate-left-answer")
+    (check-equal? (~a early-name-1) "reassociate-left-result")
     (check-equal? (~a early-name-2) "promote-left-answer")
-    (check-equal? (~a late-name-1) "reassociate-left-answer")
+    (check-equal? (~a late-name-1) "reassociate-left-result")
     (check-equal? (~a late-name-2) "promote-left-answer")
     (check-equal? early-mid
                   (term (Deferred ((⊤ ,sigma-a)
