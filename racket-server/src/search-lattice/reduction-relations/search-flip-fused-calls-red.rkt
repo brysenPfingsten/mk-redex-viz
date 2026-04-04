@@ -7,28 +7,28 @@
          "./private/step-utils.rkt"
          )
 
-(provide search-flip-fused-calls-extra
-         search-flip-fused-calls-red
+(provide search-flip-late-relcall-extra
+         search-flip-late-relcall-red
          step-once)
 
 (check-redundancy #t)
 
-(define search-flip-fused-calls-extra
+(define search-flip-late-relcall-extra
   (reduction-relation
-   search-base-calls-lang
+   search-relcall-lang
    #:domain config
-   [--> (Γ (in-hole QShell (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))))
-        (Γ (in-hole QShell
-                      (in-hole KLate
+   [--> (Γ (in-hole ShellCtx (in-hole LateCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))))
+        (Γ (in-hole ShellCtx
+                      (in-hole LateCtx
                                (delay (search_2
                                        <-+
-                                       (in-hole QFresh runnable-search_1))))))
+                                       (in-hole FreshCtx runnable-search_1))))))
         "delay-swap-left"]))
 
-(define search-flip-fused-calls-red
+(define search-flip-late-relcall-red
   (union-reduction-relations
-   search-base-fused-calls-red
-   search-flip-fused-calls-extra))
+   search-late-relcall-red
+   search-flip-late-relcall-extra))
 
 (define (step-once prog)
-  (step-once/deterministic search-flip-fused-calls-red prog))
+  (step-once/deterministic search-flip-late-relcall-red prog))

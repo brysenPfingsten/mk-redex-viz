@@ -4,22 +4,22 @@
          "../languages/rail-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
          (rename-in "./search-base-wf.rkt"
-                    [wf-summary-goal/search-base? wf-summary-goal/search-base/base]
-                    [wf-summary-promoted/search-base? wf-summary-promoted/search-base/base])
+                    [wf-summary-goal/search? wf-summary-goal/search/base]
+                    [wf-summary-answers/search? wf-summary-answers/search/base])
          "./core-wf.rkt")
 
 (provide wf-summary-goal/rail?
          wf-summary-work/rail?
          wf-summary-resolved/rail?
          wf-summary-search/rail?
-         wf-summary-promoted/rail?
+         wf-summary-answers/rail?
          wf-summary-frontier/rail?
          wf-summary-cfg/rail?
          wf-goal/rail?
          wf-work/rail?
          wf-resolved/rail?
          wf-search/rail?
-         wf-promoted/rail?
+         wf-answers/rail?
          wf-frontier/rail?
          wf-cfg/rail?)
 
@@ -27,7 +27,7 @@
 
 (define-extended-judgment-form
   rail-lang
-  wf-summary-goal/search-base/base
+  wf-summary-goal/search/base
   #:contract (wf-summary-goal/rail? g (x_1 ...) c summary)
   #:mode (wf-summary-goal/rail? I I I O))
 
@@ -47,7 +47,7 @@
    (wf-summary-resolved/rail? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "resolved tree-freshened scope wf/rail"
-   (wf-summary-resolved/rail? (FreshenedTree c_1 search_tail tag_1) c summary_2)])
+   (wf-summary-resolved/rail? (ScopedTree c_1 search_tail tag_1) c summary_2)])
 
 (define-judgment-form
   rail-lang
@@ -58,7 +58,7 @@
    (wf-summary-work/rail? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "work tree-freshened scope wf/rail"
-   (wf-summary-work/rail? (FreshenedTree c_1 search_tail tag_1) c summary_2)]
+   (wf-summary-work/rail? (ScopedTree c_1 search_tail tag_1) c summary_2)]
   [(wf-state/at-scope? (state sub dis c_i trail tag) c)
    (wf-summary-goal/rail? g () c_i summary_1)
    ------------------- "goal/state wf/rail"
@@ -89,7 +89,7 @@
    (wf-summary-search/rail? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "search tree-freshened scope wf/rail"
-   (wf-summary-search/rail? (FreshenedTree c_1 search_tail tag_1) c summary_2)]
+   (wf-summary-search/rail? (ScopedTree c_1 search_tail tag_1) c summary_2)]
   [(wf-summary-resolved/rail? search_i c summary_1)
    ------------------- "resolved search wf/rail"
    (wf-summary-search/rail? search_i c summary_1)]
@@ -102,9 +102,9 @@
 
 (define-extended-judgment-form
   rail-lang
-  wf-summary-promoted/search-base/base
-  #:contract (wf-summary-promoted/rail? promoted c summary)
-  #:mode (wf-summary-promoted/rail? I I O))
+  wf-summary-answers/search/base
+  #:contract (wf-summary-answers/rail? answers c summary)
+  #:mode (wf-summary-answers/rail? I I O))
 
 (define-judgment-form
   rail-lang
@@ -116,22 +116,22 @@
   [(wf-summary-search/rail? search_i c summary_1)
    (where summary_2 (summary-add-bounced summary_1))
    ------------------- "bounced search frontier wf/rail"
-   (wf-summary-frontier/rail? (Bounced search_i) c summary_2)]
-  [(wf-summary-promoted/rail? promoted_i c summary_1)
+   (wf-summary-frontier/rail? (Deferred search_i) c summary_2)]
+  [(wf-summary-answers/rail? answers_i c summary_1)
    (wf-summary-frontier/rail? cfg_tail c summary_2)
    (where summary_3 (summary+ summary_1 summary_2))
-   ------------------- "promoted stream node wf/rail"
-   (wf-summary-frontier/rail? (promoted_i + cfg_tail) c summary_3)]
+   ------------------- "answers stream node wf/rail"
+   (wf-summary-frontier/rail? (answers_i + cfg_tail) c summary_3)]
   [(wf-summary-frontier/rail? cfg_tail c summary_1)
    (where summary_2 (summary-add-bounced summary_1))
    ------------------- "bounced frontier wf/rail"
-   (wf-summary-frontier/rail? (Bounced cfg_tail) c summary_2)]
+   (wf-summary-frontier/rail? (Deferred cfg_tail) c summary_2)]
   [(lvars-fresh-extension? c_1 c)
    (where c_2 (c-append c_1 c))
    (wf-summary-frontier/rail? cfg_tail c_2 summary_1)
    (where summary_2 (summary-add-shell summary_1))
    ------------------- "cfg shell-freshened scope wf/rail"
-   (wf-summary-frontier/rail? (FreshenedShell c_1 cfg_tail tag_1) c summary_2)])
+   (wf-summary-frontier/rail? (ScopedShell c_1 cfg_tail tag_1) c summary_2)])
 
 (define-judgment-form
   rail-lang
@@ -175,11 +175,11 @@
 
 (define-judgment-form
   rail-lang
-  #:contract (wf-promoted/rail? promoted c)
-  #:mode (wf-promoted/rail? I I)
-  [(wf-summary-promoted/rail? promoted c summary_1)
-   ----------------------- "promoted-wf/rail via summary"
-   (wf-promoted/rail? promoted c)])
+  #:contract (wf-answers/rail? answers c)
+  #:mode (wf-answers/rail? I I)
+  [(wf-summary-answers/rail? answers c summary_1)
+   ----------------------- "answers-wf/rail via summary"
+   (wf-answers/rail? answers c)])
 
 (define-judgment-form
   rail-lang

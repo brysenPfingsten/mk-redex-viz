@@ -82,8 +82,8 @@
 (define (wf-disj? cfg)
   (judgment-holds (wf:wf-cfg/disj? ,cfg)))
 
-(define (wf-search-base? cfg)
-  (judgment-holds (wf:wf-cfg/search-base? ,cfg)))
+(define (wf-search? cfg)
+  (judgment-holds (wf:wf-cfg/search? ,cfg)))
 
 (define (core-shape? cfg)
   (redex-match? core-lang cfg cfg))
@@ -94,8 +94,8 @@
 (define (disj-shape? cfg)
   (redex-match? disj-lang cfg cfg))
 
-(define (search-base-shape? cfg)
-  (redex-match? search-base-lang cfg cfg))
+(define (search-shape? cfg)
+  (redex-match? search-lang cfg cfg))
 
 (define cfg-core-succeed
   (term ((succeed (label "ok")) ,sigma-a)))
@@ -164,9 +164,9 @@
 
 (define/provide-test-suite STABILIZATION-GATES
   (test-case "L0/core lock gates"
-    (check-true (redex-match? core-lang QFresh (term (FreshenedTree (u:0) hole (label "fresh")))))
+    (check-true (redex-match? core-lang FreshCtx (term (ScopedTree (u:0) hole (label "fresh")))))
     (check-false (redex-match? core-lang search (term (delay ((succeed (label "late")) ,sigma-s)))))
-    (check-false (redex-match? core-lang search (term (Bounced (⊤ ,sigma-a)))))
+    (check-false (redex-match? core-lang search (term (Deferred (⊤ ,sigma-a)))))
     (check-false (redex-match? core-lang search (term ((⊤ ,sigma-a) + (empty-tree)))))
     (define-values (succeed-name succeed-next)
       (named-step red:core-red cfg-core-succeed))
@@ -189,7 +189,7 @@
       (named-step red:core-red cfg-core-empty-fresh))
     (check-equal? empty-fresh-name "fresh-substitute")
     (check-equal? empty-fresh-next
-                  (term (FreshenedTree ()
+                  (term (ScopedTree ()
                                        ((succeed (label "inner")) ,sigma-s)
                                        (label "fresh-empty"))))
     (check-true (trace-locked? red:core-red
@@ -211,7 +211,7 @@
      (redex-match?
       delay-lang
       cfg
-      (term (delay (FreshenedTree (u:0) (⊤ ,sigma-a) (label "fresh"))))))
+      (term (delay (ScopedTree (u:0) (⊤ ,sigma-a) (label "fresh"))))))
     (check-true (redex-match? delay-lang cfg (term ,delayed-left-search)))
     (define-values (delay-step-1 delay-next-1)
       (named-step red:delay-red cfg-delay-goal))
@@ -247,11 +247,11 @@
                                cfg-delay-inside-fresh)))
 
   (test-case "L2/shared disjunction lock gates"
-    (check-true (redex-match? disj-lang KBranch (term (hole <-+ (empty-tree)))))
+    (check-true (redex-match? disj-lang BranchCtx (term (hole <-+ (empty-tree)))))
     (check-true
      (redex-match?
       disj-lang
-      KLate
+      LateCtx
       (term (hole × (succeed (label "k")) ()))))
     (define pending-disj
       (term ((((succeed (label "left")) ,sigma-s)
@@ -259,24 +259,24 @@
               ((succeed (label "right")) ,sigma-s))
              × (succeed (label "k"))
              ())))
-    (define-values (goal-seq-name _goal-seq-next)
-      (named-step red:disj-seq-red cfg-disj-goal))
-    (define-values (goal-fused-name _goal-fused-next)
-      (named-step red:disj-fused-red cfg-disj-goal))
-    (define-values (seq-name _seq-next)
-      (named-step red:disj-seq-red pending-disj))
-    (define-values (fused-pending-name _fused-pending-next)
-      (named-step red:disj-fused-red pending-disj))
-    (define-values (fused-answer-name _fused-answer-next)
-      (named-step red:disj-fused-red cfg-mixed-answer))
-    (define-values (fused-fail-name _fused-fail-next)
-      (named-step red:disj-fused-red cfg-mixed-fail))
-    (check-equal? goal-seq-name "expand-disjunction")
-    (check-equal? goal-fused-name "expand-disjunction")
-    (check-equal? seq-name "distribute-over-conj")
-    (check-equal? fused-pending-name "succeed")
-    (check-equal? fused-answer-name "continue-left-answer")
-    (check-equal? fused-fail-name "continue-left-fail")
+    (define-values (goal-early-name _goal-early-next)
+      (named-step red:disj-early-red cfg-disj-goal))
+    (define-values (goal-late-name _goal-late-next)
+      (named-step red:disj-late-red cfg-disj-goal))
+    (define-values (early-name _seq-next)
+      (named-step red:disj-early-red pending-disj))
+    (define-values (late-pending-name _fused-pending-next)
+      (named-step red:disj-late-red pending-disj))
+    (define-values (late-answer-name _fused-answer-next)
+      (named-step red:disj-late-red cfg-mixed-answer))
+    (define-values (late-fail-name _fused-fail-next)
+      (named-step red:disj-late-red cfg-mixed-fail))
+    (check-equal? goal-early-name "expand-disjunction")
+    (check-equal? goal-late-name "expand-disjunction")
+    (check-equal? early-name "distribute-over-conj")
+    (check-equal? late-pending-name "succeed")
+    (check-equal? late-answer-name "continue-left-answer")
+    (check-equal? late-fail-name "continue-left-fail")
     (define nested-answer
       (term (((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
              <-+
@@ -286,12 +286,12 @@
              <-+
              (empty-tree))))
     (define freshened-answer
-      (term (((FreshenedTree (u:0) (⊤ ,sigma-a) (label "fresh")) <-+ (⊤ ,sigma-b))
+      (term (((ScopedTree (u:0) (⊤ ,sigma-a) (label "fresh")) <-+ (⊤ ,sigma-b))
              × (succeed (label "k"))
              ())))
-    (define-values (fused-fresh-name fused-fresh-next)
-      (named-step red:disj-fused-red freshened-answer))
-    (for ([rel (in-list (list red:disj-seq-red red:disj-fused-red))])
+    (define-values (late-fresh-name late-fresh-next)
+      (named-step red:disj-late-red freshened-answer))
+    (for ([rel (in-list (list red:disj-early-red red:disj-late-red))])
       (define-values (reassoc-answer-name reassoc-answer-next)
         (named-step rel nested-answer))
       (define-values (consume-answer-name consume-answer-next)
@@ -312,14 +312,14 @@
                     (term ((⊤ ,sigma-b) <-+ (empty-tree))))
       (check-equal? consume-fail-next
                     (term ((⊤ ,sigma-b) + (empty-tree)))))
-    (check-equal? fused-fresh-name "continue-left-answer")
-    (check-equal? fused-fresh-next
-                  (term ((FreshenedTree (u:0)
+    (check-equal? late-fresh-name "continue-left-answer")
+    (check-equal? late-fresh-next
+                  (term ((ScopedTree (u:0)
                                     ((succeed (label "k")) ,sigma-a)
                                     (label "fresh"))
                          <-+
                          ((⊤ ,sigma-b) × (succeed (label "k")) ()))))
-    (for ([rel (in-list (list red:disj-seq-red red:disj-fused-red))])
+    (for ([rel (in-list (list red:disj-early-red red:disj-late-red))])
       (define-values (shared-steps shared-final shared-status)
         (trace-deterministic rel (example-frontier "fresh shared disj")))
       (define-values (branch-steps branch-final branch-status)
@@ -341,28 +341,28 @@
       (check-true (config-exact-scope? shared-final))
       (check-true (config-exact-scope? branch-final)))))
 
-  (test-case "L3/search-base reopen gates"
+  (test-case "L3/search reopen gates"
     (define bounced-branch
-      (term (Bounced (((⊤ ,sigma-a) <-+ (empty-tree))
+      (term (Deferred (((⊤ ,sigma-a) <-+ (empty-tree))
                       <-+
                       (⊤ ,sigma-b)))))
     (define bad-bounced-promotion
-      (term (Bounced ((((⊤ ,sigma-a) + (empty-tree))
+      (term (Deferred ((((⊤ ,sigma-a) + (empty-tree))
                        <-+
                        (⊤ ,sigma-b))))))
     (define prefixed-bounced
-      (term (Bounced ((⊤ ,sigma-a)
+      (term (Deferred ((⊤ ,sigma-a)
                       +
                       ((⊤ ,sigma-b) <-+ (empty-tree))))))
-    (check-true (redex-match? search-base-lang cfg cfg-disj))
-    (check-true (redex-match? search-base-lang cfg bounced-branch))
+    (check-true (redex-match? search-lang cfg cfg-disj))
+    (check-true (redex-match? search-lang cfg bounced-branch))
     (check-false
      (redex-match?
-      search-base-lang
+      search-lang
       cfg
       (term (((⊤ ,sigma-a) + (empty-tree)) <-+ (⊤ ,sigma-b)))))
-    (for ([rel (in-list (list red:search-base-seq-red
-                              red:search-base-fused-red))])
+    (for ([rel (in-list (list red:search-early-red
+                              red:search-late-red))])
       (define-values (plain-name plain-next)
         (named-step rel cfg-disj))
       (check-equal? plain-name "promote-left-answer")
@@ -375,7 +375,7 @@
       (check-equal? bounce-step-1-name "reassociate-left-answer")
       (check-equal? bounce-step-2-name "promote-left-answer")
       (check-equal? bounce-step-1
-                    (term (Bounced ((⊤ ,sigma-a)
+                    (term (Deferred ((⊤ ,sigma-a)
                                     <-+
                                     ((empty-tree) <-+ (⊤ ,sigma-b))))))
       (check-false
@@ -383,28 +383,28 @@
                (map tagged-successor-cfg
                     (apply-reduction-relation/tag-with-names rel bounced-branch))))
       (check-equal? bounce-step-2
-                    (term (Bounced ((⊤ ,sigma-a)
+                    (term (Deferred ((⊤ ,sigma-a)
                                     +
                                     ((empty-tree) <-+ (⊤ ,sigma-b))))))
       (define-values (prefixed-name prefixed-next)
         (named-step rel prefixed-bounced))
       (check-equal? prefixed-name "promote-left-answer")
       (check-equal? prefixed-next
-                    (term (Bounced ((⊤ ,sigma-a)
+                    (term (Deferred ((⊤ ,sigma-a)
                                     +
                                     ((⊤ ,sigma-b) + (empty-tree))))))
-      (check-true (wf-search-base? bounce-step-1))
-      (check-true (wf-search-base? bounce-step-2))
-      (check-true (wf-search-base? prefixed-next))
+      (check-true (wf-search? bounce-step-1))
+      (check-true (wf-search? bounce-step-2))
+      (check-true (wf-search? prefixed-next))
       (check-true (trace-locked? rel
-                                 wf-search-base?
-                                 search-base-shape?
+                                 wf-search?
+                                 search-shape?
                                  cfg-delay-goal))
-      (check-true (shape-closed? search-base-shape? rel cfg-delay-goal))
-      (define-values (seq/fused-name _seq/fused-next)
+      (check-true (shape-closed? search-shape? rel cfg-delay-goal))
+      (define-values (early/late-name _seq/late-next)
         (named-step rel cfg-mixed-answer))
       (check-not-false
-       (member seq/fused-name
+       (member early/late-name
                '("distribute-over-conj"
                  "continue-left-answer")))))
 

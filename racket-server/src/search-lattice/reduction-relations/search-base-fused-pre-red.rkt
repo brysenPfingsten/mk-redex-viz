@@ -4,17 +4,17 @@
          "../languages/search-base-lang.rkt"
          "./search-base-pre-red.rkt")
 
-(provide search-base-fused-pre-red)
+(provide search-late-pre-red)
 
 (check-redundancy #t)
 
-(define search-base-fused-shared-local/under-QShell
+(define search-late-shared-local/under-ShellCtx
   (context-closure
-   (context-closure search-base-local/base search-base-lang KLate)
-   search-base-lang
-   QShell))
+   (context-closure search-local/base search-lang LateCtx)
+   search-lang
+   ShellCtx))
 
-(define search-base-fused-pre-red
+(define search-late-pre-red
   (union-reduction-relations
-   search-base-fused-shared-local/under-QShell
-   search-base-shell/base))
+   search-late-shared-local/under-ShellCtx
+   search-shell/base))

@@ -19,8 +19,8 @@
   (reduction-relation
    disj-lang
    #:domain cfg
-   [--> (in-hole KLocal ((g_1 ∨ g_2 tag) σ))
-        (in-hole KLocal ((g_1 σ) <-+ (g_2 σ)))
+   [--> (in-hole LocalCtx ((g_1 ∨ g_2 tag) σ))
+        (in-hole LocalCtx ((g_1 σ) <-+ (g_2 σ)))
         "expand-disjunction"]))
 
 (define disj-frontier/base
@@ -28,28 +28,28 @@
          (reduction-relation
            disj-lang
            #:domain cfg
-           [--> (in-hole QFresh_1 (((in-hole QFresh_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
+           [--> (in-hole FreshCtx_1 (((in-hole FreshCtx_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
-                 (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ (search_mid <-+ search_right))))
+                 (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) <-+ (search_mid <-+ search_right))))
                 "reassociate-left-answer"]
-           [--> (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ search_right))
+           [--> (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
-                 (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) + search_right)))
+                 (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (⊤ σ)) + search_right)))
                 "promote-left-answer"]
-           [--> (in-hole QFresh_1 (((in-hole QFresh_2 (empty-tree)) <-+ search_mid) <-+ search_right))
-                (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 (search_mid <-+ search_right)))
+           [--> (in-hole FreshCtx_1 (((in-hole FreshCtx_2 (empty-tree)) <-+ search_mid) <-+ search_right))
+                (fresh-tree-prefix->shell-prefix (in-hole FreshCtx_1 (search_mid <-+ search_right)))
                 "erase-left-fail"]
-           [--> (in-hole QFresh_1 ((in-hole QFresh_2 (empty-tree)) <-+ search_right))
-                (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 search_right))
+           [--> (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (empty-tree)) <-+ search_right))
+                (fresh-tree-prefix->shell-prefix (in-hole FreshCtx_1 search_right))
                 "skip-left-fail"])])
-    (context-closure disj-frontier/local-base disj-lang QShell)))
+    (context-closure disj-frontier/local-base disj-lang ShellCtx)))
 
 (define disj-local/base
   (union-reduction-relations
    (context-closure
     (extend-reduction-relation core-local/base disj-lang)
     disj-lang
-    KLocal)
+    LocalCtx)
    disj-goal-local/base))
 
 (define disj-shell/base

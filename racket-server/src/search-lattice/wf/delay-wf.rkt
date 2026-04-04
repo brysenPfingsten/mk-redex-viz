@@ -47,7 +47,7 @@
    (wf-summary-resolved/delay? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "resolved tree-freshened scope wf/delay"
-   (wf-summary-resolved/delay? (FreshenedTree c_1 search_tail tag_1) c summary_2)])
+   (wf-summary-resolved/delay? (ScopedTree c_1 search_tail tag_1) c summary_2)])
 
 (define-judgment-form
   delay-lang
@@ -58,7 +58,7 @@
    (wf-summary-work/delay? runnable-search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "work tree-freshened scope wf/delay"
-   (wf-summary-work/delay? (FreshenedTree c_1 runnable-search_tail tag_1) c summary_2)]
+   (wf-summary-work/delay? (ScopedTree c_1 runnable-search_tail tag_1) c summary_2)]
   [(wf-state/at-scope? (state sub dis c_i trail tag) c)
    (wf-summary-goal/delay? g () c_i summary_1)
    ------------------- "goal/state wf/delay"
@@ -79,7 +79,7 @@
    (wf-summary-search/delay? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "search tree-freshened scope wf/delay"
-   (wf-summary-search/delay? (FreshenedTree c_1 search_tail tag_1) c summary_2)]
+   (wf-summary-search/delay? (ScopedTree c_1 search_tail tag_1) c summary_2)]
   [(wf-summary-resolved/delay? search_i c summary_1)
    ------------------- "resolved search wf/delay"
    (wf-summary-search/delay? search_i c summary_1)]
@@ -100,17 +100,17 @@
   [(wf-summary-search/delay? search_i c summary_1)
    (where summary_2 (summary-add-bounced summary_1))
    ------------------- "bounced search frontier wf/delay"
-   (wf-summary-frontier/delay? (Bounced search_i) c summary_2)]
+   (wf-summary-frontier/delay? (Deferred search_i) c summary_2)]
   [(wf-summary-frontier/delay? cfg_tail c summary_1)
    (where summary_2 (summary-add-bounced summary_1))
    ------------------- "bounced frontier wf/delay"
-   (wf-summary-frontier/delay? (Bounced cfg_tail) c summary_2)]
+   (wf-summary-frontier/delay? (Deferred cfg_tail) c summary_2)]
   [(lvars-fresh-extension? c_1 c)
    (where c_2 (c-append c_1 c))
    (wf-summary-frontier/delay? cfg_tail c_2 summary_1)
    (where summary_2 (summary-add-shell summary_1))
    ------------------- "cfg shell-freshened scope wf/delay"
-   (wf-summary-frontier/delay? (FreshenedShell c_1 cfg_tail tag_1) c summary_2)])
+   (wf-summary-frontier/delay? (ScopedShell c_1 cfg_tail tag_1) c summary_2)])
 
 (define-judgment-form
   delay-lang

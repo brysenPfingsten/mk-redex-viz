@@ -16,22 +16,22 @@
 
 (define-language core-lang
   [cfg search
-       (FreshenedShell c cfg tag)]
+       (ScopedShell c cfg tag)]
 
-  [search cell
+  [search answer
           (empty-tree)
           runnable-root
-          (FreshenedTree c search tag)]
+          (ScopedTree c search tag)]
 
   [runnable-search runnable-root
-                   (FreshenedTree c runnable-search tag)]
+                   (ScopedTree c runnable-search tag)]
 
   [runnable-root (g σ)
                  (search × g c)]
 
   [d (x_!_ ...)]
 
-  [cell (⊤ σ)]
+  [answer (⊤ σ)]
 
   [eq (t =? t tag)]
   [neq (t != t tag)]
@@ -70,30 +70,30 @@
   ;; Outer committed shell wrappers. L0 owns the shell/tail split, even though
   ;; shell growth first becomes interesting once later layers add more shell
   ;; constructors.
-  [QShell ::= hole
-              (FreshenedShell c QShell tag)]
+  [ShellCtx ::= hole
+              (ScopedShell c ShellCtx tag)]
 
   ;; Pure introduction-provenance chain for scoped phase-boundary focus.
   ;; L0 uses it for conjunction handoff; later layers reuse the same helper for
   ;; delay / answer / fail heads without introducing per-node scoped families.
   ;; First divergent layer: L0/core.
-  ;; Allowed extension direction: reuse as pure FreshenedTree* only.
-  [QFresh ::= hole
-              (FreshenedTree c QFresh tag)]
-  ;; One-or-more FreshenedTree frames. Used when a shellification step should
+  ;; Allowed extension direction: reuse as pure ScopedTree* only.
+  [FreshCtx ::= hole
+              (ScopedTree c FreshCtx tag)]
+  ;; One-or-more ScopedTree frames. Used when a shellification step should
   ;; only fire if it actually has a tree prefix to convert.
-  [QFresh+ ::= (FreshenedTree c QFresh tag)]
+  [FreshCtx+ ::= (ScopedTree c FreshCtx tag)]
   ;; One-or-more pending conjunction layers, each optionally wrapped in
-  ;; FreshenedTree* before the next outer layer.
-  [KConj ::= (KLocal × g c)
-             (FreshenedTree c KConj tag)]
+  ;; ScopedTree* before the next outer layer.
+  [ConjCtx ::= (LocalCtx × g c)
+             (ScopedTree c ConjCtx tag)]
   ;; Frozen local-work path used by inherited lower-layer rules.
   ;; First divergent layer: L0/core.
   ;; Allowed extension direction: later policy helpers may branch from it, but
-  ;; core itself stays frozen at pure FreshenedTree* bottoms plus conjunction
+  ;; core itself stays frozen at pure ScopedTree* bottoms plus conjunction
   ;; layers built around them.
-  [KLocal ::= QFresh
-              KConj]
+  [LocalCtx ::= FreshCtx
+              ConjCtx]
 
   #:binding-forms
   (∃ (x ...) g #:refers-to (shadow x ...)))
@@ -140,8 +140,8 @@
 
 (define-metafunction core-lang
   fresh-tree-prefix->shell-prefix : any -> any
-  [(fresh-tree-prefix->shell-prefix (FreshenedTree c any_1 tag))
-   (FreshenedShell c (fresh-tree-prefix->shell-prefix any_1) tag)]
+  [(fresh-tree-prefix->shell-prefix (ScopedTree c any_1 tag))
+   (ScopedShell c (fresh-tree-prefix->shell-prefix any_1) tag)]
   [(fresh-tree-prefix->shell-prefix any_1)
    any_1])
 

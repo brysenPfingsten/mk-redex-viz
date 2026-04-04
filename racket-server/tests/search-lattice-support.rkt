@@ -36,10 +36,10 @@
   (match f
     ['(empty-tree) #t]
     [`(⊤ ,_) #t]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
+    [(or (list 'ScopedTree _ inner _)
+         (list 'ScopedShell _ inner _))
      (final-frontier? inner)]
-    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(Deferred ,inner) (final-frontier? inner)]
     [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 
@@ -87,10 +87,10 @@
   (match prog
     [`(,_gamma ,cfg)
      (produced-answer-spine-only? cfg inside-branch?)]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
+    [(or (list 'ScopedTree _ inner _)
+         (list 'ScopedShell _ inner _))
      (produced-answer-spine-only? inner inside-branch?)]
-    [`(Bounced ,inner)
+    [`(Deferred ,inner)
      (produced-answer-spine-only? inner inside-branch?)]
     [`(delay ,inner)
      (produced-answer-spine-only? inner inside-branch?)]
@@ -148,7 +148,7 @@
   (term (delay ((succeed (label "late")) ,sigma-s))))
 
 (define scoped-delayed-left-search
-  (term (FreshenedTree (u:0)
+  (term (ScopedTree (u:0)
                        (delay ((succeed (label "late")) ,sigma-s))
                        (label "fresh"))))
 

@@ -5,29 +5,29 @@
          "./search-base-fused-pre-red.rkt"
          "./private/step-utils.rkt")
 
-(provide search-base-fused-red
+(provide search-late-red
          step-once)
 
 (check-redundancy #t)
 
 ;; Fused-only policy steps, still wrapped by the outer committed shell.
-(define search-base-fused-branch-local/under-QShell
-  (let ([search-base-fused-branch-local/base
+(define search-late-branch-local/under-ShellCtx
+  (let ([search-late-branch-local/base
          (reduction-relation
-          search-base-lang
+          search-lang
           #:domain cfg
-          [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
-               (in-hole KLate ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
+          [--> (in-hole LateCtx (((in-hole FreshCtx (⊤ σ_new)) <-+ search_rest) × g c))
+               (in-hole LateCtx ((in-hole FreshCtx (g σ_new)) <-+ (search_rest × g c)))
                "continue-left-answer"]
-          [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
-               (in-hole KLate (search_rest × g c))
+          [--> (in-hole LateCtx (((in-hole FreshCtx (empty-tree)) <-+ search_rest) × g c))
+               (in-hole LateCtx (search_rest × g c))
                "continue-left-fail"])])
-    (context-closure search-base-fused-branch-local/base search-base-lang QShell)))
+    (context-closure search-late-branch-local/base search-lang ShellCtx)))
 
-(define search-base-fused-red
+(define search-late-red
   (union-reduction-relations
-   search-base-fused-pre-red
-   search-base-fused-branch-local/under-QShell))
+   search-late-pre-red
+   search-late-branch-local/under-ShellCtx))
 
 (define (step-once prog)
-  (step-once/deterministic search-base-fused-red prog))
+  (step-once/deterministic search-late-red prog))

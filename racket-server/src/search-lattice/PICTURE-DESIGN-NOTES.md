@@ -37,9 +37,9 @@ Current intended meanings:
 Concrete example:
 
 - Machine state:
-  `Bounced(FreshenedShell(... Answer ...))`
+  `Deferred(ScopedShell(... Answer ...))`
 - Operational picture:
-  `Bounced -> Freshened -> Answer`
+  `Deferred -> Freshened -> Answer`
 - Administration-erased picture:
   `Freshened -> Answer`
 
@@ -75,7 +75,7 @@ The intended strong property is:
 This is much stronger than "eventually the same answer stream," which is too
 weak to support a clean small-step derivation story by itself.
 
-## FreshenedTree Versus FreshenedShell
+## ScopedTree Versus ScopedShell
 
 Current recommendation:
 
@@ -85,9 +85,9 @@ Current recommendation:
 
 Reason:
 
-- `FreshenedTree` marks scope wrapped around tree-side payloads, including
-  promoted payloads on the left of `+`
-- `FreshenedShell` marks scope wrapped around enclosing frontier/shell
+- `ScopedTree` marks scope wrapped around tree-side payloads, including
+  answers payloads on the left of `+`
+- `ScopedShell` marks scope wrapped around enclosing frontier/shell
   structure
 
 That distinction is mathematically useful in the machine derivation because it
@@ -137,7 +137,7 @@ The following properties fit the current design without additional decisions:
 - administration-erased picture WF through pure core traces
 - zero shell-freshening in pure core/source states
 - operational and administration-erased pictures agree in pure core
-- zero `Bounced` in pure core configurations and traces
+- zero `Deferred` in pure core configurations and traces
 
 These properties are now implemented in `property-core.rkt`.
 
@@ -149,7 +149,7 @@ The following properties still depend on unresolved design intent:
   administration-erased picture exactly, or whether some higher-layer wrappers
   still count as semantically visible
 - whether the exported operational picture should distinguish
-  `FreshenedTree` from `FreshenedShell`
+  `ScopedTree` from `ScopedShell`
 - whether `c` should remain explicit in the long-term machine presentation once
   derivability from context is fully established
 

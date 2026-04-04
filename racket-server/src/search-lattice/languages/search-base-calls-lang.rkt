@@ -4,10 +4,10 @@
          "./calls-lang.rkt"
          "./search-base-lang.rkt")
 
-(provide search-base-calls-lang)
+(provide search-relcall-lang)
 
 (check-redundancy #t)
 
-(define-union-language search-base-calls-lang
-  calls-lang
-  search-base-lang)
+(define-union-language search-relcall-lang
+  relcall-lang
+  search-lang)

@@ -7,28 +7,28 @@
          "./private/step-utils.rkt"
          )
 
-(provide search-dfs-seq-calls-extra
-         search-dfs-seq-calls-red
+(provide search-dfs-early-relcall-extra
+         search-dfs-early-relcall-red
          step-once)
 
 (check-redundancy #t)
 
-(define search-dfs-seq-calls-extra
+(define search-dfs-early-relcall-extra
   (reduction-relation
-   search-base-calls-lang
+   search-relcall-lang
    #:domain config
-   [--> (Γ (in-hole QShell (in-hole KBranch ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))))
-        (Γ (in-hole QShell
-                      (in-hole KBranch
-                               (delay ((in-hole QFresh runnable-search_1)
+   [--> (Γ (in-hole ShellCtx (in-hole BranchCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))))
+        (Γ (in-hole ShellCtx
+                      (in-hole BranchCtx
+                               (delay ((in-hole FreshCtx runnable-search_1)
                                        <-+
                                        search_2)))))
         "delay-through-left"]))
 
-(define search-dfs-seq-calls-red
+(define search-dfs-early-relcall-red
   (union-reduction-relations
-   search-base-seq-calls-red
-   search-dfs-seq-calls-extra))
+   search-early-relcall-red
+   search-dfs-early-relcall-extra))
 
 (define (step-once prog)
-  (step-once/deterministic search-dfs-seq-calls-red prog))
+  (step-once/deterministic search-dfs-early-relcall-red prog))

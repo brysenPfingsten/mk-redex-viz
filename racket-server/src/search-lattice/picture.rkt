@@ -31,7 +31,7 @@
           'children (list child)))
 
 (define (bounced-node child)
-  (hasheq 'name "Bounced"
+  (hasheq 'name "Deferred"
           'renderRole "bounced"
           'activeChildIndex 0
           'children (list child)))
@@ -61,10 +61,10 @@
 
 (define (num-query-vars/work s)
   (match s
-    [(or `(FreshenedTree ,_ ,s_1 ,_)
-         `(FreshenedShell ,_ ,s_1 ,_))
+    [(or `(ScopedTree ,_ ,s_1 ,_)
+         `(ScopedShell ,_ ,s_1 ,_))
      (num-query-vars/work s_1)]
-    [`(Bounced ,s_1)
+    [`(Deferred ,s_1)
      (num-query-vars/work s_1)]
     [`(,s_1 + ,s_2)
      (max (num-query-vars/work s_1)
@@ -97,13 +97,13 @@
   (match s
     ['(empty-tree)
      (empty-node)]
-    [(or `(FreshenedTree ,c-intro ,s_1 ,tag)
-         `(FreshenedShell ,c-intro ,s_1 ,tag))
+    [(or `(ScopedTree ,c-intro ,s_1 ,tag)
+         `(ScopedShell ,c-intro ,s_1 ,tag))
      (freshened-node
       c-intro
       (tree->picture s_1 num-query-variables #:extensional? extensional?)
       tag)]
-    [`(Bounced ,s_1)
+    [`(Deferred ,s_1)
      (if extensional?
          (tree->picture s_1 num-query-variables #:extensional? #t)
          (bounced-node

@@ -5,32 +5,32 @@
          "./disj-base-red.rkt"
          "./private/step-utils.rkt")
 
-(provide disj-seq-red
+(provide disj-early-red
          step-once)
 
 (check-redundancy #t)
 
-(define disj-seq-shared-local/under-QShell
+(define disj-early-shared-local/under-ShellCtx
   (context-closure
-   (context-closure disj-local/base disj-lang KBranch)
+   (context-closure disj-local/base disj-lang BranchCtx)
    disj-lang
-   QShell))
+   ShellCtx))
 
-(define disj-seq-local/under-QShell
-  (let ([disj-seq-local/base
+(define disj-early-local/under-ShellCtx
+  (let ([disj-early-local/base
          (reduction-relation
           disj-lang
           #:domain cfg
-          [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
-               (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
+          [--> (in-hole BranchCtx ((search_1 <-+ search_2) × g c))
+               (in-hole BranchCtx ((search_1 × g c) <-+ (search_2 × g c)))
                "distribute-over-conj"])])
-    (context-closure disj-seq-local/base disj-lang QShell)))
+    (context-closure disj-early-local/base disj-lang ShellCtx)))
 
-(define disj-seq-red
+(define disj-early-red
   (union-reduction-relations
    disj-shell/base
-   disj-seq-shared-local/under-QShell
-   disj-seq-local/under-QShell))
+   disj-early-shared-local/under-ShellCtx
+   disj-early-local/under-ShellCtx))
 
 (define (step-once prog)
-  (step-once/deterministic disj-seq-red prog))
+  (step-once/deterministic disj-early-red prog))

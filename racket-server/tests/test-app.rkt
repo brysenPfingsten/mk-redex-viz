@@ -86,7 +86,7 @@
     [(hash* ['name name]
             ['children (list child)]
             #:open)
-     #:when (member name '("Bounced" "Freshened"))
+     #:when (member name '("Deferred" "Freshened"))
      (json-strip-spine child)]
     [_ node]))
 
@@ -576,8 +576,8 @@
                 (for/first ([pair (in-list (collect-scoped-visible-changes
                                             (collect-step-payloads ses^ SCOPED-VISIBLE-PAIR-CAP)))]
                             #:do [(match-define (list left right) pair)]
-                            #:when (or (payload-contains-name? left "Bounced")
-                                       (payload-contains-name? right "Bounced")))
+                            #:when (or (payload-contains-name? left "Deferred")
+                                       (payload-contains-name? right "Deferred")))
                   pair))
               (check-not-false scoped-bounced-pair))
 
@@ -835,7 +835,7 @@
                                              names))
                              2)))
 
-  (test-case "late dfs relcall-delay profile expands calls without eager/lazy resume rules"
+  (test-case "late dfs relcall-delay profile expands relcall without eager/lazy resume rules"
              (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
              (define-values (response ses^)
                (init!

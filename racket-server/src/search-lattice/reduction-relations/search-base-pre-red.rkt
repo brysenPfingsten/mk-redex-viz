@@ -11,29 +11,29 @@
                   disj-goal-local/base
                   disj-frontier/base))
 
-(provide search-base-local/base
-         search-base-shell/base)
+(provide search-local/base
+         search-shell/base)
 
 (check-redundancy #t)
 
 (require "../languages/search-base-lang.rkt")
 
-;; search-base joins the common core directly, then adds only the true delay
+;; search joins the common core directly, then adds only the true delay
 ;; and disjunction deltas from each branch.
-(define search-base-local/base
+(define search-local/base
   (union-reduction-relations
    (context-closure
-    (extend-reduction-relation core-local/base search-base-lang)
-    search-base-lang
-    KLocal)
-   (extend-reduction-relation disj-goal-local/base search-base-lang)
+    (extend-reduction-relation core-local/base search-lang)
+    search-lang
+    LocalCtx)
+   (extend-reduction-relation disj-goal-local/base search-lang)
    (context-closure
-    (extend-reduction-relation delay-local/delta search-base-lang)
-    search-base-lang
-    KLocal)))
+    (extend-reduction-relation delay-local/delta search-lang)
+    search-lang
+    LocalCtx)))
 
-(define search-base-shell/base
+(define search-shell/base
   (union-reduction-relations
-   (extend-reduction-relation core-shell/base search-base-lang)
-   (extend-reduction-relation disj-frontier/base search-base-lang)
-   (extend-reduction-relation delay-frontier/delta search-base-lang)))
+   (extend-reduction-relation core-shell/base search-lang)
+   (extend-reduction-relation disj-frontier/base search-lang)
+   (extend-reduction-relation delay-frontier/delta search-lang)))

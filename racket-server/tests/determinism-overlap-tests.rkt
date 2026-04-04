@@ -96,13 +96,13 @@
     (parameterize ([current-pseudo-random-generator rng])
       (match normalized
         [(search-strategy "early" "rail")
-         (generate-term lang:rail-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:rail-relcall-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" "rail")
-         (generate-term lang:rail-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:rail-relcall-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "early" _)
-         (generate-term lang:search-base-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)]
+         (generate-term lang:search-relcall-lang config OVERLAP-RANDOM-TERM-DEPTH)]
         [(search-strategy "late" _)
-         (generate-term lang:search-base-calls-lang config OVERLAP-RANDOM-TERM-DEPTH)])))
+         (generate-term lang:search-relcall-lang config OVERLAP-RANDOM-TERM-DEPTH)])))
   (cond
     [(strategy-matches-generated? normalized cfg) cfg]
     [else
@@ -171,20 +171,20 @@
              × (succeed (label "k"))
              ())))
     (define bounced-branch
-      (term (Bounced (((⊤ ,sigma-a) <-+ (empty-tree))
+      (term (Deferred (((⊤ ,sigma-a) <-+ (empty-tree))
                       <-+
                       (⊤ ,sigma-b)))))
-    (define seq-next*
-      (apply-reduction-relation/tag-with-names red:disj-seq-red pending-disj))
-    (define fused-next*
-      (apply-reduction-relation/tag-with-names red:disj-fused-red pending-disj))
+    (define early-next*
+      (apply-reduction-relation/tag-with-names red:disj-early-red pending-disj))
+    (define late-next*
+      (apply-reduction-relation/tag-with-names red:disj-late-red pending-disj))
     (define shell-next*
-      (apply-reduction-relation/tag-with-names red:search-base-fused-red bounced-branch))
-    (check-false (overlap-kind seq-next*))
-    (check-false (overlap-kind fused-next*))
+      (apply-reduction-relation/tag-with-names red:search-late-red bounced-branch))
+    (check-false (overlap-kind early-next*))
+    (check-false (overlap-kind late-next*))
     (check-false (overlap-kind shell-next*))
-    (check-equal? (tagged-successor-name (first seq-next*)) "distribute-over-conj")
-    (check-equal? (tagged-successor-name (first fused-next*)) "succeed")
+    (check-equal? (tagged-successor-name (first early-next*)) "distribute-over-conj")
+    (check-equal? (tagged-successor-name (first late-next*)) "succeed")
     (check-equal? (tagged-successor-name (first shell-next*)) "reassociate-left-answer"))
 
   (test-case "overlap audit: surfaced structured strategies over frontend examples"

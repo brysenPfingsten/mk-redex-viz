@@ -5,26 +5,26 @@
          "./private/step-utils.rkt"
          "./search-base-seq-red.rkt")
 
-(provide search-flip-seq-red
+(provide search-flip-early-red
          step-once)
 
 (check-redundancy #t)
 
-(define search-flip-seq-extra
-  (let ([search-flip-seq-extra/base
+(define search-flip-early-extra
+  (let ([search-flip-early-extra/base
          (reduction-relation
-          search-base-lang
+          search-lang
           #:domain cfg
-          [--> (in-hole KBranch ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
-               (in-hole KBranch
-                        (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
+          [--> (in-hole BranchCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))
+               (in-hole BranchCtx
+                        (delay (search_2 <-+ (in-hole FreshCtx runnable-search_1))))
                "delay-swap-left"])])
-    (context-closure search-flip-seq-extra/base search-base-lang QShell)))
+    (context-closure search-flip-early-extra/base search-lang ShellCtx)))
 
-(define search-flip-seq-red
+(define search-flip-early-red
   (union-reduction-relations
-   search-base-seq-red
-   search-flip-seq-extra))
+   search-early-red
+   search-flip-early-extra))
 
 (define (step-once prog)
-  (step-once/deterministic search-flip-seq-red prog))
+  (step-once/deterministic search-flip-early-red prog))

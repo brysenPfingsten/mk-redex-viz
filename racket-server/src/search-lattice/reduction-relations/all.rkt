@@ -3,68 +3,68 @@
 (require (only-in "./core-red.rkt"
                   core-red)
          (only-in "./calls-red.rkt"
-                  calls-red)
+                  relcall-red)
          (only-in "./delay-red.rkt"
                   delay-red)
          (only-in "./disj-fused-red.rkt"
-                  disj-fused-red)
+                  disj-late-red)
          (only-in "./disj-seq-red.rkt"
-                  disj-seq-red)
+                  disj-early-red)
          (only-in "./search-dfs-fused-red.rkt"
-                  search-dfs-fused-red)
+                  search-dfs-late-red)
          (only-in "./search-dfs-seq-red.rkt"
-                  search-dfs-seq-red)
+                  search-dfs-early-red)
          (only-in "./search-flip-fused-red.rkt"
-                  search-flip-fused-red)
+                  search-flip-late-red)
          (only-in "./search-flip-seq-red.rkt"
-                  search-flip-seq-red)
+                  search-flip-early-red)
          (only-in "./search-base-seq-red.rkt"
-                  search-base-seq-red)
+                  search-early-red)
          (only-in "./search-base-fused-red.rkt"
-                  search-base-fused-red)
+                  search-late-red)
          (only-in "./search-base-seq-calls-red.rkt"
-                  search-base-seq-calls-red)
+                  search-early-relcall-red)
          (only-in "./search-base-fused-calls-red.rkt"
-                  search-base-fused-calls-red)
+                  search-late-relcall-red)
          (only-in "./search-dfs-seq-calls-red.rkt"
-                  search-dfs-seq-calls-red)
+                  search-dfs-early-relcall-red)
          (only-in "./search-dfs-fused-calls-red.rkt"
-                  search-dfs-fused-calls-red)
+                  search-dfs-late-relcall-red)
          (only-in "./search-flip-seq-calls-red.rkt"
-                  search-flip-seq-calls-red)
+                  search-flip-early-relcall-red)
          (only-in "./search-flip-fused-calls-red.rkt"
-                  search-flip-fused-calls-red)
+                  search-flip-late-relcall-red)
          (only-in "./rail-seq-red.rkt"
-                  rail-seq-red)
+                  rail-early-red)
          (only-in "./rail-fused-red.rkt"
-                  rail-fused-red)
+                  rail-late-red)
          (only-in "./rail-seq-calls-red.rkt"
-                  rail-seq-calls-red)
+                  rail-early-relcall-red)
          (only-in "./rail-fused-calls-red.rkt"
-                  rail-fused-calls-red))
+                  rail-late-relcall-red))
 
 (provide
  ;; Surfaced call-bearing reduction relations.
- calls-red
- search-base-seq-calls-red
- search-base-fused-calls-red
- search-dfs-seq-calls-red
- search-dfs-fused-calls-red
- search-flip-seq-calls-red
- search-flip-fused-calls-red
- rail-seq-calls-red
- rail-fused-calls-red
+ relcall-red
+ search-early-relcall-red
+ search-late-relcall-red
+ search-dfs-early-relcall-red
+ search-dfs-late-relcall-red
+ search-flip-early-relcall-red
+ search-flip-late-relcall-red
+ rail-early-relcall-red
+ rail-late-relcall-red
 
  ;; Internal lattice reduction relations kept for staging, comparison, and tests.
  core-red
  delay-red
- disj-seq-red
- disj-fused-red
- search-dfs-seq-red
- search-dfs-fused-red
- search-flip-seq-red
- search-flip-fused-red
- search-base-seq-red
- search-base-fused-red
- rail-seq-red
- rail-fused-red)
+ disj-early-red
+ disj-late-red
+ search-dfs-early-red
+ search-dfs-late-red
+ search-flip-early-red
+ search-flip-late-red
+ search-early-red
+ search-late-red
+ rail-early-red
+ rail-late-red)

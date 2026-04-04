@@ -27,18 +27,18 @@
     (first-summary (thunk))))
 
 (define (summary-for-config cfg)
-  (or (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/rail-calls? ,cfg summary) summary)))
-      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/search-base-calls? ,cfg summary) summary)))
-      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/calls? ,cfg summary) summary)))
+  (or (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/rail-relcall? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/search-relcall? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-config/relcall? ,cfg summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/rail? ,cfg summary) summary)))
-      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/search-base? ,cfg summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/search? ,cfg summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/disj? ,cfg summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/delay? ,cfg summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-cfg/core? ,cfg summary) summary)))))
 
 (define (summary-for-frontier cfg scope)
   (or (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/rail? ,cfg ,scope summary) summary)))
-      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/search-base? ,cfg ,scope summary) summary)))
+      (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/search? ,cfg ,scope summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/disj? ,cfg ,scope summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/delay? ,cfg ,scope summary) summary)))
       (safe-summary (lambda () (judgment-holds (wf:wf-summary-frontier/core? ,cfg ,scope summary) summary)))))
@@ -208,7 +208,7 @@
             ['children (list child)]
             #:open)
      (visible-root? child)]
-    [(hash* ['name "Bounced"]
+    [(hash* ['name "Deferred"]
             ['renderRole "bounced"]
             ['activeChildIndex 0]
             ['children (list child)]
@@ -256,7 +256,7 @@
             #:open)
      (and (visible-root? left)
           (visible-root? right))]
-    [(hash* ['name "Bounced"]
+    [(hash* ['name "Deferred"]
             ['renderRole "bounced"]
             ['children (list child)]
             #:open)

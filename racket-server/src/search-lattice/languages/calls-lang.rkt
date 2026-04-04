@@ -3,11 +3,11 @@
 (require redex/reduction-semantics
          "./delay-lang.rkt")
 
-(provide calls-lang)
+(provide relcall-lang)
 
 (check-redundancy #t)
 
-(define-extended-language calls-lang delay-lang
+(define-extended-language relcall-lang delay-lang
   [r (variable-prefix r:)]
   [g ....
      (r t ... tag)]

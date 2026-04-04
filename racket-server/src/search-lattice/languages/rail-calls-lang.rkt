@@ -4,10 +4,10 @@
          "./calls-lang.rkt"
          "./rail-lang.rkt")
 
-(provide rail-calls-lang)
+(provide rail-relcall-lang)
 
 (check-redundancy #t)
 
-(define-union-language rail-calls-lang
-  calls-lang
+(define-union-language rail-relcall-lang
+  relcall-lang
   rail-lang)

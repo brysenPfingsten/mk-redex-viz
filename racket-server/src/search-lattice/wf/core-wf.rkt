@@ -66,7 +66,7 @@
    (wf-summary-answer/core? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "answer-wrapper tree-freshened wf/core"
-   (wf-summary-answer/core? (FreshenedTree c_1 search_tail tag_1) c summary_2)])
+   (wf-summary-answer/core? (ScopedTree c_1 search_tail tag_1) c summary_2)])
 
 (define-judgment-form
   core-lang
@@ -83,7 +83,7 @@
    (wf-summary-resolved/core? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "resolved tree-freshened scope wf/core"
-   (wf-summary-resolved/core? (FreshenedTree c_1 search_tail tag_1) c summary_2)])
+   (wf-summary-resolved/core? (ScopedTree c_1 search_tail tag_1) c summary_2)])
 
 (define-judgment-form
   core-lang
@@ -94,7 +94,7 @@
    (wf-summary-work/core? runnable-search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "work tree-freshened scope wf/core"
-   (wf-summary-work/core? (FreshenedTree c_1 runnable-search_tail tag_1) c summary_2)]
+   (wf-summary-work/core? (ScopedTree c_1 runnable-search_tail tag_1) c summary_2)]
   [(wf-state/at-scope? (state sub dis c_i trail tag) c)
    (wf-summary-goal/core? g () c_i summary_1)
    ------------------- "goal/state frontier wf/core"
@@ -115,7 +115,7 @@
    (wf-summary-search/core? search_tail c_2 summary_1)
    (where summary_2 (summary-add-tree summary_1))
    ------------------- "search tree-freshened scope wf/core"
-   (wf-summary-search/core? (FreshenedTree c_1 search_tail tag_1) c summary_2)]
+   (wf-summary-search/core? (ScopedTree c_1 search_tail tag_1) c summary_2)]
   [(wf-summary-resolved/core? search_i c summary_1)
    ------------------- "resolved search wf/core"
    (wf-summary-search/core? search_i c summary_1)]
@@ -135,7 +135,7 @@
    (wf-summary-frontier/core? cfg_tail c_2 summary_1)
    (where summary_2 (summary-add-shell summary_1))
    ------------------- "cfg shell-freshened scope wf/core"
-   (wf-summary-frontier/core? (FreshenedShell c_1 cfg_tail tag_1) c summary_2)])
+   (wf-summary-frontier/core? (ScopedShell c_1 cfg_tail tag_1) c summary_2)])
 
 (define-judgment-form
   core-lang

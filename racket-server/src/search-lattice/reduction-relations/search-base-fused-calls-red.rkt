@@ -7,30 +7,30 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide search-base-fused-calls-expand/raw
-         search-base-fused-calls-red
+(provide search-late-relcall-expand/raw
+         search-late-relcall-red
          step-once)
 
 (check-redundancy #t)
 
-(define-lift-search-to-calls lifted-search-base-fused-red
-  (extend-reduction-relation search-base-fused-red search-base-calls-lang)
-  search-base-calls-lang)
+(define-lift-search-to-relcall lifted-search-late-red
+  (extend-reduction-relation search-late-red search-relcall-lang)
+  search-relcall-lang)
 
-(define search-base-fused-calls-expand/raw
+(define search-late-relcall-expand/raw
   (reduction-relation
-   search-base-calls-lang
+   search-relcall-lang
    #:domain config
-   [--> (Γ (in-hole QShell (in-hole KLate (in-hole KLocal ((r t ... tag) σ)))))
-        (Γ (in-hole QShell (in-hole KLate (in-hole KLocal (g_new σ)))))
+   [--> (Γ (in-hole ShellCtx (in-hole LateCtx (in-hole LocalCtx ((r t ... tag) σ)))))
+        (Γ (in-hole ShellCtx (in-hole LateCtx (in-hole LocalCtx (g_new σ)))))
         (where g_new
                ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
         "expand-relcall"]))
 
-(define search-base-fused-calls-red
+(define search-late-relcall-red
   (union-reduction-relations
-   lifted-search-base-fused-red
-   search-base-fused-calls-expand/raw))
+   lifted-search-late-red
+   search-late-relcall-expand/raw))
 
 (define (step-once prog)
-  (step-once/deterministic search-base-fused-calls-red prog))
+  (step-once/deterministic search-late-relcall-red prog))

@@ -26,14 +26,14 @@
    [--> ((fail tag) σ)
         (empty-tree)
         "fail"]
-   [--> ((in-hole QFresh (⊤ σ)) × g c_2)
-        (in-hole QFresh (g σ))
+   [--> ((in-hole FreshCtx (⊤ σ)) × g c_2)
+        (in-hole FreshCtx (g σ))
         "conj-bring-scoped-success"]
-   [--> ((in-hole QFresh (empty-tree)) × g c_2)
-        (in-hole QFresh (empty-tree))
+   [--> ((in-hole FreshCtx (empty-tree)) × g c_2)
+        (in-hole FreshCtx (empty-tree))
         "conj-preserve-scoped-fail"]
    [--> ((∃ d g tag) (state sub dis c trail tag_1))
-        (FreshenedTree (u_1 ...) (g_new (state sub dis (u_1 ... ,@(term c)) trail tag_1)) tag)
+        (ScopedTree (u_1 ...) (g_new (state sub dis (u_1 ... ,@(term c)) trail tag_1)) tag)
         (where ((x_bound u_1) ...) (fresh-substitution c d))
         (where g_new ,(subst-goal-host (term g) (term ((x_bound u_1) ...))))
         "fresh-substitute"]
@@ -66,22 +66,22 @@
   (reduction-relation
    core-lang
    #:domain cfg
-   [--> (in-hole QShell (in-hole QFresh+ (⊤ σ)))
-        (in-hole QShell
+   [--> (in-hole ShellCtx (in-hole FreshCtx+ (⊤ σ)))
+        (in-hole ShellCtx
                  (fresh-tree-prefix->shell-prefix
-                  (in-hole QFresh+ (⊤ σ))))
+                  (in-hole FreshCtx+ (⊤ σ))))
         "finish-answer"]
-   [--> (in-hole QShell (in-hole QFresh+ (empty-tree)))
-        (in-hole QShell
+   [--> (in-hole ShellCtx (in-hole FreshCtx+ (empty-tree)))
+        (in-hole ShellCtx
                  (fresh-tree-prefix->shell-prefix
-                  (in-hole QFresh+ (empty-tree))))
+                  (in-hole FreshCtx+ (empty-tree))))
         "finish-fail"]))
 
 (define core-local
   (context-closure
-   (context-closure core-local/base core-lang KLocal)
+   (context-closure core-local/base core-lang LocalCtx)
    core-lang
-   QShell))
+   ShellCtx))
 
 ;; Core splits unfinished tree work from the one final lift into the shell.
 (define core-red

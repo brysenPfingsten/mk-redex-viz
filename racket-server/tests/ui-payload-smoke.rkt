@@ -53,7 +53,7 @@
           'stepName (hash-ref payload 'stepName)
           'root (json-root-name program)
           'hasFreshened (json-contains-name? program "Freshened")
-          'hasBounced (json-contains-name? program "Bounced")))
+          'hasBounced (json-contains-name? program "Deferred")))
 
 (define (collect-step-summaries ses remaining)
   (cond

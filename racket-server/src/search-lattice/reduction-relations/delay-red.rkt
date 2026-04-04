@@ -23,18 +23,18 @@
    [--> ((suspend g tag) σ)
         (delay (g σ))
         "suspend-goal"]
-   [--> ((in-hole QFresh (delay runnable-search_1)) × g c)
-        (delay ((in-hole QFresh runnable-search_1) × g c))
+   [--> ((in-hole FreshCtx (delay runnable-search_1)) × g c)
+        (delay ((in-hole FreshCtx runnable-search_1) × g c))
         "delay-through-conj"]))
 
 (define delay-frontier/delta
   (reduction-relation
    delay-lang
    #:domain cfg
-   [--> (in-hole QShell (in-hole QFresh (delay runnable-search_i)))
-        (in-hole QShell
+   [--> (in-hole ShellCtx (in-hole FreshCtx (delay runnable-search_i)))
+        (in-hole ShellCtx
                  (fresh-tree-prefix->shell-prefix
-                   (in-hole QFresh (Bounced runnable-search_i))))
+                   (in-hole FreshCtx (Deferred runnable-search_i))))
         "invoke-delay"]))
 
 (define delay-local/base
@@ -42,12 +42,12 @@
    (extend-reduction-relation core-local/base delay-lang)
    delay-local/delta))
 
-;; L1 mirrors L0: an augmented local base, then the usual KLocal/QShell closure.
+;; L1 mirrors L0: an augmented local base, then the usual LocalCtx/ShellCtx closure.
 (define delay-local
   (context-closure
-   (context-closure delay-local/base delay-lang KLocal)
+   (context-closure delay-local/base delay-lang LocalCtx)
    delay-lang
-   QShell))
+   ShellCtx))
 
 (define delay-shell/base
   (union-reduction-relations

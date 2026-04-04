@@ -11,10 +11,10 @@
   (match f
     ['(empty-tree) #t]
     [`(⊤ ,_) #t]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
+    [(or (list 'ScopedTree _ inner _)
+         (list 'ScopedShell _ inner _))
      (final-frontier? inner)]
-    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(Deferred ,inner) (final-frontier? inner)]
     [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 

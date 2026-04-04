@@ -5,59 +5,59 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide rail-fused-red
+(provide rail-late-red
          step-once)
 
 (check-redundancy #t)
 
-(define lifted-search-base-fused-red
+(define lifted-search-late-red
   (extend-reduction-relation
-   search-base-fused-red
+   search-late-red
    rail-lang))
 
-(define rail-fused-frontier/base
+(define rail-late-frontier/base
   (reduction-relation
    rail-lang
    #:domain cfg
-   [--> (in-hole QShell (in-hole KLate (search_left +-> ((promoted_i <-+ search_mid) <-+ search_right))))
-        (in-hole QShell (promoted_i + (in-hole KLate (search_left +-> (search_mid <-+ search_right)))))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> ((answers_i <-+ search_mid) <-+ search_right))))
+        (in-hole ShellCtx (answers_i + (in-hole LateCtx (search_left +-> (search_mid <-+ search_right)))))
         "bubble-right-left-answer"]
-   [--> (in-hole QShell (in-hole KLate (search_left +-> (promoted_i <-+ search_right))))
-        (in-hole QShell (promoted_i + (in-hole KLate (search_left +-> search_right))))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> (answers_i <-+ search_right))))
+        (in-hole ShellCtx (answers_i + (in-hole LateCtx (search_left +-> search_right))))
         "promote-right-left-answer"]
-   [--> (in-hole QShell (in-hole KLate (search_left +-> (((in-hole QFresh (empty-tree)) <-+ search_mid) <-+ search_right))))
-        (in-hole QShell (in-hole KLate (search_left +-> (search_mid <-+ search_right))))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> (((in-hole FreshCtx (empty-tree)) <-+ search_mid) <-+ search_right))))
+        (in-hole ShellCtx (in-hole LateCtx (search_left +-> (search_mid <-+ search_right))))
         "bubble-right-left-fail"]
-   [--> (in-hole QShell (in-hole KLate (search_left +-> ((in-hole QFresh (empty-tree)) <-+ search_right))))
-        (in-hole QShell (in-hole KLate (search_left +-> search_right)))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> ((in-hole FreshCtx (empty-tree)) <-+ search_right))))
+        (in-hole ShellCtx (in-hole LateCtx (search_left +-> search_right)))
         "skip-right-left-fail"]
-   [--> (in-hole QShell (in-hole KLate (search_left +-> promoted_i)))
-        (in-hole QShell (promoted_i + (in-hole KLate search_left)))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> answers_i)))
+        (in-hole ShellCtx (answers_i + (in-hole LateCtx search_left)))
         "promote-right-answer"]
-   [--> (in-hole QShell (in-hole KLate (search_left +-> (in-hole QFresh (empty-tree)))))
-        (in-hole QShell (in-hole KLate search_left))
+   [--> (in-hole ShellCtx (in-hole LateCtx (search_left +-> (in-hole FreshCtx (empty-tree)))))
+        (in-hole ShellCtx (in-hole LateCtx search_left))
         "skip-right-fail"]))
 
-(define rail-fused-local/under-QShell
-  (let ([rail-fused-local/base
+(define rail-late-local/under-ShellCtx
+  (let ([rail-late-local/base
          (reduction-relation
           rail-lang
           #:domain cfg
-          [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
-               (in-hole KLate
-                        (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
+          [--> (in-hole LateCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))
+               (in-hole LateCtx
+                        (delay ((in-hole FreshCtx runnable-search_1) +-> search_2)))
                "enter-right"]
-          [--> (in-hole KLate (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
-               (in-hole KLate
-                        (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
+          [--> (in-hole LateCtx (search_2 +-> (in-hole FreshCtx (delay runnable-search_1))))
+               (in-hole LateCtx
+                        (delay (search_2 <-+ (in-hole FreshCtx runnable-search_1))))
                "return-left"])])
-    (context-closure rail-fused-local/base rail-lang QShell)))
+    (context-closure rail-late-local/base rail-lang ShellCtx)))
 
-(define rail-fused-red
+(define rail-late-red
   (union-reduction-relations
-   lifted-search-base-fused-red
-   rail-fused-local/under-QShell
-   rail-fused-frontier/base))
+   lifted-search-late-red
+   rail-late-local/under-ShellCtx
+   rail-late-frontier/base))
 
 (define (step-once prog)
-  (step-once/deterministic rail-fused-red prog))
+  (step-once/deterministic rail-late-red prog))

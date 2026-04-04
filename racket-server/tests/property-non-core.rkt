@@ -107,14 +107,14 @@
        (visible-json-wf? (cfg->operational-picture cfg))
        (visible-json-wf? (cfg->extensional-picture cfg))
        (not (picture-contains-name? (cfg->extensional-picture cfg)
-                                    "Bounced"))
+                                    "Deferred"))
        (zero-bounced-implies-pictures-agree? cfg)))
 
 (define sigma-u0
   (term (state () () (u:0) () (label "su0"))))
 
 (define valid-scoped-delayed-left-search
-  (term (FreshenedTree (u:0)
+  (term (ScopedTree (u:0)
                        (delay ((succeed (label "late")) ,sigma-u0))
                        (label "fresh"))))
 
@@ -134,65 +134,65 @@
          (lambda (cfg)
            (apply-reduction-relation/tag-with-names red:delay-red cfg))
          cfg-delay-goal)
-   (list "search-base-seq"
+   (list "search-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-base-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-early-red cfg))
          cfg-disj)
-   (list "search-base-fused"
+   (list "search-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-base-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-late-red cfg))
          cfg-disj)
-   (list "search-dfs-seq"
+   (list "search-dfs-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-early-red cfg))
          valid-scoped-flip)
-   (list "search-dfs-fused"
+   (list "search-dfs-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-late-red cfg))
          valid-scoped-flip)
-   (list "search-flip-seq"
+   (list "search-flip-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-early-red cfg))
          valid-scoped-flip)
-   (list "search-flip-fused"
+   (list "search-flip-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-late-red cfg))
          valid-scoped-flip)
-   (list "rail-seq"
+   (list "rail-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-early-red cfg))
          valid-scoped-rail)
-   (list "rail-fused"
+   (list "rail-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-late-red cfg))
          valid-scoped-rail)
-   (list "calls"
+   (list "relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:relcall-red cfg))
          cfg-call)
-   (list "search-dfs-seq-calls"
+   (list "search-dfs-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-early-relcall-red cfg))
          cfg-call-branch)
-   (list "search-dfs-fused-calls"
+   (list "search-dfs-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-late-relcall-red cfg))
          cfg-call-branch)
-   (list "search-flip-seq-calls"
+   (list "search-flip-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-early-relcall-red cfg))
          cfg-call-branch)
-   (list "search-flip-fused-calls"
+   (list "search-flip-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-late-relcall-red cfg))
          cfg-call-branch)
-   (list "rail-seq-calls"
+   (list "rail-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-early-relcall-red cfg))
          cfg-call-rail)
-   (list "rail-fused-calls"
+   (list "rail-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-late-relcall-red cfg))
          cfg-call-rail)))
 
 (define representative-surfaced-trace-cases
@@ -260,13 +260,13 @@
                             idx
                             cfg)))))
 
-  (test-case "Bounced wrappers are neutral except for bounced count"
+  (test-case "Deferred wrappers are neutral except for bounced count"
     (define scoped-answer
-      (term (FreshenedShell (u:0)
+      (term (ScopedShell (u:0)
                             (⊤ (state () () (u:0) () (label "s")))
                             (label "fresh"))))
     (define bounced-scoped-answer
-      (term (Bounced ,scoped-answer)))
+      (term (Deferred ,scoped-answer)))
     (check-true (non-core-picture-invariants? scoped-answer))
     (check-true (non-core-picture-invariants? bounced-scoped-answer))
     (check-equal? (count-answers bounced-scoped-answer)
@@ -284,11 +284,11 @@
 
   (test-case "Freshened tree and shell wrappers share the same visible semantics"
     (define tree-cfg
-      (term (FreshenedTree (u:0)
+      (term (ScopedTree (u:0)
                            (⊤ (state () () (u:0) () (label "s")))
                            (label "fresh"))))
     (define shell-cfg
-      (term (FreshenedShell (u:0)
+      (term (ScopedShell (u:0)
                             (⊤ (state () () (u:0) () (label "s")))
                             (label "fresh"))))
     (check-true (non-core-picture-invariants? tree-cfg))

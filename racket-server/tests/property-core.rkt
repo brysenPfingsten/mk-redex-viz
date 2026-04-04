@@ -58,10 +58,10 @@
   (match f
     ['(empty-tree) #t]
     [`(⊤ ,_) #t]
-    [(or (list 'FreshenedTree _ inner _)
-         (list 'FreshenedShell _ inner _))
+    [(or (list 'ScopedTree _ inner _)
+         (list 'ScopedShell _ inner _))
      (final-frontier? inner)]
-    [`(Bounced ,inner) (final-frontier? inner)]
+    [`(Deferred ,inner) (final-frontier? inner)]
     [`(,_ + ,rest) (final-frontier? rest)]
     [_ #f]))
 
@@ -356,7 +356,7 @@
        (fresh-scope-extension c))
      (if (null? intro)
          (gen-live-tree c (sub1 depth))
-         `(FreshenedTree ,intro
+         `(ScopedTree ,intro
                      ,(gen-live-tree c^ (sub1 depth))
                      ,(make-label "fresh")))]))
 
@@ -373,7 +373,7 @@
        (fresh-scope-extension c))
      (if (null? intro)
          (gen-live-tree c depth)
-         `(FreshenedTree ,intro
+         `(ScopedTree ,intro
                      ,(gen-live-tree c^ (sub1 depth))
                      ,(make-label "fresh")))]))
 
@@ -402,8 +402,8 @@
 (define (tree-coverage s)
   (match s
     [`(empty-tree) (values #f #f #f 0)]
-    [(or (list 'FreshenedTree _ s-inner _)
-         (list 'FreshenedShell _ s-inner _))
+    [(or (list 'ScopedTree _ s-inner _)
+         (list 'ScopedShell _ s-inner _))
      (tree-coverage s-inner)]
     [`(⊤ ,st) (define csz (state-c-size st))
               (values (> csz 0) #f #f csz)]
@@ -605,10 +605,10 @@
   (test-case "Source-guarded operational and extensional pictures agree through trace"
     (check-source-guarded-property "trace-operational/extensional-agree"
                                    trace-operational/extensional-agree?))
-  (test-case "Source-guarded core traces never introduce Bounced"
+  (test-case "Source-guarded core traces never introduce Deferred"
     (check-source-guarded-property "trace-zero-bounced"
                                    trace-zero-bounced?))
-  (test-case "WF-guarded core configurations never contain Bounced"
+  (test-case "WF-guarded core configurations never contain Deferred"
     (check-wf-guarded-property "zero-bounced"
                                zero-bounced?)))
 

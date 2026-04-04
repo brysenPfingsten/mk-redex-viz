@@ -5,26 +5,26 @@
          "./search-base-seq-pre-red.rkt"
          "./private/step-utils.rkt")
 
-(provide search-base-seq-red
+(provide search-early-red
          step-once)
 
 (check-redundancy #t)
 
 ;; Seq-only policy step, still wrapped by the outer committed shell.
-(define search-base-seq-branch-local/under-QShell
-  (let ([search-base-seq-branch-local/base
+(define search-early-branch-local/under-ShellCtx
+  (let ([search-early-branch-local/base
          (reduction-relation
-          search-base-lang
+          search-lang
           #:domain cfg
-          [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
-               (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
+          [--> (in-hole BranchCtx ((search_1 <-+ search_2) × g c))
+               (in-hole BranchCtx ((search_1 × g c) <-+ (search_2 × g c)))
                "distribute-over-conj"])])
-    (context-closure search-base-seq-branch-local/base search-base-lang QShell)))
+    (context-closure search-early-branch-local/base search-lang ShellCtx)))
 
-(define search-base-seq-red
+(define search-early-red
   (union-reduction-relations
-   search-base-seq-pre-red
-   search-base-seq-branch-local/under-QShell))
+   search-early-pre-red
+   search-early-branch-local/under-ShellCtx))
 
 (define (step-once prog)
-  (step-once/deterministic search-base-seq-red prog))
+  (step-once/deterministic search-early-red prog))
