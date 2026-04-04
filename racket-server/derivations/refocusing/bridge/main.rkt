@@ -1,8 +1,9 @@
 #lang racket
 
-(require (prefix-in premachine: "../premachine/main.rkt")
+(require "../shared/configs.rkt"
+         (prefix-in premachine: "../premachine/main.rkt")
          (prefix-in zipper: "../zipper/main.rkt")
-         "./current.rkt")
+         (prefix-in current: "./current.rkt"))
 
 (provide premachine->cfree
          premachine->zipper
@@ -10,10 +11,10 @@
          erase-c
          restore-c
          cfree->current-c-machine
-         current-step
-         project-observable
-         same-observable?
-         current-c-scope-agrees?)
+         (rename-out [current:current-step current-step]
+                     [current:project-observable project-observable]
+                     [current:same-observable? same-observable?]
+                     [current:current-c-scope-agrees? current-c-scope-agrees?]))
 
 (define (premachine-pm->cfree term)
   (match term
@@ -46,9 +47,10 @@
 
 (define (premachine->cfree cfg)
   (match cfg
-    [`(config ,query-u* ,root-scope ,term ,obs)
-     `(config ,query-u* ,root-scope
-              ,(states->cfree-shell obs (premachine-pm->cfree term)))]
+    [(struct premachine-config (query-u* root-scope term obs))
+     (cfree-config query-u*
+                   root-scope
+                   (states->cfree-shell obs (premachine-pm->cfree term)))]
     [_ (error 'premachine->cfree
               "unsupported premachine config: ~e"
               cfg)]))
@@ -58,3 +60,20 @@
 
 (define (zipper->cfree machine)
   (premachine->cfree (zipper:machine->cfg machine)))
+
+(define (restore-c term ambient)
+  (current:restore-c term ambient))
+
+(define (cfree->current-c-machine cfg)
+  (match cfg
+    [(struct cfree-config (query-u* root-scope term))
+     `(config ,query-u* ,root-scope ,(restore-c term root-scope))]
+    [_ (error 'cfree->current-c-machine
+              "unsupported c-free config: ~e"
+              cfg)]))
+
+(define (erase-c datum)
+  (match (current:erase-c datum)
+    [`(config ,query-u* ,root-scope ,term)
+     (cfree-config query-u* root-scope term)]
+    [term term]))

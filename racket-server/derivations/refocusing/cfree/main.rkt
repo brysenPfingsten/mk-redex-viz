@@ -1,6 +1,7 @@
 #lang racket
 
 (require "../corpus.rkt"
+         "../shared/configs.rkt"
          "../bridge/main.rkt")
 
 (provide parse-example
@@ -8,27 +9,7 @@
          trace
          final?
          answers
-         cfg-term
-         cfg-query
-         cfg-root-scope)
-
-(define (cfg-query cfg)
-  (match cfg
-    [`(config ,query-u* ,_root-scope ,_term)
-     query-u*]
-    [_ (error 'cfg-query "unsupported config: ~e" cfg)]))
-
-(define (cfg-root-scope cfg)
-  (match cfg
-    [`(config ,_query-u* ,root-scope ,_term)
-     root-scope]
-    [_ (error 'cfg-root-scope "unsupported config: ~e" cfg)]))
-
-(define (cfg-term cfg)
-  (match cfg
-    [`(config ,_query-u* ,_root-scope ,term)
-     term]
-    [_ (error 'cfg-term "unsupported config: ~e" cfg)]))
+         (struct-out cfree-config))
 
 (define (make-state)
   '(state () () () (label "s")))
@@ -36,7 +17,9 @@
 (define (parse-example label)
   (define-values (query-u* goal)
     (instantiate-program label))
-  `(config ,query-u* ,query-u* (,goal ,(make-state))))
+  (cfree-config query-u*
+                query-u*
+                `(,goal ,(make-state))))
 
 (define (step cfg)
   (match (current-step (cfree->current-c-machine cfg))

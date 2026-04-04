@@ -3,6 +3,7 @@
 (require racket/list
          redex/reduction-semantics
          "../corpus.rkt"
+         "../shared/configs.rkt"
          "../shared/kernel.rkt")
 
 (provide premachine-lang
@@ -14,10 +15,7 @@
          trace
          final?
          answers
-         cfg-term
-         cfg-query
-         cfg-root-scope
-         cfg-obs)
+         (struct-out premachine-config))
 
 (define-language premachine-lang
   [cfg (config (u ...) (u ...) pm (σ ...))]
@@ -58,30 +56,6 @@
          (merge-left-frame turn pm)
          (merge-right-frame turn pm)]
   [ctx (frame ...)])
-
-(define (cfg-query cfg)
-  (match cfg
-    [`(config ,query-u* ,_root-scope ,_term ,_obs)
-     query-u*]
-    [_ (error 'cfg-query "unsupported config: ~e" cfg)]))
-
-(define (cfg-root-scope cfg)
-  (match cfg
-    [`(config ,_query-u* ,root-scope ,_term ,_obs)
-     root-scope]
-    [_ (error 'cfg-root-scope "unsupported config: ~e" cfg)]))
-
-(define (cfg-term cfg)
-  (match cfg
-    [`(config ,_query-u* ,_root-scope ,term ,_obs)
-     term]
-    [_ (error 'cfg-term "unsupported config: ~e" cfg)]))
-
-(define (cfg-obs cfg)
-  (match cfg
-    [`(config ,_query-u* ,_root-scope ,_term ,obs)
-     obs]
-    [_ (error 'cfg-obs "unsupported config: ~e" cfg)]))
 
 (define (make-state)
   '(state () () () (label "s")))
@@ -288,19 +262,22 @@
 
 (define (parse-example label)
   (define-values (query-u* goal) (instantiate-program label))
-  `(config ,query-u* ,query-u* (,goal ,(make-state)) ()))
+  (premachine-config query-u*
+                     query-u*
+                     `(,goal ,(make-state))
+                     '()))
 
 (define (step cfg)
   (match cfg
-    [`(config ,query-u* ,root-scope ,term ,obs)
+    [(struct premachine-config (query-u* root-scope term obs))
      (match (step-term term root-scope)
        [#f '()]
        [(list name next-term emitted)
         (list (list name
-                    `(config ,query-u*
-                             ,root-scope
-                             ,next-term
-                             ,(append obs emitted))))])]
+                    (premachine-config query-u*
+                                       root-scope
+                                       next-term
+                                       (append obs emitted))))])]
     [_ (error 'step "unsupported config: ~e" cfg)]))
 
 (define (trace cfg [limit 128] [steps '()])
@@ -317,7 +294,7 @@
 
 (define (final? cfg)
   (match cfg
-    [`(config ,_query-u* ,_root-scope ,term ,_obs)
+    [(struct premachine-config (_query-u* _root-scope term _obs))
      (pm-final? term)]
     [_ (error 'final? "unsupported config: ~e" cfg)]))
 
@@ -332,7 +309,7 @@
 
 (define (answers cfg)
   (match cfg
-    [`(config ,query-u* ,_root-scope ,term ,obs)
+    [(struct premachine-config (query-u* _root-scope term obs))
      (remove-duplicates
       (for/list ([state (in-list (append obs (reverse (answer-states term))))])
         (match-define `(state ,sub ,_dis ,_trail ,_tag) state)

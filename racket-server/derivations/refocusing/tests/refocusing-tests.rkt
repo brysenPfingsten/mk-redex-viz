@@ -72,6 +72,23 @@
    "refocusing"
 
    (test-case
+    "artifact boundaries use real structs"
+    (define premachine-cfg
+      (premachine:parse-example "simple unify"))
+    (define cfree-cfg
+      (cfree:parse-example "simple unify"))
+    (define zipper-machine
+      (zipper:parse-example "simple unify"))
+    (check-true (premachine:premachine-config? premachine-cfg))
+    (check-true (cfree:cfree-config? cfree-cfg))
+    (check-true (zipper:machine? zipper-machine))
+    (check-equal? (zipper:machine->cfg (zipper:cfg->machine premachine-cfg))
+                  premachine-cfg)
+    (check-true (cfree:cfree-config? (premachine->cfree premachine-cfg)))
+    (check-true (zipper:machine? (premachine->zipper premachine-cfg)))
+    (check-true (cfree:cfree-config? (zipper->cfree zipper-machine))))
+
+   (test-case
     "each artifact is deterministic on the shared corpus"
     (for ([label (in-list example-labels)])
       (check-true

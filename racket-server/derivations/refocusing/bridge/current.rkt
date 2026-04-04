@@ -8,29 +8,10 @@
 
 (provide erase-c
          restore-c
-         cfree->current-c-machine
          current-step
          project-observable
          same-observable?
          current-c-scope-agrees?)
-
-(define (config-query cfg)
-  (match cfg
-    [`(config ,query-u* ,_root-scope ,_term)
-     query-u*]
-    [_ (error 'config-query "unsupported config: ~e" cfg)]))
-
-(define (config-root-scope cfg)
-  (match cfg
-    [`(config ,_query-u* ,root-scope ,_term)
-     root-scope]
-    [_ (error 'config-root-scope "unsupported config: ~e" cfg)]))
-
-(define (config-term cfg)
-  (match cfg
-    [`(config ,_query-u* ,_root-scope ,term)
-     term]
-    [_ (error 'config-term "unsupported config: ~e" cfg)]))
 
 (define (restore-state state ambient)
   (match state
@@ -86,14 +67,6 @@
 
 (define (restore-c term ambient)
   (restore-frontier term ambient))
-
-(define (cfree->current-c-machine cfg)
-  (match cfg
-    [`(config ,query-u* ,root-scope ,term)
-     `(config ,query-u* ,root-scope ,(restore-c term root-scope))]
-    [_ (error 'cfree->current-c-machine
-              "unsupported c-free config: ~e"
-              cfg)]))
 
 (define (erase-state state)
   (match state
