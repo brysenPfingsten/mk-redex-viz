@@ -3,3 +3,11 @@ the whole scope event becomes part of the exposed frontier segment
 committed shell constructors
 
 every node carries its fresh-frame stack explicitly.
+
+the machine’s “scope-stack register”
+
+context-indexed semantics
+
+start from a c-free context-sensitive reduction semantics, refocus it to the zipper/focus-context machine, then explain the current c-carrying rewrite machine as a correctness-preserving localization of that machine.
+
+"... where object-level control nodes are still in the context, not yet internalized as machine syntax"

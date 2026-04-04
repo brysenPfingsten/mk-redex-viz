@@ -23,8 +23,7 @@
 (define disj-core-local/base
   (context-closure core-local/disj/base disj-lang KLocal))
 
-(define disj-core-shell/base
-  core-shell/disj/base)
+(define disj-core-shell/base core-shell/disj/base)
 
 (define disj-goal-local/base
   (reduction-relation

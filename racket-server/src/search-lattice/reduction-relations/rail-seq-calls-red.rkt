@@ -2,7 +2,6 @@
 
 (require redex/reduction-semantics
          "../languages/rail-calls-lang.rkt"
-         "./private/context-pipeline.rkt"
          "./private/step-utils.rkt"
          "./search-base-seq-calls-red.rkt")
 
@@ -14,9 +13,7 @@
 (check-redundancy #t)
 
 (define lifted-search-base-seq-calls-red
-  (extend-reduction-relation
-   search-base-seq-calls-red
-   rail-calls-lang))
+  (extend-reduction-relation search-base-seq-calls-red rail-calls-lang))
 
 (define rail-seq-calls-local/base
   (reduction-relation

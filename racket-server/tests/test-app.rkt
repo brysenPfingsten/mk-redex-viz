@@ -818,6 +818,23 @@
              (check-not-false (member "delay/invoke-delay" names))
              (check-false (member "search-flip-seq-calls/delay-swap-left" names)))
 
+  (test-case "early rail delayed disjunction expands the right relcall after invoke-delay"
+             (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
+             (define-values (response ses^)
+               (init! ses
+                      (make-post-init-request disj-delay-program
+                                              #:strategy (search-strategy "early" "rail"))
+                      'testid))
+             (check-equal? (response-code response) 200)
+             (check-equal? (session-search-strategy ses^) (search-strategy "early" "rail"))
+             (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
+             (check-not-false (member "rail-seq-calls/enter-right" names))
+             (check-not-false (member "delay/invoke-delay" names))
+             (check-true (>= (length (filter (lambda (name)
+                                               (equal? name "search-base-seq-calls/expand"))
+                                             names))
+                             2)))
+
   (test-case "late dfs relcall-delay profile expands calls without eager/lazy resume rules"
              (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
              (define-values (response ses^)

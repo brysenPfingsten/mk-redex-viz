@@ -13,6 +13,7 @@
   [KTail ::= KLocal
              (KTail <-+ search)
              (search +-> KTail)]
-  ;; Extend the shared late-strength helper through the rail right branch.
-  [KLate ::= ....
-             (search +-> KLate)])
+  ;; Rail widens the inherited branch path through the right rail branch.
+  ;; KLate is inherited unchanged and picks this up through its KBranch base.
+  [KBranch ::= ....
+               (search +-> KBranch)])

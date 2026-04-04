@@ -34,6 +34,11 @@
       KLate
       (term (hole × (succeed (label "k")) ()))))
     (check-true (redex-match? lang:rail-lang cfg '((empty-tree) +-> (empty-tree))))
+    (check-true
+     (redex-match?
+      lang:rail-lang
+      KBranch
+      (term ((empty-tree) +-> hole))))
     (check-false
      (redex-match?
       lang:core-lang
@@ -511,6 +516,31 @@
         (named-step (apply-reduction-relation/tag-with-names rel cfg-rail)))
       (check-equal? (~a step-name) expected-name)
       (check-true (redex-match? lang:rail-lang cfg next))))
+
+  (test-case "rail seq continues reducing right-branch work after invoke-delay"
+    (define cfg-delayed-right-work
+      (term ((delay ((u:0 =? (sym "later") (label "later")) ,sigma-s))
+             <-+
+             ((u:0 =? (sym "now") (label "now")) ,sigma-s))))
+    (define-values (enter-name enter-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:rail-seq-red
+        cfg-delayed-right-work)))
+    (check-equal? (~a enter-name) "rail-seq/enter-right")
+    (define-values (invoke-name invoke-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:rail-seq-red
+        enter-next)))
+    (check-equal? (~a invoke-name) "delay/invoke-delay")
+    (define-values (resume-name resume-next)
+      (named-step
+       (apply-reduction-relation/tag-with-names
+        red:rail-seq-red
+        invoke-next)))
+    (check-equal? (~a resume-name) "core/unify-success")
+    (check-true (redex-match? lang:rail-lang cfg resume-next)))
 
   (test-case "rail promotes bare right-branch answers and forbids branch-internal +"
     (define-values (seq-name seq-next)

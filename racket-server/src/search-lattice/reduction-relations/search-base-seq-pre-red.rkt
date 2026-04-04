@@ -27,6 +27,7 @@
   (extend-reduction-relation search-base-delay-frontier/base search-base-lang))
 
 ;; L3 seq keeps the same nesting discipline as L2 seq: QShell ∘ KBranch ∘ KLocal.
+;; Later layers may widen KBranch when the seq story itself widens.
 (define search-base-core-local/under-branch
   (context-closure lifted-search-base-core-local/base search-base-lang KBranch))
 
