@@ -8,20 +8,10 @@
                   core-local/base
                   core-shell/base))
 
-(provide disj-goal-local/base
-         disj-frontier/base
-         disj-local/base
+(provide disj-local/base
          disj-shell/base)
 
 (check-redundancy #t)
-
-(define disj-goal-local/base
-  (reduction-relation
-   disj-lang
-   #:domain cfg
-   [--> (in-hole LocalCtx ((g_1 ∨ g_2 tag) σ))
-        (in-hole LocalCtx ((g_1 σ) <-+ (g_2 σ)))
-        "expand-disjunction"]))
 
 (define disj-frontier/base
   (let ([disj-frontier/local-base
@@ -45,12 +35,19 @@
     (context-closure disj-frontier/local-base disj-lang ShellCtx)))
 
 (define disj-local/base
-  (union-reduction-relations
-   (context-closure
-    (extend-reduction-relation core-local/base disj-lang)
-    disj-lang
-    LocalCtx)
-   disj-goal-local/base))
+  (let ([disj-goal-local/base
+         (reduction-relation
+          disj-lang
+          #:domain cfg
+          [--> (in-hole LocalCtx ((g_1 ∨ g_2 tag) σ))
+               (in-hole LocalCtx ((g_1 σ) <-+ (g_2 σ)))
+               "expand-disjunction"])])
+    (union-reduction-relations
+     (context-closure
+      (extend-reduction-relation core-local/base disj-lang)
+      disj-lang
+      LocalCtx)
+     disj-goal-local/base)))
 
 (define disj-shell/base
   (union-reduction-relations

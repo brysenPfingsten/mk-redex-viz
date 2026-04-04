@@ -27,6 +27,22 @@
         (delay ((in-hole FreshCtx runnable-search_1) × g c))
         "delay-through-conj"]))
 
+(define delay-local/base
+  ;; L1 keeps the same two-stage shape as L0: a LocalCtx seam, then the
+  ;; final ShellCtx closure when the runnable machine is assembled.
+  (context-closure
+   (union-reduction-relations
+    (extend-reduction-relation core-local/base delay-lang)
+    delay-local/delta)
+   delay-lang
+   LocalCtx))
+
+(define delay-local/under-ShellCtx
+  (context-closure
+   delay-local/base
+   delay-lang
+   ShellCtx))
+
 (define delay-frontier/delta
   (reduction-relation
    delay-lang
@@ -34,20 +50,8 @@
    [--> (in-hole ShellCtx (in-hole FreshCtx (delay runnable-search_i)))
         (in-hole ShellCtx
                  (fresh-tree-prefix->shell-prefix
-                   (in-hole FreshCtx (Deferred runnable-search_i))))
+                  (in-hole FreshCtx (Deferred runnable-search_i))))
         "invoke-delay"]))
-
-(define delay-local/base
-  (union-reduction-relations
-   (extend-reduction-relation core-local/base delay-lang)
-   delay-local/delta))
-
-;; L1 mirrors L0: an augmented local base, then the usual LocalCtx/ShellCtx closure.
-(define delay-local
-  (context-closure
-   (context-closure delay-local/base delay-lang LocalCtx)
-   delay-lang
-   ShellCtx))
 
 (define delay-shell/base
   (union-reduction-relations
@@ -56,7 +60,7 @@
 
 (define delay-red
   (union-reduction-relations
-   delay-local
+   delay-local/under-ShellCtx
    delay-shell/base))
 
 (define (step-once prog)
