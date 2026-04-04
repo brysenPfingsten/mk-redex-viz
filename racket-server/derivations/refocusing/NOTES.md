@@ -11,6 +11,9 @@ It is intentionally separate from the production search-lattice runtime. The
 goal is to make the existing `c`-carrying machine look like the endpoint of a
 derivation instead of the starting point.
 
+This note documents the experiment itself. It is not the primary description of
+the active runtime in the main repo.
+
 ## Artifact Map
 
 There are four executable artifacts.

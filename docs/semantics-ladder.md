@@ -1,10 +1,21 @@
 # Semantics Organization
 
+This is the primary repo-level overview of the active semantics story.
+
 This repo now has one active semantics stack:
 
 - the feature-based search lattice under `racket-server/src/search-lattice`
 
 The app/API boundary runs through that lattice directly.
+
+Related notes:
+
+- `racket-server/src/search-lattice/SEMILATTICE.md`
+  - lower-lattice runtime/context details
+- `racket-server/src/search-lattice/PICTURE-DESIGN-NOTES.md`
+  - picture-specific design judgments and open choices
+- `racket-server/derivations/refocusing/NOTES.md`
+  - separate derivational experiment, not the active runtime
 
 ## Search Lattice
 

@@ -92,43 +92,57 @@ Execution notes:
   then steps that program under the internal `+calls` configuration selected by
   `searchStrategy`.
 
-## **Semantics Organization**
+## **Semantics Reading Order**
 
-The repo now has one authoritative runtime path:
+If you are studying the repo as a semantics artifact, use this order:
 
-- active search lattice:
-  - languages: `racket-server/src/search-lattice/languages/*.rkt`
-  - well-formedness: `racket-server/src/search-lattice/wf/*.rkt`
-  - reducers: `racket-server/src/search-lattice/reduction-relations/*.rkt`
-  - strategy registry: `racket-server/src/search-runtime.rkt`
-  - structured strategy API: `racket-server/src/search-strategy.rkt`
+1. `docs/semantics-ladder.md`
+   - primary repo-level overview
+   - explains what the active runtime is and how the main axes fit together
+2. `racket-server/src/search-lattice/SEMILATTICE.md`
+   - lower-lattice technical note
+   - explains the L0-L3 runtime/context story in more detail
+3. `racket-server/src/search-lattice/PICTURE-DESIGN-NOTES.md`
+   - supplemental note on visible pictures, freshening, and the status of `c`
+   - records open design choices rather than settled runtime facts
+4. `racket-server/derivations/refocusing/NOTES.md`
+   - separate derivational experiment
+   - explains the context-first and refocused preimage of the current machine
 
-The short architecture note lives in:
+`STABILIZATION.md` is a contributor ledger for the active rebuild. It is not the
+best first document for understanding the repo from scratch.
 
-- `docs/semantics-ladder.md`
+## **Current Runtime Surface**
 
-## **LLM Orientation (Minimal)**
+The active runtime path is the feature-based search lattice:
+
+- languages: `racket-server/src/search-lattice/languages/*.rkt`
+- well-formedness: `racket-server/src/search-lattice/wf/*.rkt`
+- reducers: `racket-server/src/search-lattice/reduction-relations/*.rkt`
+- strategy registry: `racket-server/src/search-runtime.rkt`
+- structured strategy API: `racket-server/src/search-strategy.rkt`
+
+The app/API boundary runs through that lattice directly.
+
+## **Orientation (Minimal)**
 
 Use this if you are jumping in with no project history:
 
-- Canonical parser/transpiler target is the neutral search target:
-  - `parserProfile = "surface->canonical"`
-  - `parserTarget = "canonical/config"`
-- Backend canonical entry points live in:
-  - `racket-server/src/transpiler.rkt` (`parse-prog/canonical`)
-  - `racket-server/src/app.rkt` (`init!` validates canonical shape, then checks the internal search target selected by `searchStrategy`)
-  - `racket-server/src/search-runtime.rkt` (strategy registry, stepper lookup, internal wf checks)
-  - `racket-server/src/search-strategy.rkt` (structured surfaced strategy contract)
-- Canonical WF/target checks now live in the search-lattice side:
-  - `racket-server/src/search-lattice/languages/canonical-core-lang.rkt`
-  - `racket-server/src/search-lattice/languages/canonical-lang.rkt`
-  - `racket-server/src/search-lattice/wf/canonical-core-wf.rkt`
-  - `racket-server/src/search-lattice/wf/all.rkt` (canonical target registry + search-lattice wf exports)
+- Surface input is parsed/transpiled by:
+  - `racket-server/src/transpiler.rkt`
+  - subsystem modules under `racket-server/src/transpiler/`
+- The app boundary lives in:
+  - `racket-server/src/app.rkt`
+  - `racket-server/src/search-runtime.rkt`
+  - `racket-server/src/search-strategy.rkt`
+- Visible-tree production lives in:
+  - `racket-server/src/search-lattice/picture.rkt`
+  - `racket-server/src/search-lattice/answer-node.rkt`
 - Internal search-lattice WF for the GUI/API boundary lives in:
   - `racket-server/src/search-lattice/wf/*.rkt`
 - Frontend examples are source-of-truth in:
   - `frontend/src/utils/example_programs.js`
-- Integration test auto-loads all frontend examples and checks parse + lift to canonical target:
+- Integration test auto-loads all frontend examples and checks source compatibility:
   - `racket-server/tests/example-compat-tests.rkt`
 
 Fast validation command:

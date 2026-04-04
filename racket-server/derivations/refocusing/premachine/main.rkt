@@ -86,11 +86,6 @@
 (define (make-state)
   '(state () () () (label "s")))
 
-(define (scope-frame? frame)
-  (match frame
-    [`(scope-frame ,_intro ,_tag) #t]
-    [_ #f]))
-
 (define (ambient-scope ctx root-scope [acc root-scope])
   (match ctx
     ['() acc]
@@ -101,9 +96,6 @@
 
 (define (pm-final? term)
   (match term
-    [`(,g ,_state)
-     #:when (not (equal? g '⊤))
-     #f]
     [`(ans ,_state)
      #t]
     ['empty
@@ -117,6 +109,44 @@
     [`(merge ,_turn ,left ,right)
      (and (pm-final? left)
           (pm-final? right))]
+    [`((succeed ,_tag) ,_state)
+     #f]
+    [`((fail ,_tag) ,_state)
+     #f]
+    [`((,t1 =? ,t2 ,tag) ,_state)
+     #f]
+    [`((,t1 != ,t2 ,tag) ,_state)
+     #f]
+    [`((∃ ,d ,g ,tag) ,_state)
+     #f]
+    [`((,g1 ∧ ,g2 ,tag) ,_state)
+     #f]
+    [`((,g1 ∨ ,g2 ,tag) ,_state)
+     #f]
+    [`((suspend ,g ,tag) ,_state)
+     #f]
+    [_ #f]))
+
+(define (answer-term? term)
+  (match term
+    [`(ans ,_) #t]
+    [_ #f]))
+
+(define (delay-term? term)
+  (match term
+    [`(delay ,_) #t]
+    [_ #f]))
+
+(define (goal-state-term? term)
+  (match term
+    [`((succeed ,_tag) ,_state) #t]
+    [`((fail ,_tag) ,_state) #t]
+    [`((,t1 =? ,t2 ,tag) ,_state) #t]
+    [`((,t1 != ,t2 ,tag) ,_state) #t]
+    [`((∃ ,d ,g ,tag) ,_state) #t]
+    [`((,g1 ∧ ,g2 ,tag) ,_state) #t]
+    [`((,g1 ∨ ,g2 ,tag) ,_state) #t]
+    [`((suspend ,g ,tag) ,_state) #t]
     [_ #f]))
 
 (define (join-frontier? term)
@@ -138,45 +168,27 @@
     [`(merge right ,_ (delay ,_)) #t]
     [_ #f]))
 
+(define (contractible-focus? term)
+  (or (equal? term 'empty)
+      (answer-term? term)
+      (delay-term? term)
+      (goal-state-term? term)
+      (join-frontier? term)
+      (merge-frontier? term)))
+
 (define (decompose term [ctx '()])
-  (cond
-    [(equal? term 'empty)
+  (match term
+    [_ #:when (contractible-focus? term)
      (values term ctx)]
-    [(match term
-       [`(ans ,_) #t]
-       [_ #f])
-     (values term ctx)]
-    [(join-frontier? term)
-     (values term ctx)]
-    [(merge-frontier? term)
-     (values term ctx)]
-    [else
-     (match term
-       [`(scope ,intro ,inner ,tag)
-        (decompose inner
-                   (cons `(scope-frame ,intro ,tag) ctx))]
-       [`(join ,left ,g)
-        (decompose left
-                   (cons `(join-frame ,g) ctx))]
-       [`(merge left ,left-term ,right-term)
-        (decompose left-term
-                   (cons `(merge-left-frame left ,right-term) ctx))]
-       [`(merge right ,left-term ,right-term)
-        (decompose right-term
-                   (cons `(merge-right-frame right ,left-term) ctx))]
-       [`(delay ,_)
-        (values term ctx)]
-       [`(,g ,state)
-        #:when (and (pair? term)
-                    (not (equal? g 'ans))
-                    (not (equal? g 'merge))
-                    (not (equal? g 'join))
-                    (not (equal? g 'scope))
-                    (not (equal? g 'delay))
-                    (not (equal? g 'empty)))
-        (values term ctx)]
-       [_
-        (values #f #f)])]))
+    [`(scope ,intro ,inner ,tag)
+     (decompose inner (cons `(scope-frame ,intro ,tag) ctx))]
+    [`(join ,left ,g)
+     (decompose left (cons `(join-frame ,g) ctx))]
+    [`(merge left ,left-term ,right-term)
+     (decompose left-term (cons `(merge-left-frame left ,right-term) ctx))]
+    [`(merge right ,left-term ,right-term)
+     (decompose right-term (cons `(merge-right-frame right ,left-term) ctx))]
+    [_ (values #f #f)]))
 
 (define (plug term ctx)
   (match ctx
@@ -215,10 +227,8 @@
                `(ans (state ,sub ,dis^ ,trail ,state-tag))
                '()))]
     [`((∃ ,d ,g ,tag) (state ,sub ,dis ,trail ,state-tag))
-     (define intro
-       (fresh-u-list (ambient-scope ctx root-scope) d))
-     (define subs
-       (map list d intro))
+     (define intro (fresh-u-list (ambient-scope ctx root-scope) d))
+     (define subs (map list d intro))
      (list "premachine/fresh-substitute"
            `(scope ,intro
                    (,(subst-goal g subs)
@@ -306,7 +316,10 @@
     [_ (values (reverse steps) cfg 'nondeterministic)]))
 
 (define (final? cfg)
-  (null? (step cfg)))
+  (match cfg
+    [`(config ,_query-u* ,_root-scope ,term ,_obs)
+     (pm-final? term)]
+    [_ (error 'final? "unsupported config: ~e" cfg)]))
 
 (define (answer-states term [acc '()])
   (match term

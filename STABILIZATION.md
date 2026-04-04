@@ -1,6 +1,8 @@
 # Stabilization Ledger
 
-This is the live source of truth for search-lattice stabilization.
+This is the live source of truth for the active search-lattice stabilization
+work. It is a contributor ledger, not the primary reader-facing semantics
+overview for the repo as a whole.
 
 `JBH-refactor-notes.txt` is historical scratch and rationale only. If this file
 and that file disagree, this file wins.

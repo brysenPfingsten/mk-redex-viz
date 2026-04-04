@@ -2,8 +2,10 @@
 
 These notes capture the current design judgment around pictures, freshening,
 and the stored scope component `c`. They are intentionally more discursive than
- `SEMILATTICE.md`, because they record open choices rather than settled
+`SEMILATTICE.md`, because they record open choices rather than settled
 interface facts.
+
+They are a supplemental note, not the primary repo-level semantics overview.
 
 ## Recommended Commit Story
 
@@ -157,4 +159,3 @@ Until those choices are settled:
 - keep `c` explicit
 - strengthen properties around exact preservation of the
   administration-erased picture for clearly administrative steps
-

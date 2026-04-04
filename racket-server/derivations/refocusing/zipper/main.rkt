@@ -96,7 +96,7 @@
     [_ (values (reverse steps) machine 'nondeterministic)]))
 
 (define (final? machine)
-  (null? (step machine)))
+  (premachine:final? (machine->cfg machine)))
 
 (define (answers machine)
   (premachine:answers (machine->cfg machine)))
