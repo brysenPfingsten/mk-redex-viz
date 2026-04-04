@@ -5,7 +5,9 @@
          "./private/step-utils.rkt"
          "./search-base-seq-red.rkt")
 
-(provide rail-early-red
+(provide rail-early-frontier/base
+         rail-early-local/under-ShellCtx
+         rail-early-red
          step-once)
 
 (check-redundancy #t)

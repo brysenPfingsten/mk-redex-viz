@@ -5,7 +5,8 @@
          "./private/step-utils.rkt"
          "./search-base-seq-red.rkt")
 
-(provide search-flip-early-red
+(provide search-flip-early-extra
+         search-flip-early-red
          step-once)
 
 (check-redundancy #t)

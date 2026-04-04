@@ -5,7 +5,9 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide rail-late-red
+(provide rail-late-frontier/base
+         rail-late-local/under-ShellCtx
+         rail-late-red
          step-once)
 
 (check-redundancy #t)

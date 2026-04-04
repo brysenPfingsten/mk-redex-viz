@@ -2,6 +2,8 @@
 
 (require redex/reduction-semantics
          "../languages/search-base-calls-lang.rkt"
+         (only-in "./search-flip-fused-red.rkt"
+                  search-flip-late-extra)
          "./search-base-fused-calls-red.rkt"
          "./private/context-pipeline.rkt"
          "./private/step-utils.rkt"
@@ -13,17 +15,9 @@
 
 (check-redundancy #t)
 
-(define search-flip-late-relcall-extra
-  (reduction-relation
-   search-relcall-lang
-   #:domain config
-   [--> (Γ (in-hole ShellCtx (in-hole LateCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))))
-        (Γ (in-hole ShellCtx
-                      (in-hole LateCtx
-                               (delay (search_2
-                                       <-+
-                                       (in-hole FreshCtx runnable-search_1))))))
-        "delay-swap-left"]))
+(define-lift-search-to-relcall search-flip-late-relcall-extra
+  (extend-reduction-relation search-flip-late-extra search-relcall-lang)
+  search-relcall-lang)
 
 (define search-flip-late-relcall-red
   (union-reduction-relations

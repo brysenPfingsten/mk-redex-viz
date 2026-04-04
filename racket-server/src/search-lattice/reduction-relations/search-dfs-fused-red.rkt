@@ -5,7 +5,8 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide search-dfs-late-red
+(provide search-dfs-late-extra
+         search-dfs-late-red
          step-once)
 
 (check-redundancy #t)

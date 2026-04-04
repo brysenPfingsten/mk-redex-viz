@@ -5,7 +5,8 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide search-flip-late-red
+(provide search-flip-late-extra
+         search-flip-late-red
          step-once)
 
 (check-redundancy #t)

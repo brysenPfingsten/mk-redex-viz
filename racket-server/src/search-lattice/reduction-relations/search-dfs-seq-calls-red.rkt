@@ -2,6 +2,8 @@
 
 (require redex/reduction-semantics
          "../languages/search-base-calls-lang.rkt"
+         (only-in "./search-dfs-seq-red.rkt"
+                  search-dfs-early-extra)
          "./search-base-seq-calls-red.rkt"
          "./private/context-pipeline.rkt"
          "./private/step-utils.rkt"
@@ -13,17 +15,9 @@
 
 (check-redundancy #t)
 
-(define search-dfs-early-relcall-extra
-  (reduction-relation
-   search-relcall-lang
-   #:domain config
-   [--> (Γ (in-hole ShellCtx (in-hole BranchCtx ((in-hole FreshCtx (delay runnable-search_1)) <-+ search_2))))
-        (Γ (in-hole ShellCtx
-                      (in-hole BranchCtx
-                               (delay ((in-hole FreshCtx runnable-search_1)
-                                       <-+
-                                       search_2)))))
-        "delay-through-left"]))
+(define-lift-search-to-relcall search-dfs-early-relcall-extra
+  (extend-reduction-relation search-dfs-early-extra search-relcall-lang)
+  search-relcall-lang)
 
 (define search-dfs-early-relcall-red
   (union-reduction-relations
