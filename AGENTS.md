@@ -27,6 +27,36 @@ Preferred shape:
 
 Use this especially when replacing non-tail-recursive `append` patterns.
 
+## Racket local-definition scope discipline
+
+When you need a local helper for one enclosing expression, prefer the smallest
+binding form that matches the job.
+
+Preferred shape:
+
+```racket
+(define outer
+  (let ([helper ...])
+    ...helper...))
+```
+
+Guidelines:
+
+- Do not use empty `let` blocks as fake scopes for local `define`s.
+- Use `let` only when the local helper being named is itself a raw
+  `reduction-relation`.
+- If a raw `reduction-relation` is used only once under a single
+  `context-closure`, keep the raw relation local in that `let` and give the
+  module-level name to the closed variant instead.
+- For local algebraic composition with `union-reduction-relations`,
+  `extend-reduction-relation`, or `context-closure`, write the composition
+  directly instead of introducing a local `let`.
+- Use `local` only when you really want internal definitions, such as multiple
+  helpers, function definitions, or definition-style structure that would be
+  worse as nested `let`s.
+- Only use a top-level `define` when the helper is part of the intended
+  module-level surface.
+
 ## Racket `match` discipline
 
 Prefer `match` when control flow is really case analysis over data shape or a small closed set of literals.

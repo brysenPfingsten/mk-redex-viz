@@ -5,23 +5,21 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide search-flip-fused-extra
-         search-flip-fused-red
+(provide search-flip-fused-red
          step-once)
 
 (check-redundancy #t)
 
-(define search-flip-fused-extra/base
-  (reduction-relation
-   search-base-lang
-   #:domain cfg
-   [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
-        (in-hole KLate
-                 (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
-        "search-flip-fused/delay-swap-left"]))
-
 (define search-flip-fused-extra
-  (context-closure search-flip-fused-extra/base search-base-lang QShell))
+  (let ([search-flip-fused-extra/base
+         (reduction-relation
+          search-base-lang
+          #:domain cfg
+          [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
+               (in-hole KLate
+                        (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
+               "search-flip-fused/delay-swap-left"])])
+    (context-closure search-flip-fused-extra/base search-base-lang QShell)))
 
 (define search-flip-fused-red
   (union-reduction-relations

@@ -5,49 +5,34 @@
          "./disj-base-red.rkt"
          "./private/step-utils.rkt")
 
-(provide disj-fused-local/under-QShell
-         disj-fused-red
+(provide disj-fused-red
          step-once)
 
 (check-redundancy #t)
 
-(define disj-fused-local/base
-  (reduction-relation
+(define disj-fused-shared-local/under-QShell
+  (context-closure
+   (context-closure disj-local/base disj-lang KLate)
    disj-lang
-   #:domain cfg
-   [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
-        (in-hole KLate
-                 ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
-        "disj-fused/continue-left-answer"]
-   [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
-        (in-hole KLate (search_rest × g c))
-        "disj-fused/continue-left-fail"]))
+   QShell))
 
 (define disj-fused-local/under-QShell
-  (context-closure disj-fused-local/base disj-lang QShell))
-
-;; Fused exposes shared local rules under the nested cut QShell ∘ KLate.
-(define disj-core-local/under-late
-  (context-closure disj-core-local/base disj-lang KLate))
-
-(define disj-goal-local/under-late
-  (context-closure disj-goal-local/base disj-lang KLate))
-
-(define disj-base-core
-  (context-closure disj-core-local/under-late disj-lang QShell))
-
-(define disj-goal-local/under-QShell
-  (context-closure disj-goal-local/under-late disj-lang QShell))
-
-(define disj-frontier/base
-  (context-closure disj-frontier/local-base disj-lang QShell))
+  (let ([disj-fused-local/base
+         (reduction-relation
+          disj-lang
+          #:domain cfg
+          [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
+               (in-hole KLate ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
+               "disj-fused/continue-left-answer"]
+          [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
+               (in-hole KLate (search_rest × g c))
+               "disj-fused/continue-left-fail"])])
+    (context-closure disj-fused-local/base disj-lang QShell)))
 
 (define disj-fused-red
   (union-reduction-relations
-   disj-core-shell/base
-   disj-base-core
-   disj-goal-local/under-QShell
-   disj-frontier/base
+   disj-shell/base
+   disj-fused-shared-local/under-QShell
    disj-fused-local/under-QShell))
 
 (define (step-once prog)

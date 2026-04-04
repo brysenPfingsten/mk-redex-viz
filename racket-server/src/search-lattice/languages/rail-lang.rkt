@@ -10,7 +10,7 @@
 (define-extended-language rail-lang search-base-lang
   [runnable-root .... (search +-> search)]
   ;; Rail-specific active-path helper shared by both policies.
-  [KTail ::= KLocal
+  [KTail ::= QFresh
              (KTail <-+ search)
              (search +-> KTail)]
   ;; Rail widens the inherited branch path through the right rail branch.

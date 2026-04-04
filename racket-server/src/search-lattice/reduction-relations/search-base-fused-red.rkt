@@ -10,21 +10,19 @@
 
 (check-redundancy #t)
 
-(define search-base-fused-branch-local/base
-  (reduction-relation
-   search-base-lang
-   #:domain cfg
-   [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
-        (in-hole KLate
-                 ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
-        "search-base-fused/continue-left-answer"]
-   [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
-        (in-hole KLate (search_rest × g c))
-        "search-base-fused/continue-left-fail"]))
-
 ;; Fused-only policy steps, still wrapped by the outer committed shell.
 (define search-base-fused-branch-local/under-QShell
-  (context-closure search-base-fused-branch-local/base search-base-lang QShell))
+  (let ([search-base-fused-branch-local/base
+         (reduction-relation
+          search-base-lang
+          #:domain cfg
+          [--> (in-hole KLate (((in-hole QFresh (⊤ σ_new)) <-+ search_rest) × g c))
+               (in-hole KLate ((in-hole QFresh (g σ_new)) <-+ (search_rest × g c)))
+               "search-base-fused/continue-left-answer"]
+          [--> (in-hole KLate (((in-hole QFresh (empty-tree)) <-+ search_rest) × g c))
+               (in-hole KLate (search_rest × g c))
+               "search-base-fused/continue-left-fail"])])
+    (context-closure search-base-fused-branch-local/base search-base-lang QShell)))
 
 (define search-base-fused-red
   (union-reduction-relations

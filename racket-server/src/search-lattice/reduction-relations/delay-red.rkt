@@ -9,55 +9,55 @@
                   core-shell/base)
          "./private/step-utils.rkt")
 
-(provide delay-local/base
-         delay-local/under-QShell
-         delay-frontier/base
+(provide delay-local/delta
+         delay-frontier/delta
          delay-red
          step-once)
 
 (check-redundancy #t)
 
-;; Delay lifts core local work under the first committed shell: QShell ∘ KLocal.
-(define core-red/delay
-  (union-reduction-relations
-   (context-closure
-    (context-closure
-     (extend-reduction-relation core-local/base delay-lang)
-     delay-lang
-     KLocal)
-    delay-lang
-    QShell)
-   (extend-reduction-relation core-shell/base delay-lang)))
-
-(define delay-local/base
+(define delay-local/delta
   (reduction-relation
    delay-lang
-   #:domain cfg
-   [--> (in-hole KLocal ((suspend g tag) σ))
-        (in-hole KLocal (delay (g σ)))
+   #:domain search
+   [--> ((suspend g tag) σ)
+        (delay (g σ))
         "delay/suspend-goal"]
-   [--> (in-hole KLocal ((in-hole QFresh (delay runnable-search_1)) × g c))
-        (in-hole KLocal (delay ((in-hole QFresh runnable-search_1) × g c)))
+   [--> ((in-hole QFresh (delay runnable-search_1)) × g c)
+        (delay ((in-hole QFresh runnable-search_1) × g c))
         "delay/delay-through-conj"]))
 
-(define delay-frontier/base
+(define delay-frontier/delta
   (reduction-relation
    delay-lang
    #:domain cfg
    [--> (in-hole QShell (in-hole QFresh (delay runnable-search_i)))
         (in-hole QShell
                  (fresh-tree-prefix->shell-prefix
-                  (in-hole QFresh (Bounced runnable-search_i))))
+                   (in-hole QFresh (Bounced runnable-search_i))))
         "delay/invoke-delay"]))
 
-(define delay-local/under-QShell
-  (context-closure delay-local/base delay-lang QShell))
+(define delay-local/base
+  (union-reduction-relations
+   (extend-reduction-relation core-local/base delay-lang)
+   delay-local/delta))
+
+;; L1 mirrors L0: an augmented local base, then the usual KLocal/QShell closure.
+(define delay-local
+  (context-closure
+   (context-closure delay-local/base delay-lang KLocal)
+   delay-lang
+   QShell))
+
+(define delay-shell/base
+  (union-reduction-relations
+   (extend-reduction-relation core-shell/base delay-lang)
+   delay-frontier/delta))
 
 (define delay-red
   (union-reduction-relations
-   core-red/delay
-   delay-local/under-QShell
-   delay-frontier/base))
+   delay-local
+   delay-shell/base))
 
 (define (step-once prog)
   (step-once/deterministic delay-red prog))

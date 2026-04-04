@@ -36,6 +36,17 @@ During stabilization:
 - prefer runtime/context factorizations that look like a good pre-image for a
   later refocusing+fusion abstract machine, rather than ad hoc grammar helpers
   or per-node scoped families
+- future presentation note:
+  if we later want a smaller top-level reducer inventory, localize raw
+  layer-specific `.../base` delta relations consistently across the lattice
+  instead of doing so piecemeal
+- union-surface note:
+  pre-union reducer pieces at the module that creates them only when every
+  real downstream use consumes the same whole bundle as one summand.
+  Keep pieces separate when later layers route the constituents through
+  different closures, lifts, or policy cuts, and do not export overlapping
+  convenience bundles such as `(A ∪ B)` and `(B ∪ C)` unless a real consumer
+  actually wants each exact bundle.
 
 ## Locked
 

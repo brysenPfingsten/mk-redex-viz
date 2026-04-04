@@ -5,10 +5,7 @@
          "./private/step-utils.rkt"
          "./search-base-fused-red.rkt")
 
-(provide rail-fused-local/base
-         rail-fused-local/under-QShell
-         rail-fused-frontier/base
-         rail-fused-red
+(provide rail-fused-red
          step-once)
 
 (check-redundancy #t)
@@ -17,19 +14,6 @@
   (extend-reduction-relation
    search-base-fused-red
    rail-lang))
-
-(define rail-fused-local/base
-  (reduction-relation
-   rail-lang
-   #:domain cfg
-   [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
-        (in-hole KLate
-                 (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
-        "rail-fused/enter-right"]
-   [--> (in-hole KLate (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
-        (in-hole KLate
-                 (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
-        "rail-fused/return-left"]))
 
 (define rail-fused-frontier/base
   (reduction-relation
@@ -55,7 +39,19 @@
         "rail-fused/skip-right-fail"]))
 
 (define rail-fused-local/under-QShell
-  (context-closure rail-fused-local/base rail-lang QShell))
+  (let ([rail-fused-local/base
+         (reduction-relation
+          rail-lang
+          #:domain cfg
+          [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
+               (in-hole KLate
+                        (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
+               "rail-fused/enter-right"]
+          [--> (in-hole KLate (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
+               (in-hole KLate
+                        (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
+               "rail-fused/return-left"])])
+    (context-closure rail-fused-local/base rail-lang QShell)))
 
 (define rail-fused-red
   (union-reduction-relations

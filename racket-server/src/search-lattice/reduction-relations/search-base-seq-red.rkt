@@ -10,17 +10,16 @@
 
 (check-redundancy #t)
 
-(define search-base-seq-branch-local/base
-  (reduction-relation
-   search-base-lang
-   #:domain cfg
-   [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
-        (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
-        "search-base-seq/distribute-over-conj"]))
-
 ;; Seq-only policy step, still wrapped by the outer committed shell.
 (define search-base-seq-branch-local/under-QShell
-  (context-closure search-base-seq-branch-local/base search-base-lang QShell))
+  (let ([search-base-seq-branch-local/base
+         (reduction-relation
+          search-base-lang
+          #:domain cfg
+          [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
+               (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
+               "search-base-seq/distribute-over-conj"])])
+    (context-closure search-base-seq-branch-local/base search-base-lang QShell)))
 
 (define search-base-seq-red
   (union-reduction-relations

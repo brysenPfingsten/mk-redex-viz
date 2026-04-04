@@ -5,10 +5,7 @@
          "./private/step-utils.rkt"
          "./search-base-seq-red.rkt")
 
-(provide rail-seq-local/base
-         rail-seq-local/under-QShell
-         rail-seq-frontier/base
-         rail-seq-red
+(provide rail-seq-red
          step-once)
 
 (check-redundancy #t)
@@ -17,19 +14,6 @@
   (extend-reduction-relation
    search-base-seq-red
    rail-lang))
-
-(define rail-seq-local/base
-  (reduction-relation
-   rail-lang
-   #:domain cfg
-   [--> (in-hole KTail ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
-        (in-hole KTail
-                 (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
-        "rail-seq/enter-right"]
-   [--> (in-hole KTail (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
-        (in-hole KTail
-                 (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
-        "rail-seq/return-left"]))
 
 (define rail-seq-frontier/base
   (reduction-relation
@@ -55,7 +39,19 @@
         "rail-seq/skip-right-fail"]))
 
 (define rail-seq-local/under-QShell
-  (context-closure rail-seq-local/base rail-lang QShell))
+  (let ([rail-seq-local/base
+         (reduction-relation
+          rail-lang
+          #:domain cfg
+          [--> (in-hole KTail ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
+               (in-hole KTail
+                        (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
+               "rail-seq/enter-right"]
+          [--> (in-hole KTail (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
+               (in-hole KTail
+                        (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
+               "rail-seq/return-left"])])
+    (context-closure rail-seq-local/base rail-lang QShell)))
 
 (define rail-seq-red
   (union-reduction-relations
