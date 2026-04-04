@@ -11,20 +11,20 @@ const Sidebar = ({ substitutionData = [], trailData = [], isOpen, onToggle }) =>
       <IconButton
         onClick={onToggle}
         className="toggle-button"
+        style={{
+          right: isOpen ? 'calc(var(--sidebar-width) + var(--toggle-spacing))' : 'var(--toggle-spacing)'
+        }}
       >
         {isOpen ? <Close /> : <Menu />}
       </IconButton>
 
-
       <Drawer
-        variant="temporary"
+        variant="persistent"
         anchor="right"
         open={isOpen}
-        onClose={onToggle}
-        ModalProps={{
-          keepMounted: true,
-        }}
         sx={{
+          width: isOpen ? 'var(--sidebar-width)' : 0,
+          flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: 'var(--sidebar-width)',
             boxSizing: 'border-box',

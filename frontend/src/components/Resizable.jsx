@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const Resizable = ({ children }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [leftWidth, setLeftWidth] = useState(30);
+  const [leftWidth, setLeftWidth] = useState(30); // percentage of total width
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -37,24 +37,24 @@ const Resizable = ({ children }) => {
 
   return (
     <div className="resizable-container">
-      <div 
-        className="input-container" 
-        style={{ flex: `0 0 ${leftWidth}%` }}
+      <div
+        className="input-container"
+        style={{ width: `${leftWidth}%`, flexShrink: 0 }}
       >
         {children[0]}
       </div>
-      
-      <div 
+
+      <div
         className="resize-handle"
         onMouseDown={(e) => {
           e.preventDefault();
           setIsDragging(true);
         }}
       />
-      
-      <div 
-        className="right-pane" 
-        style={{ flex: `0 0 ${100 - leftWidth}%` }}
+
+      <div
+        className="right-pane"
+        style={{ flex: 1, minWidth: 0 }}
       >
         {children[1]}
       </div>

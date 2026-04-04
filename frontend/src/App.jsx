@@ -86,7 +86,7 @@ function App() {
   }, [tree]);
 
   return (
-    <div className="container">
+    <>
       <Resizable>
         <div className="input-container">
           <CodeHeader
@@ -98,10 +98,10 @@ function App() {
             isFrozen={isFrozen}
            />
           <div className="editor-area">
-            <CodeEditor 
-              codeText={code} 
-              setCodeText={setCode} 
-              isFrozen={isFrozen} 
+            <CodeEditor
+              codeText={code}
+              setCodeText={setCode}
+              isFrozen={isFrozen}
               isDark={darkMode}
               goalId={goalId}
               onTagClick={setGoalId}
@@ -116,7 +116,7 @@ function App() {
             disabled={disabled}
           />
         </div>
-        
+
         <div className="right-pane">
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
           <div className="scroll-container">
@@ -133,10 +133,10 @@ function App() {
             />
           </div>
         </div>
-      </Resizable>  
+      </Resizable>
       <Sidebar
-        substitutionData={substitutionData} 
-        trailData={trailData} 
+        substitutionData={substitutionData}
+        trailData={trailData}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(o => !o)}
       />
@@ -145,7 +145,7 @@ function App() {
         message={alert.message}
         onClose={() => setAlert({ isOpen: false, message: '' })}
       />
-    </div>
+    </>
   );
 }
 
