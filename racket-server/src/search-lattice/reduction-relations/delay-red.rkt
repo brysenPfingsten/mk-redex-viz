@@ -17,20 +17,17 @@
 
 (check-redundancy #t)
 
-(define delay-core-local/base
-  (context-closure
-   (extend-reduction-relation core-local/base delay-lang)
-   delay-lang
-   KLocal))
-
-(define delay-core-shell/base
-  (extend-reduction-relation core-shell/base delay-lang))
-
 ;; Delay lifts core local work under the first committed shell: QShell ∘ KLocal.
 (define core-red/delay
   (union-reduction-relations
-   (context-closure delay-core-local/base delay-lang QShell)
-   delay-core-shell/base))
+   (context-closure
+    (context-closure
+     (extend-reduction-relation core-local/base delay-lang)
+     delay-lang
+     KLocal)
+    delay-lang
+    QShell)
+   (extend-reduction-relation core-shell/base delay-lang)))
 
 (define delay-local/base
   (reduction-relation
@@ -40,8 +37,7 @@
         (in-hole KLocal (delay (g σ)))
         "delay/suspend-goal"]
    [--> (in-hole KLocal ((in-hole QFresh (delay runnable-search_1)) × g c))
-        (in-hole KLocal
-                 (delay ((in-hole QFresh runnable-search_1) × g c)))
+        (in-hole KLocal (delay ((in-hole QFresh runnable-search_1) × g c)))
         "delay/delay-through-conj"]))
 
 (define delay-frontier/base

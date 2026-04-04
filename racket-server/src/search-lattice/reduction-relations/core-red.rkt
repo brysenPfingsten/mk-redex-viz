@@ -77,11 +77,11 @@
                   (in-hole QFresh+ (empty-tree))))
         "core/final-fail-into-shell"]))
 
-(define core-local/search
-  (context-closure core-local/base core-lang KLocal))
-
 (define core-local
-  (context-closure core-local/search core-lang QShell))
+  (context-closure
+   (context-closure core-local/base core-lang KLocal)
+   core-lang
+   QShell))
 
 ;; Core splits unfinished tree work from the one final lift into the shell.
 (define core-red
