@@ -23,7 +23,7 @@
           #:domain cfg
           [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
                (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
-               "disj-seq/distribute-over-conj"])])
+               "distribute-over-conj"])])
     (context-closure disj-seq-local/base disj-lang QShell)))
 
 (define disj-seq-red

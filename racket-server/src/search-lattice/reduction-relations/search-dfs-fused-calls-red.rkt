@@ -23,7 +23,7 @@
                                (delay ((in-hole QFresh runnable-search_1)
                                        <-+
                                        search_2)))))
-        "search-dfs-fused-calls/delay-through-left"]))
+        "delay-through-left"]))
 
 (define search-dfs-fused-calls-red
   (union-reduction-relations

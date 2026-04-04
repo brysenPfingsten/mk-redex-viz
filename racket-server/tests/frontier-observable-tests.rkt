@@ -19,8 +19,8 @@
      (count-step-name rest
                       expected
                       (if (or (string=? step-name expected)
-                              (and (string=? expected "core/fresh-substitute")
-                                   (string-prefix? "core/fresh-substitute"
+                              (and (string=? expected "fresh-substitute")
+                                   (string-prefix? "fresh-substitute"
                                                    step-name)))
                           (add1 count)
                           count))]))
@@ -47,9 +47,9 @@
       (check-equal? status 'done)
       (check-true (config-c-scope-agreement? final-cfg))
       (check-true (config-exact-scope? final-cfg))
-      (check-equal? (count-step-name steps "core/fresh-substitute") 1)
+      (check-equal? (count-step-name steps "fresh-substitute") 1)
       (check-true (>= (count-freshened final-cfg) 1))
-      (check-equal? (count-step-name steps "delay/invoke-delay") 1)
+      (check-equal? (count-step-name steps "invoke-delay") 1)
       (check-equal? (count-bounced final-cfg) 1)))
 
   (test-case "delay pops do not escape their Freshened wrapper"
@@ -64,7 +64,7 @@
                               red:search-base-fused-red))])
       (define-values (step-name next)
         (named-step (apply-reduction-relation/tag-with-names rel scoped-delay)))
-      (check-equal? step-name "delay/invoke-delay")
+      (check-equal? step-name "invoke-delay")
       (check-equal?
        next
        (term (FreshenedShell
@@ -103,7 +103,7 @@
       (check-true (config-c-scope-agreement? final-cfg))
       (check-true (config-exact-scope? final-cfg))
       (check-equal? (count-bounced final-cfg)
-                    (count-step-name steps "delay/invoke-delay")
+                    (count-step-name steps "invoke-delay")
                     label)
       (check-true (>= (count-bounced final-cfg) 1)
                   label))))

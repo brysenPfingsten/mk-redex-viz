@@ -35,8 +35,8 @@
      (count-step-name rest
                       expected
                       (if (or (string=? step-name expected)
-                              (and (string=? expected "core/fresh-substitute")
-                                   (string-prefix? "core/fresh-substitute"
+                              (and (string=? expected "fresh-substitute")
+                                   (string-prefix? "fresh-substitute"
                                                    step-name)))
                           (add1 count)
                           count))]))
@@ -90,7 +90,7 @@
         (trace-example "fresh witness" strategy))
       (check-equal? status 'value (strategy-label strategy))
       (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
-      (check-equal? (count-step-name steps "core/fresh-substitute")
+      (check-equal? (count-step-name steps "fresh-substitute")
                     2
                     (strategy-label strategy))
       (check-equal? (count-bounced final-cfg)
@@ -116,10 +116,10 @@
       (check-equal? (count-answers branch-final)
                     2
                     (strategy-label strategy))
-      (check-equal? (count-step-name shared-steps "core/fresh-substitute")
+      (check-equal? (count-step-name shared-steps "fresh-substitute")
                     2
                     (strategy-label strategy))
-      (check-equal? (count-step-name branch-steps "core/fresh-substitute")
+      (check-equal? (count-step-name branch-steps "fresh-substitute")
                     3
                     (strategy-label strategy))))
 
@@ -139,10 +139,10 @@
         (trace-example "fresh delay witness" strategy))
       (check-equal? status 'value (strategy-label strategy))
       (check-true (config-exact-scope? final-cfg) (strategy-label strategy))
-      (check-equal? (count-step-name steps "core/fresh-substitute")
+      (check-equal? (count-step-name steps "fresh-substitute")
                     2
                     (strategy-label strategy))
-      (check-equal? (count-step-name steps "delay/invoke-delay")
+      (check-equal? (count-step-name steps "invoke-delay")
                     1
                     (strategy-label strategy))
       (check-equal? (count-bounced final-cfg)
@@ -167,7 +167,7 @@
                             (strategy-label strategy)
                             final-cfg))
         (list (count-answers final-cfg)
-              (count-step-name steps "core/fresh-substitute"))))
+              (count-step-name steps "fresh-substitute"))))
     (check-true (positive? (caar full-observations)))
     (check-true
      (andmap (lambda (obs)

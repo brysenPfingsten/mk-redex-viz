@@ -18,7 +18,7 @@
           #:domain cfg
           [--> (in-hole KBranch ((search_1 <-+ search_2) × g c))
                (in-hole KBranch ((search_1 × g c) <-+ (search_2 × g c)))
-               "search-base-seq/distribute-over-conj"])])
+               "distribute-over-conj"])])
     (context-closure search-base-seq-branch-local/base search-base-lang QShell)))
 
 (define search-base-seq-red

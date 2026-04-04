@@ -51,8 +51,8 @@
      (count-step-name rest
                       expected
                       (if (or (string=? step-name expected)
-                              (and (string=? expected "core/fresh-substitute")
-                                   (string-prefix? "core/fresh-substitute"
+                              (and (string=? expected "fresh-substitute")
+                                   (string-prefix? "fresh-substitute"
                                                    step-name)))
                           (add1 count)
                           count))]))
@@ -176,10 +176,10 @@
       (named-step red:core-red cfg-core-conj-success))
     (define-values (conj-fail-name conj-fail-next)
       (named-step red:core-red cfg-core-conj-fail))
-    (check-equal? succeed-name "core/succeed")
-    (check-equal? fail-name "core/fail")
-    (check-equal? conj-success-name "core/conj-bring-scoped-success")
-    (check-equal? conj-fail-name "core/conj-preserve-scoped-fail")
+    (check-equal? succeed-name "succeed")
+    (check-equal? fail-name "fail")
+    (check-equal? conj-success-name "conj-bring-scoped-success")
+    (check-equal? conj-fail-name "conj-preserve-scoped-fail")
     (check-equal? succeed-next (term (⊤ ,sigma-a)))
     (check-equal? fail-next (term (empty-tree)))
     (check-equal? conj-success-next
@@ -187,7 +187,7 @@
     (check-equal? conj-fail-next (term (empty-tree)))
     (define-values (empty-fresh-name empty-fresh-next)
       (named-step red:core-red cfg-core-empty-fresh))
-    (check-equal? empty-fresh-name "core/fresh-substitute")
+    (check-equal? empty-fresh-name "fresh-substitute")
     (check-equal? empty-fresh-next
                   (term (FreshenedTree ()
                                        ((succeed (label "inner")) ,sigma-s)
@@ -219,22 +219,22 @@
       (named-step red:delay-red delay-next-1))
     (define-values (delay-conj-name _delay-conj-next)
       (named-step red:delay-red cfg-delay-through-conj))
-    (check-equal? delay-step-1 "delay/suspend-goal")
-    (check-equal? delay-step-2 "delay/invoke-delay")
-    (check-equal? delay-conj-name "delay/delay-through-conj")
+    (check-equal? delay-step-1 "suspend-goal")
+    (check-equal? delay-step-2 "invoke-delay")
+    (check-equal? delay-conj-name "delay-through-conj")
     (define-values (double-delay-steps double-delay-final double-delay-status)
       (trace-deterministic red:delay-red cfg-double-delay))
     (check-equal? double-delay-status 'done)
     (check-true (trace-locked? red:delay-red wf-delay? delay-shape? cfg-double-delay))
     (check-equal? (take double-delay-steps 4)
-                  '("delay/suspend-goal"
-                    "delay/invoke-delay"
-                    "delay/suspend-goal"
-                    "delay/invoke-delay"))
+                  '("suspend-goal"
+                    "invoke-delay"
+                    "suspend-goal"
+                    "invoke-delay"))
     (check-equal? (count-bounced double-delay-final) 2)
     (define-values (fresh-outside-step fresh-outside-next)
       (named-step red:delay-red cfg-delay-inside-fresh))
-    (check-equal? fresh-outside-step "core/fresh-substitute")
+    (check-equal? fresh-outside-step "fresh-substitute")
     (check-true (config-exact-scope? fresh-outside-next))
     (check-true (wf-delay? fresh-outside-next))
     (check-true (trace-locked? red:delay-red
@@ -271,12 +271,12 @@
       (named-step red:disj-fused-red cfg-mixed-answer))
     (define-values (fused-fail-name _fused-fail-next)
       (named-step red:disj-fused-red cfg-mixed-fail))
-    (check-equal? goal-seq-name "disj/goal-to-tree")
-    (check-equal? goal-fused-name "disj/goal-to-tree")
-    (check-equal? seq-name "disj-seq/distribute-over-conj")
-    (check-equal? fused-pending-name "core/succeed")
-    (check-equal? fused-answer-name "disj-fused/continue-left-answer")
-    (check-equal? fused-fail-name "disj-fused/continue-left-fail")
+    (check-equal? goal-seq-name "expand-disjunction")
+    (check-equal? goal-fused-name "expand-disjunction")
+    (check-equal? seq-name "distribute-over-conj")
+    (check-equal? fused-pending-name "succeed")
+    (check-equal? fused-answer-name "continue-left-answer")
+    (check-equal? fused-fail-name "continue-left-fail")
     (define nested-answer
       (term (((⊤ ,sigma-a) <-+ (⊤ ,sigma-b))
              <-+
@@ -300,10 +300,10 @@
         (named-step rel nested-fail))
       (define-values (consume-fail-name consume-fail-next)
         (named-step rel reassoc-fail-next))
-      (check-equal? reassoc-answer-name "disj/reassociate-left-answer")
-      (check-equal? consume-answer-name "disj/promote-left-answer")
-      (check-equal? reassoc-fail-name "disj/erase-left-fail")
-      (check-equal? consume-fail-name "disj/promote-left-answer")
+      (check-equal? reassoc-answer-name "reassociate-left-answer")
+      (check-equal? consume-answer-name "promote-left-answer")
+      (check-equal? reassoc-fail-name "erase-left-fail")
+      (check-equal? consume-fail-name "promote-left-answer")
       (check-equal? reassoc-answer-next
                     (term ((⊤ ,sigma-a) <-+ ((⊤ ,sigma-b) <-+ (empty-tree)))))
       (check-equal? consume-answer-next
@@ -312,7 +312,7 @@
                     (term ((⊤ ,sigma-b) <-+ (empty-tree))))
       (check-equal? consume-fail-next
                     (term ((⊤ ,sigma-b) + (empty-tree)))))
-    (check-equal? fused-fresh-name "disj-fused/continue-left-answer")
+    (check-equal? fused-fresh-name "continue-left-answer")
     (check-equal? fused-fresh-next
                   (term ((FreshenedTree (u:0)
                                     ((succeed (label "k")) ,sigma-a)
@@ -334,8 +334,8 @@
       (check-true (config-exact-scope? branch-final))
       (check-true (final-program? shared-final))
       (check-true (final-program? branch-final))
-      (check-equal? (count-step-name shared-steps "core/fresh-substitute") 2)
-      (check-equal? (count-step-name branch-steps "core/fresh-substitute") 3)
+      (check-equal? (count-step-name shared-steps "fresh-substitute") 2)
+      (check-equal? (count-step-name branch-steps "fresh-substitute") 3)
       (check-equal? (count-answers shared-final) 2)
       (check-equal? (count-answers branch-final) 2)
       (check-true (config-exact-scope? shared-final))
@@ -365,15 +365,15 @@
                               red:search-base-fused-red))])
       (define-values (plain-name plain-next)
         (named-step rel cfg-disj))
-      (check-equal? plain-name "disj/promote-left-answer")
+      (check-equal? plain-name "promote-left-answer")
       (check-equal? plain-next
                     (term ((⊤ ,sigma-a) + (⊤ ,sigma-b))))
       (define-values (bounce-step-1-name bounce-step-1)
         (named-step rel bounced-branch))
       (define-values (bounce-step-2-name bounce-step-2)
         (named-step rel bounce-step-1))
-      (check-equal? bounce-step-1-name "disj/reassociate-left-answer")
-      (check-equal? bounce-step-2-name "disj/promote-left-answer")
+      (check-equal? bounce-step-1-name "reassociate-left-answer")
+      (check-equal? bounce-step-2-name "promote-left-answer")
       (check-equal? bounce-step-1
                     (term (Bounced ((⊤ ,sigma-a)
                                     <-+
@@ -388,7 +388,7 @@
                                     ((empty-tree) <-+ (⊤ ,sigma-b))))))
       (define-values (prefixed-name prefixed-next)
         (named-step rel prefixed-bounced))
-      (check-equal? prefixed-name "disj/promote-left-answer")
+      (check-equal? prefixed-name "promote-left-answer")
       (check-equal? prefixed-next
                     (term (Bounced ((⊤ ,sigma-a)
                                     +
@@ -405,8 +405,8 @@
         (named-step rel cfg-mixed-answer))
       (check-not-false
        (member seq/fused-name
-               '("search-base-seq/distribute-over-conj"
-                 "search-base-fused/continue-left-answer")))))
+               '("distribute-over-conj"
+                 "continue-left-answer")))))
 
 (module+ test
   (run-tests STABILIZATION-GATES))

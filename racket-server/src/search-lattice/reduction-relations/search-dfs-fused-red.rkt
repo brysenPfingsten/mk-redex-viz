@@ -18,7 +18,7 @@
           [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
                (in-hole KLate
                         (delay ((in-hole QFresh runnable-search_1) <-+ search_2)))
-               "search-dfs-fused/delay-through-left"])])
+               "delay-through-left"])])
     (context-closure search-dfs-fused-extra/base search-base-lang QShell)))
 
 (define search-dfs-fused-red

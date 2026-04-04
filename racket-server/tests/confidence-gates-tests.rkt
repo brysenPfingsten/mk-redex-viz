@@ -100,17 +100,17 @@
    (list (search-strategy "early" "rail")
          "fives/fours"
          #f
-         "rail-seq-calls/enter-right")
+         "enter-right")
    (list (search-strategy "late" "flip")
          "fives/fours"
          #f
-         "search-flip-fused-calls/delay-swap-left")
+         "delay-swap-left")
    (list (search-strategy "late" "dfs")
          "same"
          (hasheq 'conjAssoc "left"
                  'disjAssoc "right"
                  'delayPlacement "relcall")
-         "search-base-fused-calls/expand")))
+         "expand-relcall")))
 
 (define/provide-test-suite CONFIDENCE-GATES
   (test-case "representative structured strategies stay live and produce named search-lattice rules"

@@ -77,10 +77,10 @@
        (apply-reduction-relation/tag-with-names
         red:disj-fused-red
         cfg-mixed-fail)))
-    (check-equal? (~a seq-name) "disj-seq/distribute-over-conj")
-    (check-equal? (~a fused-pending-name) "core/succeed")
-    (check-equal? (~a fused-answer-name) "disj-fused/continue-left-answer")
-    (check-equal? (~a fused-fail-name) "disj-fused/continue-left-fail"))
+    (check-equal? (~a seq-name) "distribute-over-conj")
+    (check-equal? (~a fused-pending-name) "succeed")
+    (check-equal? (~a fused-answer-name) "continue-left-answer")
+    (check-equal? (~a fused-fail-name) "continue-left-fail"))
 
   (test-case "disj-fused continues freshened answers structurally"
     (define freshened-answer
@@ -92,7 +92,7 @@
        (apply-reduction-relation/tag-with-names
         red:disj-fused-red
         freshened-answer)))
-    (check-equal? (~a step-name) "disj-fused/continue-left-answer")
+    (check-equal? (~a step-name) "continue-left-answer")
     (check-equal? next
                   (term ((FreshenedTree (u:0)
                                     ((succeed (label "k")) ,sigma-a)
@@ -107,8 +107,8 @@
         (named-step (apply-reduction-relation/tag-with-names rel cfg-delay-goal)))
       (define-values (step2-name _step2)
         (named-step (apply-reduction-relation/tag-with-names rel step1)))
-      (check-equal? (~a step1-name) "delay/suspend-goal")
-      (check-equal? (~a step2-name) "delay/invoke-delay")))
+      (check-equal? (~a step1-name) "suspend-goal")
+      (check-equal? (~a step2-name) "invoke-delay")))
 
   (test-case "scope-sensitive delay roots preserve QFresh outside and inside suspend"
     (define fresh-outside-suspend
@@ -142,9 +142,9 @@
       (named-step (apply-reduction-relation/tag-with-names
                    red:delay-red
                    fresh-step-2)))
-    (check-equal? (~a fresh-step-1-name) "core/fresh-substitute")
-    (check-equal? (~a fresh-step-2-name) "delay/suspend-goal")
-    (check-equal? (~a fresh-step-3-name) "delay/invoke-delay")
+    (check-equal? (~a fresh-step-1-name) "fresh-substitute")
+    (check-equal? (~a fresh-step-2-name) "suspend-goal")
+    (check-equal? (~a fresh-step-3-name) "invoke-delay")
     (check-equal? fresh-step-2
                   (term (FreshenedTree (u:0)
                                        (delay (,scoped-eq ,scoped-state))
@@ -165,9 +165,9 @@
       (named-step (apply-reduction-relation/tag-with-names
                    red:delay-red
                    suspend-step-2)))
-    (check-equal? (~a suspend-step-1-name) "delay/suspend-goal")
-    (check-equal? (~a suspend-step-2-name) "delay/invoke-delay")
-    (check-equal? (~a suspend-step-3-name) "core/fresh-substitute")
+    (check-equal? (~a suspend-step-1-name) "suspend-goal")
+    (check-equal? (~a suspend-step-2-name) "invoke-delay")
+    (check-equal? (~a suspend-step-3-name) "fresh-substitute")
     (check-equal? suspend-step-1
                   (term (delay ((∃ (x:0)
                                    ,uninstantiated-eq
@@ -197,9 +197,9 @@
       (named-step (apply-reduction-relation/tag-with-names
                    red:core-red
                    step-2)))
-    (check-equal? (~a step-1-name) "core/fresh-substitute")
-    (check-equal? (~a step-2-name) "core/succeed")
-    (check-equal? (~a step-3-name) "core/final-answer-into-shell")
+    (check-equal? (~a step-1-name) "fresh-substitute")
+    (check-equal? (~a step-2-name) "succeed")
+    (check-equal? (~a step-3-name) "finish-answer")
     (check-equal? step-1
                   (term (FreshenedTree ()
                                        ((succeed (label "inner")) ,sigma-s)
@@ -242,8 +242,8 @@
        (apply-reduction-relation/tag-with-names
         red:core-red
         fresh-fail)))
-    (check-equal? (~a answer-name) "core/final-answer-into-shell")
-    (check-equal? (~a fail-name) "core/final-fail-into-shell")
+    (check-equal? (~a answer-name) "finish-answer")
+    (check-equal? (~a fail-name) "finish-fail")
     (check-equal? answer-next
                   (term (FreshenedShell (u:0)
                                         (⊤ ,sigma-s)
@@ -275,9 +275,9 @@
       (named-step (apply-reduction-relation/tag-with-names
                    red:core-red
                    step-2)))
-    (check-equal? (~a step-1-name) "core/fresh-substitute")
-    (check-equal? (~a step-2-name) "core/fresh-substitute")
-    (check-equal? (~a step-3-name) "core/fresh-substitute")
+    (check-equal? (~a step-1-name) "fresh-substitute")
+    (check-equal? (~a step-2-name) "fresh-substitute")
+    (check-equal? (~a step-3-name) "fresh-substitute")
     (check-equal? step-3
                   (term (FreshenedTree (u:0)
                                        (FreshenedTree ()
@@ -325,40 +325,40 @@
        (apply-reduction-relation/tag-with-names
         red:delay-red
         cfg-scoped-delay-through-conj)))
-    (check-equal? (~a conj-name) "delay/delay-through-conj")
+    (check-equal? (~a conj-name) "delay-through-conj")
     (check-equal? conj-next scoped-conj-expected)
     (for ([entry (in-list
                   (list (list red:search-dfs-seq-red
                               cfg-scoped-flip
-                              "search-dfs-seq/delay-through-left"
+                              "delay-through-left"
                               scoped-dfs-expected)
                         (list red:search-dfs-fused-red
                               cfg-scoped-flip
-                              "search-dfs-fused/delay-through-left"
+                              "delay-through-left"
                               scoped-dfs-expected)
                         (list red:search-flip-seq-red
                               cfg-scoped-flip
-                              "search-flip-seq/delay-swap-left"
+                              "delay-swap-left"
                               scoped-flip-expected)
                         (list red:search-flip-fused-red
                               cfg-scoped-flip
-                              "search-flip-fused/delay-swap-left"
+                              "delay-swap-left"
                               scoped-flip-expected)
                         (list red:rail-seq-red
                               cfg-scoped-rail
-                              "rail-seq/enter-right"
+                              "enter-right"
                               scoped-rail-expected)
                         (list red:rail-fused-red
                               cfg-scoped-rail
-                              "rail-fused/enter-right"
+                              "enter-right"
                               scoped-rail-expected)
                         (list red:rail-seq-red
                               scoped-return-rail
-                              "rail-seq/return-left"
+                              "return-left"
                               scoped-return-expected)
                         (list red:rail-fused-red
                               scoped-return-rail
-                              "rail-fused/return-left"
+                              "return-left"
                               scoped-return-expected)))])
       (match-define (list rel cfg expected-name expected-next) entry)
       (define-values (step-name next)
@@ -391,8 +391,8 @@
       lang:search-base-lang
       cfg
       (term (((⊤ ,sigma-a) + (empty-tree)) <-+ (⊤ ,sigma-b)))))
-    (check-equal? (~a seq-name) "disj/promote-left-answer")
-    (check-equal? (~a fused-name) "disj/promote-left-answer")
+    (check-equal? (~a seq-name) "promote-left-answer")
+    (check-equal? (~a fused-name) "promote-left-answer")
     (check-true (produced-answer-spine-only? seq-next))
     (check-true (produced-answer-spine-only? fused-next))
     (check-true (redex-match? lang:search-base-lang cfg seq-next))
@@ -419,8 +419,8 @@
        (apply-reduction-relation/tag-with-names
         red:disj-seq-red
         fresh-fail)))
-    (check-equal? (~a answer-name) "disj/promote-left-answer")
-    (check-equal? (~a fail-name) "disj/skip-left-fail")
+    (check-equal? (~a answer-name) "promote-left-answer")
+    (check-equal? (~a fail-name) "skip-left-fail")
     (check-equal? answer-next
                   (term ((FreshenedTree (u:0)
                                         (⊤ ,sigma-a)
@@ -475,10 +475,10 @@
        (apply-reduction-relation/tag-with-names
         red:search-base-fused-red
         fused-mid)))
-    (check-equal? (~a seq-name-1) "disj/reassociate-left-answer")
-    (check-equal? (~a seq-name-2) "disj/promote-left-answer")
-    (check-equal? (~a fused-name-1) "disj/reassociate-left-answer")
-    (check-equal? (~a fused-name-2) "disj/promote-left-answer")
+    (check-equal? (~a seq-name-1) "reassociate-left-answer")
+    (check-equal? (~a seq-name-2) "promote-left-answer")
+    (check-equal? (~a fused-name-1) "reassociate-left-answer")
+    (check-equal? (~a fused-name-2) "promote-left-answer")
     (check-equal? seq-mid
                   (term (Bounced ((⊤ ,sigma-a)
                                   <-+
@@ -572,22 +572,22 @@
       (for ([entry (in-list
                   (list
                    (list red:search-dfs-seq-red
-                         "search-dfs-seq/delay-through-left"
+                         "delay-through-left"
                          (term (delay (((succeed (label "late")) ,sigma-s)
                                        <-+
                                        (⊤ ,sigma-b)))))
                    (list red:search-dfs-fused-red
-                         "search-dfs-fused/delay-through-left"
+                         "delay-through-left"
                          (term (delay (((succeed (label "late")) ,sigma-s)
                                        <-+
                                        (⊤ ,sigma-b)))))
                    (list red:search-flip-seq-red
-                         "search-flip-seq/delay-swap-left"
+                         "delay-swap-left"
                          (term (delay ((⊤ ,sigma-b)
                                        <-+
                                        ((succeed (label "late")) ,sigma-s)))))
                    (list red:search-flip-fused-red
-                         "search-flip-fused/delay-swap-left"
+                         "delay-swap-left"
                          (term (delay ((⊤ ,sigma-b)
                                        <-+
                                        ((succeed (label "late")) ,sigma-s)))))))])
@@ -599,8 +599,8 @@
 
   (test-case "rail search-only branches enter the railroad from delayed left disjunction"
     (for ([entry (in-list
-                  (list (list red:rail-seq-red "rail-seq/enter-right")
-                        (list red:rail-fused-red "rail-fused/enter-right")))])
+                  (list (list red:rail-seq-red "enter-right")
+                        (list red:rail-fused-red "enter-right")))])
       (match-define (list rel expected-name) entry)
       (define-values (step-name next)
         (named-step (apply-reduction-relation/tag-with-names rel cfg-rail)))
@@ -617,19 +617,19 @@
        (apply-reduction-relation/tag-with-names
         red:rail-seq-red
         cfg-delayed-right-work)))
-    (check-equal? (~a enter-name) "rail-seq/enter-right")
+    (check-equal? (~a enter-name) "enter-right")
     (define-values (invoke-name invoke-next)
       (named-step
        (apply-reduction-relation/tag-with-names
         red:rail-seq-red
         enter-next)))
-    (check-equal? (~a invoke-name) "delay/invoke-delay")
+    (check-equal? (~a invoke-name) "invoke-delay")
     (define-values (resume-name resume-next)
       (named-step
        (apply-reduction-relation/tag-with-names
         red:rail-seq-red
         invoke-next)))
-    (check-equal? (~a resume-name) "core/unify-success")
+    (check-equal? (~a resume-name) "unify-success")
     (check-true (redex-match? lang:rail-lang cfg resume-next)))
 
   (test-case "rail promotes bare right-branch answers and forbids branch-internal +"
@@ -648,8 +648,8 @@
       lang:rail-lang
       cfg
       (term ((empty-tree) +-> ((⊤ ,sigma-b) + (empty-tree))))))
-    (check-equal? (~a seq-name) "rail-seq/promote-right-observable")
-    (check-equal? (~a fused-name) "rail-fused/promote-right-observable")
+    (check-equal? (~a seq-name) "promote-right-answer")
+    (check-equal? (~a fused-name) "promote-right-answer")
     (check-true (produced-answer-spine-only? seq-next))
     (check-true (produced-answer-spine-only? fused-next))
     (check-true (redex-match? lang:rail-lang cfg seq-next))
@@ -658,7 +658,7 @@
   (test-case "calls overlay expands relcalls once and still omits proceed"
     (define-values (step-name next)
       (named-step (apply-reduction-relation/tag-with-names red:calls-red cfg-call)))
-    (check-equal? (~a step-name) "calls/expand")
+    (check-equal? (~a step-name) "expand-relcall")
     (check-false (redex-match? lang:calls-lang cfg '(proceed (empty-tree))))
     (check-true (redex-match? lang:calls-lang config next)))
 
@@ -673,8 +673,8 @@
        (apply-reduction-relation/tag-with-names
         red:search-base-fused-calls-red
         cfg-call-branch)))
-    (check-equal? (~a seq-name) "search-base-seq-calls/expand")
-    (check-equal? (~a fused-name) "search-base-fused-calls/expand")
+    (check-equal? (~a seq-name) "expand-relcall")
+    (check-equal? (~a fused-name) "expand-relcall")
     (check-true (redex-match? lang:search-base-calls-lang config seq-next))
     (check-true (redex-match? lang:search-base-calls-lang config fused-next)))
 
@@ -714,7 +714,7 @@
             (Γ (in-hole QShell (in-hole KBranch (in-hole KLocal (g_new σ)))))
             (where g_new
                    ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-            "alt-search-dfs-seq-calls/expand"]))
+            "expand-relcall"]))
     (define alt-search-dfs-seq-calls-red
       (union-reduction-relations
        (context-closure
@@ -730,7 +730,7 @@
             (Γ (in-hole QShell (in-hole KLate (in-hole KLocal (g_new σ)))))
             (where g_new
                    ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-            "alt-rail-fused-calls/expand"]))
+            "expand-relcall"]))
     (define alt-rail-fused-calls-red
       (union-reduction-relations
        (context-closure

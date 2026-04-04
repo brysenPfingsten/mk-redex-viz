@@ -25,7 +25,7 @@
         (Γ (in-hole QShell (in-hole KBranch (in-hole KLocal (g_new σ)))))
         (where g_new
                ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-        "search-base-seq-calls/expand"]))
+        "expand-relcall"]))
 
 (define search-base-seq-calls-red
   (union-reduction-relations

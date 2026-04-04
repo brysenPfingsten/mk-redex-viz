@@ -18,7 +18,7 @@
           [--> (in-hole KBranch ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
                (in-hole KBranch
                         (delay ((in-hole QFresh runnable-search_1) <-+ search_2)))
-               "search-dfs-seq/delay-through-left"])])
+               "delay-through-left"])])
     (context-closure search-dfs-seq-extra/base search-base-lang QShell)))
 
 (define search-dfs-seq-red

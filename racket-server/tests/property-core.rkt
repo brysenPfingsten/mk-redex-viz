@@ -156,8 +156,8 @@
      (count-step-name rest
                       expected
                       (if (or (string=? step-name expected)
-                              (and (string=? expected "core/fresh-substitute")
-                                   (string-prefix? "core/fresh-substitute"
+                              (and (string=? expected "fresh-substitute")
+                                   (string-prefix? "fresh-substitute"
                                                    step-name)))
                           (add1 count)
                           count))]))
@@ -168,7 +168,7 @@
   (and (eq? status 'done)
       (config-c-scope-agreement? final-cfg)
        (config-exact-scope? final-cfg)
-       (<= (count-step-name steps "core/fresh-substitute")
+       (<= (count-step-name steps "fresh-substitute")
            (count-freshened final-cfg))))
 
 (define (freshened-accounting/exact? cfg)
@@ -177,7 +177,7 @@
   (and (eq? status 'done)
        (config-c-scope-agreement? final-cfg)
        (config-exact-scope? final-cfg)
-       (= (count-step-name steps "core/fresh-substitute")
+       (= (count-step-name steps "fresh-substitute")
           (count-freshened final-cfg))
        (zero? (count-bounced final-cfg))))
 

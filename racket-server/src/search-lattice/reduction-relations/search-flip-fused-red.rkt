@@ -18,7 +18,7 @@
           [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
                (in-hole KLate
                         (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
-               "search-flip-fused/delay-swap-left"])])
+               "delay-swap-left"])])
     (context-closure search-flip-fused-extra/base search-base-lang QShell)))
 
 (define search-flip-fused-red

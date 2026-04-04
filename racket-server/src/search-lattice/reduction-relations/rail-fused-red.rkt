@@ -21,22 +21,22 @@
    #:domain cfg
    [--> (in-hole QShell (in-hole KLate (search_left +-> ((promoted_i <-+ search_mid) <-+ search_right))))
         (in-hole QShell (promoted_i + (in-hole KLate (search_left +-> (search_mid <-+ search_right)))))
-        "rail-fused/bubble-right-left-answer"]
+        "bubble-right-left-answer"]
    [--> (in-hole QShell (in-hole KLate (search_left +-> (promoted_i <-+ search_right))))
         (in-hole QShell (promoted_i + (in-hole KLate (search_left +-> search_right))))
-        "rail-fused/promote-right-left-answer"]
+        "promote-right-left-answer"]
    [--> (in-hole QShell (in-hole KLate (search_left +-> (((in-hole QFresh (empty-tree)) <-+ search_mid) <-+ search_right))))
         (in-hole QShell (in-hole KLate (search_left +-> (search_mid <-+ search_right))))
-        "rail-fused/bubble-right-left-fail"]
+        "bubble-right-left-fail"]
    [--> (in-hole QShell (in-hole KLate (search_left +-> ((in-hole QFresh (empty-tree)) <-+ search_right))))
         (in-hole QShell (in-hole KLate (search_left +-> search_right)))
-        "rail-fused/skip-right-left-fail"]
+        "skip-right-left-fail"]
    [--> (in-hole QShell (in-hole KLate (search_left +-> promoted_i)))
         (in-hole QShell (promoted_i + (in-hole KLate search_left)))
-        "rail-fused/promote-right-observable"]
+        "promote-right-answer"]
    [--> (in-hole QShell (in-hole KLate (search_left +-> (in-hole QFresh (empty-tree)))))
         (in-hole QShell (in-hole KLate search_left))
-        "rail-fused/skip-right-fail"]))
+        "skip-right-fail"]))
 
 (define rail-fused-local/under-QShell
   (let ([rail-fused-local/base
@@ -46,11 +46,11 @@
           [--> (in-hole KLate ((in-hole QFresh (delay runnable-search_1)) <-+ search_2))
                (in-hole KLate
                         (delay ((in-hole QFresh runnable-search_1) +-> search_2)))
-               "rail-fused/enter-right"]
+               "enter-right"]
           [--> (in-hole KLate (search_2 +-> (in-hole QFresh (delay runnable-search_1))))
                (in-hole KLate
                         (delay (search_2 <-+ (in-hole QFresh runnable-search_1))))
-               "rail-fused/return-left"])])
+               "return-left"])])
     (context-closure rail-fused-local/base rail-lang QShell)))
 
 (define rail-fused-red

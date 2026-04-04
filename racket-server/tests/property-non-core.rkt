@@ -57,8 +57,8 @@
      (count-step-name rest
                       expected
                       (if (or (string=? step-name expected)
-                              (and (string=? expected "core/fresh-substitute")
-                                   (string-prefix? "core/fresh-substitute"
+                              (and (string=? expected "fresh-substitute")
+                                   (string-prefix? "fresh-substitute"
                                                    step-name)))
                           (add1 count)
                           count))]))
@@ -324,12 +324,12 @@
                           label
                           final-cfg))
       (check-equal? (count-freshened final-cfg)
-                    (count-step-name steps "core/fresh-substitute")
+                    (count-step-name steps "fresh-substitute")
                     (format "~a / ~a freshened accounting drifted"
                             (strategy-label strategy)
                             label))
       (check-equal? (count-bounced final-cfg)
-                    (count-step-name steps "delay/invoke-delay")
+                    (count-step-name steps "invoke-delay")
                     (format "~a / ~a bounced accounting drifted"
                             (strategy-label strategy)
                             label)))))

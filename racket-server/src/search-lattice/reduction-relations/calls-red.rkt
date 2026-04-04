@@ -26,7 +26,7 @@
         (Γ (in-hole QShell (in-hole KLocal (g_new σ))))
         (where g_new
                ,(instantiate-call-host (term Γ) (term r) (term (t ...))))
-        "calls/expand"]))
+        "expand-relcall"]))
 
 (define calls-red
   (union-reduction-relations

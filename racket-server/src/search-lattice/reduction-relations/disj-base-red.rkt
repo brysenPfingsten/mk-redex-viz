@@ -21,7 +21,7 @@
    #:domain cfg
    [--> (in-hole KLocal ((g_1 ∨ g_2 tag) σ))
         (in-hole KLocal ((g_1 σ) <-+ (g_2 σ)))
-        "disj/goal-to-tree"]))
+        "expand-disjunction"]))
 
 (define disj-frontier/base
   (let ([disj-frontier/local-base
@@ -31,17 +31,17 @@
            [--> (in-hole QFresh_1 (((in-hole QFresh_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
                  (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ (search_mid <-+ search_right))))
-                "disj/reassociate-left-answer"]
+                "reassociate-left-answer"]
            [--> (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix
                  (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) + search_right)))
-                "disj/promote-left-answer"]
+                "promote-left-answer"]
            [--> (in-hole QFresh_1 (((in-hole QFresh_2 (empty-tree)) <-+ search_mid) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 (search_mid <-+ search_right)))
-                "disj/erase-left-fail"]
+                "erase-left-fail"]
            [--> (in-hole QFresh_1 ((in-hole QFresh_2 (empty-tree)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 search_right))
-                "disj/skip-left-fail"])])
+                "skip-left-fail"])])
     (context-closure disj-frontier/local-base disj-lang QShell)))
 
 (define disj-local/base

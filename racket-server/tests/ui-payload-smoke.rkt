@@ -109,10 +109,10 @@
   (define steps (collect-step-summaries ses1 24))
   (hasheq 'sawSuspendGoal
           (for/or ([entry (in-list steps)])
-            (equal? (hash-ref entry 'stepName) "delay/suspend-goal"))
+            (equal? (hash-ref entry 'stepName) "suspend-goal"))
           'sawExpand
           (for/or ([entry (in-list steps)])
-            (equal? (hash-ref entry 'stepName) "search-base-seq-calls/expand"))
+            (equal? (hash-ref entry 'stepName) "expand-relcall"))
           'sampleSteps steps))
 
 (define report

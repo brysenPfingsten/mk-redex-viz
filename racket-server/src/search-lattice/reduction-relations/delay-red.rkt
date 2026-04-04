@@ -22,10 +22,10 @@
    #:domain search
    [--> ((suspend g tag) σ)
         (delay (g σ))
-        "delay/suspend-goal"]
+        "suspend-goal"]
    [--> ((in-hole QFresh (delay runnable-search_1)) × g c)
         (delay ((in-hole QFresh runnable-search_1) × g c))
-        "delay/delay-through-conj"]))
+        "delay-through-conj"]))
 
 (define delay-frontier/delta
   (reduction-relation
@@ -35,7 +35,7 @@
         (in-hole QShell
                  (fresh-tree-prefix->shell-prefix
                    (in-hole QFresh (Bounced runnable-search_i))))
-        "delay/invoke-delay"]))
+        "invoke-delay"]))
 
 (define delay-local/base
   (union-reduction-relations

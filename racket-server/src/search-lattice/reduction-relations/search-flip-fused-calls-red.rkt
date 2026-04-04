@@ -23,7 +23,7 @@
                                (delay (search_2
                                        <-+
                                        (in-hole QFresh runnable-search_1))))))
-        "search-flip-fused-calls/delay-swap-left"]))
+        "delay-swap-left"]))
 
 (define search-flip-fused-calls-red
   (union-reduction-relations
