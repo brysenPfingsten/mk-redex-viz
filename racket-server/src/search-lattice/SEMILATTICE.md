@@ -146,7 +146,7 @@ cfg ::= search
       | promoted + cfg
 
 promoted ::= cell
-           | FreshenedShell(c, promoted)
+           | FreshenedTree(c, promoted)
 ```
 
 Operationally, a reduction focuses on the same no-freshening skeleton as
@@ -167,20 +167,23 @@ There are only three cases:
      `(FreshenedTree*(⊤ σ) × g) -> FreshenedTree*(g σ)`
 
 3. Reclassify
-   - crossing from unfinished tree into committed shell converts a pure
-     `FreshenedTree*` prefix into `FreshenedShell*`
+   - crossing from unfinished tree into committed shell converts the
+     enclosing frontier prefix into `FreshenedShell*`
    - examples:
      - final tail:
        `FreshenedTree* atom -> FreshenedShell* atom`
      - delay commit:
        `FreshenedTree*(delay work) -> FreshenedShell*(Bounced work)`
      - disjunction promotion:
-       `FreshenedTree* cell -> FreshenedShell* cell` inside `promoted`
+       outer frontier scope shellifies, but the promoted payload stays
+       `FreshenedTree* cell` on the left of `+`
 
 This is why two freshening roles are enough:
 
-- `FreshenedTree` marks scope still attached to unfinished search
-- `FreshenedShell` marks scope already committed into shell structure
+- `FreshenedTree` marks scope attached to tree-side payloads, including
+  promoted payloads on the left of `+`
+- `FreshenedShell` marks scope attached to the enclosing shell/frontier
+  structure
 
 The important correction is that every recursive search child position is
 itself a full `search` position. So freshened tree prefixes can reappear at
@@ -227,7 +230,7 @@ L2 answer promotion:
 
 ```text
 FreshenedTree(c1, ⊤σ) <-+ right
--> FreshenedShell(c1, ⊤σ) + right
+-> FreshenedTree(c1, ⊤σ) + right
 ```
 
 The policy split does not change those prefix actions. Seq and fused differ
@@ -403,8 +406,9 @@ Reuse rule:
 
 Important L0 boundary:
 
-- `FreshenedTree` is still part of unfinished search
-- `FreshenedShell` is already part of the outer committed shell
+- `FreshenedTree` marks tree-side payload scope, even when a promoted answer
+  has already moved onto the left of `+`
+- `FreshenedShell` marks enclosing committed shell/frontier scope
 - L0 owns only the final tree-to-shell lift for terminal tails
 
 ### L1 delay
@@ -431,9 +435,9 @@ Delay-specific shell commitment:
 
 Neutral disjunction commitment:
 
-- promoted answers are `FreshenedShell*` only
-- disjunction frontier rules can commit a pure `FreshenedTree*` prefix into
-  shell at the point where an answer is reassociated, promoted, or erased
+- promoted answers keep `FreshenedTree*` payloads on the left of `+`
+- disjunction frontier rules can still commit the enclosing frontier prefix
+  into shell at the point where an answer is reassociated, promoted, or erased
 
 ### L2 seq
 

@@ -85,8 +85,10 @@ Current recommendation:
 
 Reason:
 
-- `FreshenedTree` marks scope wrapped around a search/tree object
-- `FreshenedShell` marks scope wrapped around a frontier/shell object
+- `FreshenedTree` marks scope wrapped around tree-side payloads, including
+  promoted payloads on the left of `+`
+- `FreshenedShell` marks scope wrapped around enclosing frontier/shell
+  structure
 
 That distinction is mathematically useful in the machine derivation because it
 records exactly which layer owns the scope wrapper. But the current visible

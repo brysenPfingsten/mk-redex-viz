@@ -107,9 +107,9 @@
   [(lvars-fresh-extension? c_1 c)
    (where c_2 (c-append c_1 c))
    (wf-summary-promoted/disj? promoted_tail c_2 summary_1)
-   (where summary_2 (summary-add-shell summary_1))
-   ------------------- "promoted shell-freshened scope wf/disj"
-   (wf-summary-promoted/disj? (FreshenedShell c_1 promoted_tail tag_1) c summary_2)])
+   (where summary_2 (summary-add-tree summary_1))
+   ------------------- "promoted tree-freshened scope wf/disj"
+   (wf-summary-promoted/disj? (FreshenedTree c_1 promoted_tail tag_1) c summary_2)])
 
 (define-judgment-form
   disj-lang

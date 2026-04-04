@@ -398,7 +398,7 @@
     (check-true (redex-match? lang:search-base-lang cfg seq-next))
     (check-true (redex-match? lang:search-base-lang cfg fused-next)))
 
-  (test-case "neutral disjunction shellifies promoted answers and skipped fails"
+  (test-case "neutral disjunction keeps promoted answers tree-freshened and shellifies skipped fails"
     (define fresh-answer
       (term ((FreshenedTree (u:0)
                             (⊤ ,sigma-a)
@@ -422,11 +422,25 @@
     (check-equal? (~a answer-name) "disj/promote-left-answer")
     (check-equal? (~a fail-name) "disj/skip-left-fail")
     (check-equal? answer-next
-                  (term ((FreshenedShell (u:0)
-                                         (⊤ ,sigma-a)
-                                         (label "fresh-answer"))
+                  (term ((FreshenedTree (u:0)
+                                        (⊤ ,sigma-a)
+                                        (label "fresh-answer"))
                          +
                          (empty-tree))))
+    (define sigma-u0
+      (term (state () () (u:0) () (label "fresh-state"))))
+    (check-equal?
+     (first
+      (judgment-holds
+       (wf:wf-summary-cfg/disj?
+        ,(term ((FreshenedTree (u:0)
+                               (⊤ ,sigma-u0)
+                               (label "fresh-answer"))
+                +
+                (empty-tree)))
+        summary)
+       summary))
+     '(wf-summary 1 0 1 0))
     (check-equal? fail-next
                   (term (FreshenedShell (u:0)
                                         (⊤ ,sigma-b)

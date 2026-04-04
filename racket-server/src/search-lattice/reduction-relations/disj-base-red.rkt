@@ -40,25 +40,15 @@
    #:domain cfg
    [--> (in-hole QFresh_1 (((in-hole QFresh_2 (⊤ σ)) <-+ search_mid) <-+ search_right))
         (fresh-tree-prefix->shell-prefix
-         (in-hole QFresh_1
-                  ((in-hole QFresh_2 (⊤ σ))
-                   <-+
-                   (search_mid <-+ search_right))))
+         (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ (search_mid <-+ search_right))))
         "disj/reassociate-left-answer"]
    [--> (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) <-+ search_right))
         (fresh-tree-prefix->shell-prefix
-         (in-hole QFresh_1
-                  ((fresh-tree-prefix->shell-prefix
-                    (in-hole QFresh_2 (⊤ σ)))
-                   +
-                   search_right)))
+         (in-hole QFresh_1 ((in-hole QFresh_2 (⊤ σ)) + search_right)))
         "disj/promote-left-answer"]
    [--> (in-hole QFresh_1 (((in-hole QFresh_2 (empty-tree)) <-+ search_mid) <-+ search_right))
-        (fresh-tree-prefix->shell-prefix
-         (in-hole QFresh_1
-                  (search_mid <-+ search_right)))
+        (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 (search_mid <-+ search_right)))
         "disj/erase-left-fail"]
    [--> (in-hole QFresh_1 ((in-hole QFresh_2 (empty-tree)) <-+ search_right))
-        (fresh-tree-prefix->shell-prefix
-         (in-hole QFresh_1 search_right))
+        (fresh-tree-prefix->shell-prefix (in-hole QFresh_1 search_right))
         "disj/skip-left-fail"]))

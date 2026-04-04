@@ -10,12 +10,14 @@
 ;; Neutral disjunction syntax with no hoist policy baked into contexts.
 (define-extended-language disj-lang core-lang
   [promoted cell
-            (FreshenedShell c promoted tag)]
+            (FreshenedTree c promoted tag)]
   [g ....
      (g ∨ g tag)]
   [cfg ....
        (promoted + cfg)]
   ;; First committed shell context on the disjunction branch.
+  ;; The `+` spine marks commitment; promoted payloads themselves remain
+  ;; tree-freshened, not shell-freshened.
   ;; First divergent layer: L2/disj.
   ;; Allowed extension direction: add shell constructors only.
   [QShell ::= hole
