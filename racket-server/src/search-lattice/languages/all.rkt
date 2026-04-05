@@ -1,24 +1,24 @@
 #lang racket
 
 (require "./core-lang.rkt"
-         "./calls-lang.rkt"
+         "./relcall-lang.rkt"
          "./delay-lang.rkt"
          "./disj-lang.rkt"
-         "./search-base-lang.rkt"
-         "./search-base-calls-lang.rkt"
+         "./search-lang.rkt"
+         "./search-relcall-lang.rkt"
          "./rail-lang.rkt"
-         "./rail-calls-lang.rkt")
+         "./rail-relcall-lang.rkt")
 
 (provide
  ;; Surfaced call-bearing languages.
- (all-from-out "./calls-lang.rkt")
- (all-from-out "./search-base-calls-lang.rkt")
- (all-from-out "./rail-calls-lang.rkt")
+ (all-from-out "./relcall-lang.rkt")
+ (all-from-out "./search-relcall-lang.rkt")
+ (all-from-out "./rail-relcall-lang.rkt")
 
  ;; Internal lattice languages that remain useful for tests and staged reducers.
  (all-from-out "./core-lang.rkt")
  (all-from-out "./delay-lang.rkt")
  (all-from-out "./disj-lang.rkt")
- (all-from-out "./search-base-lang.rkt")
+ (all-from-out "./search-lang.rkt")
  (all-from-out "./rail-lang.rkt")
  )

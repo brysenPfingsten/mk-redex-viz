@@ -4,10 +4,10 @@
          redex/reduction-semantics
          "../src/sexpr-read.rkt"
          "../src/transpiler.rkt"
-         (only-in "../src/search-lattice/reduction-relations/search-base-seq-red.rkt"
-                  search-base-seq-red)
-         (only-in "../src/search-lattice/reduction-relations/search-dfs-seq-red.rkt"
-                  search-dfs-seq-red))
+         (only-in "../src/search-lattice/reduction-relations/search-early-red.rkt"
+                  search-early-red)
+         (only-in "../src/search-lattice/reduction-relations/search-dfs-early-red.rkt"
+                  search-dfs-early-red))
 
 (provide branch-fresh-program
          shared-fresh-program
@@ -16,8 +16,8 @@
 
 ;; For the GUI Redex stepper in DrRacket, evaluate one of:
 ;;   (require redex)
-;;   (traces search-dfs-seq-red (parse-witness branch-fresh-program))
-;;   (traces search-dfs-seq-red (parse-witness shared-fresh-program))
+;;   (traces search-dfs-early-red (parse-witness branch-fresh-program))
+;;   (traces search-dfs-early-red (parse-witness shared-fresh-program))
 ;;
 ;; The shell here is headless, so this file only compiles/prints terminal traces.
 
@@ -45,7 +45,7 @@
     (parse-prog/canonical (read-all-sexprs (open-input-string src))))
   cfg)
 
-(define (print-trace src [step-rel search-dfs-seq-red] [limit 24])
+(define (print-trace src [step-rel search-dfs-early-red] [limit 24])
   (define (loop cfg i)
     (printf "CFG ~a:\n~s\n" i cfg)
     (match (apply-reduction-relation/tag-with-names step-rel cfg)
@@ -66,9 +66,9 @@
   (match choice
     ['shared
      (displayln "Printing shared-fresh witness trace.")
-     (displayln "In DrRacket, run `(traces search-dfs-seq-red (parse-witness shared-fresh-program))`.")
+     (displayln "In DrRacket, run `(traces search-dfs-early-red (parse-witness shared-fresh-program))`.")
      (print-trace shared-fresh-program)]
     ['branch
      (displayln "Printing branch-local fresh witness trace.")
-     (displayln "In DrRacket, run `(traces search-dfs-seq-red (parse-witness branch-fresh-program))`.")
+     (displayln "In DrRacket, run `(traces search-dfs-early-red (parse-witness branch-fresh-program))`.")
      (print-trace branch-fresh-program)]))

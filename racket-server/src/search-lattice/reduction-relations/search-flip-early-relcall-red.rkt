@@ -1,28 +1,27 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/search-base-calls-lang.rkt"
-         (only-in "./search-flip-seq-red.rkt"
+         "../languages/search-relcall-lang.rkt"
+         (only-in "./search-flip-early-red.rkt"
                   search-flip-early-extra)
-         "./search-base-seq-calls-red.rkt"
+         "./search-early-relcall-red.rkt"
          "./private/context-pipeline.rkt"
          "./private/step-utils.rkt"
          )
 
-(provide search-flip-early-relcall-extra
-         search-flip-early-relcall-red
+(provide search-flip-early-relcall-red
          step-once)
 
 (check-redundancy #t)
 
-(define-lift-search-to-relcall search-flip-early-relcall-extra
+(define-lift-search-to-relcall under-Gamma
   (extend-reduction-relation search-flip-early-extra search-relcall-lang)
   search-relcall-lang)
 
 (define search-flip-early-relcall-red
   (union-reduction-relations
    search-early-relcall-red
-   search-flip-early-relcall-extra))
+   under-Gamma))
 
 (define (step-once prog)
   (step-once/deterministic search-flip-early-relcall-red prog))

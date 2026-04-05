@@ -1,28 +1,27 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/search-base-calls-lang.rkt"
-         (only-in "./search-dfs-seq-red.rkt"
+         "../languages/search-relcall-lang.rkt"
+         (only-in "./search-dfs-early-red.rkt"
                   search-dfs-early-extra)
-         "./search-base-seq-calls-red.rkt"
+         "./search-early-relcall-red.rkt"
          "./private/context-pipeline.rkt"
          "./private/step-utils.rkt"
          )
 
-(provide search-dfs-early-relcall-extra
-         search-dfs-early-relcall-red
+(provide search-dfs-early-relcall-red
          step-once)
 
 (check-redundancy #t)
 
-(define-lift-search-to-relcall search-dfs-early-relcall-extra
+(define-lift-search-to-relcall under-Gamma
   (extend-reduction-relation search-dfs-early-extra search-relcall-lang)
   search-relcall-lang)
 
 (define search-dfs-early-relcall-red
   (union-reduction-relations
    search-early-relcall-red
-   search-dfs-early-relcall-extra))
+   under-Gamma))
 
 (define (step-once prog)
   (step-once/deterministic search-dfs-early-relcall-red prog))

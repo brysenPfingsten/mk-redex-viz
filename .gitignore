@@ -5,3 +5,4 @@ compiled/
 *.rkt~
 *.app
 /papers
+docs/reducer-graphs/

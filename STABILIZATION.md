@@ -64,22 +64,22 @@ During stabilization:
   `racket-server/tests/search-lattice-tests.rkt`,
   `racket-server/tests/stabilization-gates-tests.rkt`.
   Lock evidence:
-  L0 now distinguishes `FreshenedTree` from `FreshenedShell`, `QFresh` owns the
-  pure `FreshenedTree*` handoff role, `KLocal` is factored as nested
-  conjunction layers over a `QFresh` bottom, and `core-red` owns the one final
+  L0 now distinguishes `ScopedTree` from `ScopedShell`, `FreshCtx` owns the
+  pure `ScopedTree*` handoff role, `LocalCtx` is factored as nested
+  conjunction layers over a `FreshCtx` bottom, and `core-red` owns the one final
   tree-to-shell lift for terminal tails.
   Phase note:
-  `QFresh` is now the shared pure-prefix helper for scoped phase heads
+  `FreshCtx` is now the shared pure-prefix helper for scoped phase heads
   `(delay runnable-search)`, `(⊤ σ)`, and `(empty-tree)`, not just the L0
   conjunction-handoff witness.
   Empty-frame note:
   empty fresh frames are real runtime frames in the scoped semantics.
-  `fresh ()` now steps to `FreshenedTree () ...`, shellification preserves that
-  empty frame as `FreshenedShell () ...`, and the old
+  `fresh ()` now steps to `ScopedTree () ...`, shellification preserves that
+  empty frame as `ScopedShell () ...`, and the old
   `core/elide-empty-fresh` / `core/prune-empty-scope` story is retired.
   Lean-core note:
   core owns only the shell/tree role split and the local-work factoring it
-  actually uses: `QShell`, `QFresh`, `KConj`, and `KLocal`.
+  actually uses: `ShellCtx`, `FreshCtx`, `ConjCtx`, and `LocalCtx`.
 
 - L1/delay runtime and wf layer:
   `delay-lang`, `delay-red`, `delay-wf`, and the focused L1 gate corpus in
@@ -89,68 +89,68 @@ During stabilization:
   `racket-server/src/search-lattice/reduction-relations/delay-red.rkt`,
   `racket-server/src/search-lattice/wf/delay-wf.rkt`.
   Lock evidence:
-  nested-delay traces lock end-to-end, `Bounced` is introduced only at the
-  delay frontier, and `delay/invoke-delay` is now the explicit L1 rule that
-  turns a pure `FreshenedTree*` prefix around `delay` into a `FreshenedShell*`
-  prefix around `Bounced`.
+  nested-delay traces lock end-to-end, `Deferred` is introduced only at the
+  delay frontier, and `invoke-delay` is now the explicit L1 rule that
+  turns a pure `ScopedTree*` prefix around `delay` into a `ScopedShell*`
+  prefix around `Deferred`.
   Architecture note:
-  `QShell` here is the committed shell path for `FreshenedShell` and
-  `Bounced`.
+  `ShellCtx` here is the committed shell path for `ScopedShell` and
+  `Deferred`.
   Grammar note:
   the real exclusion target for uninvoked `delay` is top-level already
   resolved search roots such as `(⊤ σ)`, `(empty-tree)`, and their
-  shell/tree-freshened forms. `Bounced` and `(promoted + cfg)` are not the
+  shell/tree-freshened forms. `Deferred` and `(answers + cfg)` are not the
   reason for the restriction; those are already `cfg`-only and not members of
   `search`.
   The active lower-lattice decomposition now reflects that directly:
-  `search` carries unfinished `FreshenedTree` wrappers, `cfg` carries committed
-  `FreshenedShell` wrappers, and `delay` remains a `search` form that wraps
+  `search` carries unfinished `ScopedTree` wrappers, `cfg` carries committed
+  `ScopedShell` wrappers, and `delay` remains a `search` form that wraps
   only `runnable-search`.
 
 - L2/shared disjunction runtime and wf layer:
-  `disj-lang`, `disj-base-red`, `disj-seq-red`, `disj-fused-red`,
+  `disj-lang`, `disj-base-red`, `disj-early-red`, `disj-late-red`,
   `disj-wf`, and the focused L2 gate corpus in
   `racket-server/tests/stabilization-gates-tests.rkt`.
   Current touched-file inventory:
   `racket-server/src/search-lattice/languages/disj-lang.rkt`,
   `racket-server/src/search-lattice/reduction-relations/disj-base-red.rkt`,
-  `racket-server/src/search-lattice/reduction-relations/disj-seq-red.rkt`,
-  `racket-server/src/search-lattice/reduction-relations/disj-fused-red.rkt`,
+  `racket-server/src/search-lattice/reduction-relations/disj-early-red.rkt`,
+  `racket-server/src/search-lattice/reduction-relations/disj-late-red.rkt`,
   `racket-server/src/search-lattice/wf/disj-wf.rkt`.
   Lock evidence:
-  seq/fused differ only in their policy steps, shared-fresh and branch-local
-  traces both complete, promoted left answers bubble to the spine in two steps,
+  early/late differ only in their policy steps, shared-fresh and branch-local
+  traces both complete, left answers bubble to the spine in two steps,
   failures erase locally, and the shared L2 context grammar now carries both
-  `KBranch` and `KLate`, with the seq/fused split living in the reducers.
+  `BranchCtx` and `LateCtx`, with the early/late split living in the reducers.
   Architecture note:
   neutral L2 owns the shared branch zipper plus the committed-answer shell, and
   the disjunction frontier rules are now the layer-specific place where a pure
-  `FreshenedTree*` prefix is committed into `FreshenedShell*`.
+  `ScopedTree*` prefix is committed into `ScopedShell*`.
 
-- L3/search-base runtime and wf layer:
-  `search-base-lang`, `search-base-pre-red`,
-  `search-base-seq-red`, `search-base-fused-red`,
-  `search-base-wf`, and the focused L3 gate corpus in
+- L3/search runtime and wf layer:
+  `search-lang`, `search-pre-red`,
+  `search-early-red`, `search-late-red`,
+  `search-wf`, and the focused L3 gate corpus in
   `racket-server/tests/stabilization-gates-tests.rkt`.
   Current touched-file inventory:
-  `racket-server/src/search-lattice/languages/search-base-lang.rkt`,
-  `racket-server/src/search-lattice/reduction-relations/search-base-pre-red.rkt`,
-  `racket-server/src/search-lattice/reduction-relations/search-base-seq-red.rkt`,
-  `racket-server/src/search-lattice/reduction-relations/search-base-fused-red.rkt`,
-  `racket-server/src/search-lattice/wf/search-base-wf.rkt`.
+  `racket-server/src/search-lattice/languages/search-lang.rkt`,
+  `racket-server/src/search-lattice/reduction-relations/search-pre-red.rkt`,
+  `racket-server/src/search-lattice/reduction-relations/search-early-red.rkt`,
+  `racket-server/src/search-lattice/reduction-relations/search-late-red.rkt`,
+  `racket-server/src/search-lattice/wf/search-wf.rkt`.
   Lock evidence:
-  seq/fused share one L3 language, plain L2 reassociation/consumption lifts
+  early/late share one L3 language, plain L2 reassociation/consumption lifts
   unchanged into L3, the delay/disjunction shell-commit rules lift cleanly into
-  the join, and the search-base reducers keep the same seq/fused policy split
+  the join, and the search reducers keep the same early/late policy split
   without reintroducing a generic shellification rule.
 
 ## Provisional
 
-- Reopened calls/runtime overlays:
-  `calls-lang`, `calls-red`,
-  `search-base-calls-lang`,
-  `search-base-*-calls-red`,
-  `calls-wf`, `search-base-calls-wf`.
+- Reopened relcall/runtime overlays:
+  `relcall-lang`, `relcall-red`,
+  `search-relcall-lang`,
+  `search-*-relcall-red`,
+  `relcall-wf`, `search-relcall-wf`.
   Current status in the rebuild branch:
   active in `all.rkt`, `search-runtime.rkt`, `search-lattice-tests.rkt`, and
   `test-all-headless.rkt`, but still provisional pending broader app-facing
@@ -159,10 +159,10 @@ During stabilization:
 - Reopened search-strategy/rail overlays:
   `search-dfs-*`,
   `search-flip-*`,
-  `rail-lang`, `rail-calls-lang`,
-  `rail-seq-red`, `rail-fused-red`,
-  `rail-seq-calls-red`, `rail-fused-calls-red`,
-  `rail-wf`, `rail-calls-wf`.
+  `rail-lang`, `rail-relcall-lang`,
+  `rail-early-red`, `rail-late-red`,
+  `rail-early-relcall-red`, `rail-late-relcall-red`,
+  `rail-wf`, `rail-relcall-wf`.
   Current status in the rebuild branch:
   active in `all.rkt`, the overlap audit, `search-runtime.rkt`, and
   `test-all-headless.rkt`, but still provisional pending downstream UI-facing
@@ -180,13 +180,13 @@ During stabilization:
 - `JBH-refactor-notes.txt` as an active spec. It is no longer authoritative.
 
 - Delay/disjunction wf under-acceptance immediately after
-  `FreshenedTree`-wrapped search steps.
+  `ScopedTree`-wrapped search steps.
   The lower reopened surface is fixed, but downstream layers still need the
   same audit whenever they introduce new `search` subforms.
 
 - Host-side bubble/hoist helper logic in
   `racket-server/src/search-lattice/reduction-relations/private/common.rkt`.
-  Search-base no longer depends on these helpers, but some reopened overlay
+  Search no longer depends on these helpers, but some reopened overlay
   layers still depend on other host-side helper logic there.
 
 - Host-side scope/accounting helpers in
@@ -201,49 +201,49 @@ During stabilization:
 
 - Possible shared post-L0 shell ancestor:
   if we later want a structural cleanup only, introduce a tiny common ancestor
-  above `core` that defines only the outer `FreshenedShell*` shell
+  above `core` that defines only the outer `ScopedShell*` shell
   ```
-  [QShell ::= hole
-              (FreshenedShell c QShell tag)]
+  [ShellCtx ::= hole
+                (ScopedShell c ShellCtx tag)]
   ```
-  then let `delay` extend it with `Bounced` and neutral `disj` extend it with
-  `(promoted + ...)`. This is currently treated as code-shape cleanup, not as a
+  then let `delay` extend it with `Deferred` and neutral `disj` extend it with
+  `(answers + ...)`. This is currently treated as code-shape cleanup, not as a
   semantic restructuring.
 
 ## Policy Model
 
 - The no-freshening policy model is now fixed:
-  - one shared search-tree runtime grammar for seq and fused
-  - one shared context grammar for seq and fused
-  - incremental eager hoist for seq
-  - late hoist for fused
-  - the policy difference lives in the reduction layer, not in seq-specific
-    runtime constructors or seq/fused context-language splits
+  - one shared search-tree runtime grammar for early and late
+  - one shared context grammar for early and late
+  - incremental eager hoist for early
+  - late hoist for late
+  - the policy difference lives in the reduction layer, not in early-specific
+    runtime constructors or early/late context-language splits
 
 - Consequence:
   some search-tree shapes are grammatical in the shared runtime language but
-  unreachable under the seq policy. This is intentional. The distinguishing
-  seq property is a reachability invariant, not a separate syntax class.
+  unreachable under the early policy. This is intentional. The distinguishing
+  early property is a reachability invariant, not a separate syntax class.
 
-- Seq invariant:
+- Early invariant:
   once an exposed `((alpha <-+ beta) × gamma)` appears on the active path, the
-  next seq step must be the hoist. Seq may not make progress inside `alpha`
+  next early step must be the hoist. Early may not make progress inside `alpha`
   first.
 
-- Fused invariant:
-  fused may keep descending on the active left path through both `<-+` and `×`;
-  only once the left branch resolves does fused continue or erase at that
+- Late invariant:
+  late may keep descending on the active left path through both `<-+` and `×`;
+  only once the left branch resolves does late continue or erase at that
   boundary.
 
 - Practical outcome:
-  the shared helper grammar carries both `KBranch` and `KLate`, the reducers
-  supply the seq/fused difference, and we are intentionally not adding either a
-  separate seq-only pending-hoist runtime constructor or seq/fused context
+  the shared helper grammar carries both `BranchCtx` and `LateCtx`, the reducers
+  supply the early/late difference, and we are intentionally not adding either a
+  separate early-only pending-hoist runtime constructor or early/late context
   languages.
 
 - Rejected alternative:
   a `HoistPending`-style boundary constructor in the runtime syntax. That would
-  make the seq/fused distinction easier to encode syntactically, but at the
+  make the early/late distinction easier to encode syntactically, but at the
   cost of adding machinery to both policies and weakening the additive lattice
   story.
 
@@ -254,58 +254,57 @@ During stabilization:
 
 - Operationally, every focused step does one of three things with the immediate
   scope prefix:
-  - preserve `FreshenedTree*` for ordinary unfinished local work
-  - carry `FreshenedTree*` across L0 conjunction handoff
-  - reclassify `FreshenedTree*` to `FreshenedShell*` at shell-commit points
+  - preserve `ScopedTree*` for ordinary unfinished local work
+  - carry `ScopedTree*` across L0 conjunction handoff
+  - reclassify `ScopedTree*` to `ScopedShell*` at shell-commit points
 
 - The shell-commit points remain layer-local:
   - L0 final-tail completion
-  - L1 `delay -> Bounced`
+  - L1 `delay -> Deferred`
   - L2 disjunction reassociation/promotion/erasure
 
-- Seq versus fused changes only where the active redex is found. It does not
+- Early versus late changes only where the active redex is found. It does not
   change the preserve/carry/reclassify story for scope prefixes.
 
-## Frozen Renames
+## Locked Names
 
-- `QFresh`
-- `KBranch`
-- `KLate`
+- `FreshCtx`
+- `BranchCtx`
+- `LateCtx`
 - `wf-answer/core?`
-- `calls-lang` should be renamed to `delay-calls-lang` when the calls overlay
-  is reopened; the current name is historically inherited and semantically
-  misleading because it already includes the delay layer
-- language-provenance rule-name prefixes such as `core/...` and `delay/...`
+- `relcall-lang`
+- raw user-facing rule names such as `expand-relcall`, `invoke-delay`,
+  `distribute-over-conj`, and `reassociate-left-result`
 
 No rename rollback is allowed during stabilization unless the name itself
 causes a correctness bug or import failure.
 
 ## Lower-Layer Analysis
 
-- Inherent after the `QFresh` split:
-  `search`, `runnable-search`, `runnable-root`, `FreshenedTree`,
-  `FreshenedShell`, `QFresh`, `QShell`, `KLocal`, `promoted`, `cfg`,
-  `KBranch`, and `KLate`.
-- Why `QFresh` is separate:
-  it is the pure `FreshenedTree*` helper used by core scoped conjunction
-  handoff, by the scoped delay/answer/fail phase rules, and by fused answer
+- Inherent after the `FreshCtx` split:
+  `search`, `runnable-search`, `runnable-root`, `ScopedTree`,
+  `ScopedShell`, `FreshCtx`, `ShellCtx`, `LocalCtx`, `answers`, `cfg`,
+  `BranchCtx`, and `LateCtx`.
+- Why `FreshCtx` is separate:
+  it is the pure `ScopedTree*` helper used by core scoped conjunction
+  handoff, by the scoped delay/answer/fail phase rules, and by late answer
   continuation.
 - Why empty fresh frames remain:
   the scoped semantics is refining source fresh-frame structure, not only
-  non-empty lvar introduction. So `FreshenedTree ()` is meaningful and should
+  non-empty lvar introduction. So `ScopedTree ()` is meaningful and should
   erase away, not be pruned by an extra administrative step.
-- Why `QShell` is separate:
-  it is the committed shell path over `FreshenedShell`, then extended by
-  `Bounced` at L1 and `(promoted + ...)` at L2.
-- Why `KBranch` remains necessary:
-  it isolates the exposed left-branch boundary used by the seq hoist rule from
-  inner local work. The witness is `((((a ∧ b) σ) <-+ (d σ)) × h c)`: seq must
+- Why `ShellCtx` is separate:
+  it is the committed shell path over `ScopedShell`, then extended by
+  `Deferred` at L1 and `(answers + ...)` at L2.
+- Why `BranchCtx` remains necessary:
+  it isolates the exposed left-branch boundary used by the early hoist rule from
+  inner local work. The witness is `((((a ∧ b) σ) <-+ (d σ)) × h c)`: early must
   stop at that exposed boundary and hoist, rather than descending into
   `((a ∧ b) σ)` first.
-- Why `KLate` remains necessary:
-  it is part of the shared helper grammar, but only fused uses its extra
-  descent power through `×`; seq’s restriction still lives in the reducer.
-  On the same witness `((((a ∧ b) σ) <-+ (d σ)) × h c)`, fused may continue
+- Why `LateCtx` remains necessary:
+  it is part of the shared helper grammar, but only late uses its extra
+  descent power through `×`; early’s restriction still lives in the reducer.
+  On the same witness `((((a ∧ b) σ) <-+ (d σ)) × h c)`, late may continue
   into `((a ∧ b) σ)` before the hoist boundary is discharged.
 - Early vs late hoist remains an operational distinction, not an intended
   observable-answer distinction.
@@ -320,4 +319,3 @@ What about the `every-disj`---that doesn't seem disjoint with the others. They s
 "conde, fresh, and every nevero-style delay gets one too."
 
 Should we, could we, also preserve all the failure nodes? What does that do to the programs? Do you have to do something to find the next redex.
-

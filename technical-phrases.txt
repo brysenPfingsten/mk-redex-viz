@@ -11,3 +11,5 @@ context-indexed semantics
 start from a c-free context-sensitive reduction semantics, refocus it to the zipper/focus-context machine, then explain the current c-carrying rewrite machine as a correctness-preserving localization of that machine.
 
 "... where object-level control nodes are still in the context, not yet internalized as machine syntax"
+
+"when a rule acts at one cut and is ambient under two larger strata."

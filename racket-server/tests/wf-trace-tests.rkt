@@ -96,81 +96,81 @@
            (and (judgment-holds (wf:wf-cfg/delay? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-delay-goal)
-   (list "search-base-seq"
+   (list "search-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-base-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-early-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-cfg/search-base? ,cfg))
+           (and (judgment-holds (wf:wf-cfg/search? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-disj)
-   (list "search-base-fused"
+   (list "search-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-base-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-late-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-cfg/search-base? ,cfg))
+           (and (judgment-holds (wf:wf-cfg/search? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-disj)
-   (list "rail-seq"
+   (list "rail-early"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-seq-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-early-red cfg))
          (lambda (cfg)
            (and (judgment-holds (wf:wf-cfg/rail? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-rail)
-   (list "rail-fused"
+   (list "rail-late"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-fused-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-late-red cfg))
          (lambda (cfg)
            (and (judgment-holds (wf:wf-cfg/rail? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-rail)
-   (list "calls"
+   (list "relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call)
-   (list "search-dfs-seq-calls"
+   (list "search-dfs-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-early-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/search-base-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/search-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-branch)
-   (list "search-dfs-fused-calls"
+   (list "search-dfs-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-dfs-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-dfs-late-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/search-base-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/search-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-branch)
-   (list "search-flip-seq-calls"
+   (list "search-flip-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-early-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/search-base-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/search-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-branch)
-   (list "search-flip-fused-calls"
+   (list "search-flip-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:search-flip-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:search-flip-late-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/search-base-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/search-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-branch)
-   (list "rail-seq-calls"
+   (list "rail-early-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-seq-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-early-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/rail-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/rail-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-rail)
-   (list "rail-fused-calls"
+   (list "rail-late-relcall"
          (lambda (cfg)
-           (apply-reduction-relation/tag-with-names red:rail-fused-calls-red cfg))
+           (apply-reduction-relation/tag-with-names red:rail-late-relcall-red cfg))
          (lambda (cfg)
-           (and (judgment-holds (wf:wf-config/rail-calls? ,cfg))
+           (and (judgment-holds (wf:wf-config/rail-relcall? ,cfg))
                 (produced-answer-spine-only? cfg)))
          cfg-call-rail)))
 

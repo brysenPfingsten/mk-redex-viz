@@ -1,9 +1,9 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/rail-calls-lang.rkt"
+         "../languages/rail-relcall-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
-         (rename-in "./search-base-calls-wf.rkt"
+         (rename-in "./search-relcall-wf.rkt"
                     [wf-summary-goal/search-relcall? wf-summary-goal/search-relcall/base]
                     [wf-summary-answers/search-relcall? wf-summary-answers/search-relcall/base])
          "./core-wf.rkt")

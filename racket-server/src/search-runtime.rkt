@@ -3,17 +3,17 @@
 (require redex/reduction-semantics
          (prefix-in lang:
                     "./search-lattice/languages/all.rkt")
-         (rename-in "./search-lattice/reduction-relations/rail-fused-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/rail-late-relcall-red.rkt"
                     [step-once step-once/rail-late-relcall])
-         (rename-in "./search-lattice/reduction-relations/rail-seq-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/rail-early-relcall-red.rkt"
                     [step-once step-once/rail-early-relcall])
-         (rename-in "./search-lattice/reduction-relations/search-dfs-fused-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/search-dfs-late-relcall-red.rkt"
                     [step-once step-once/search-dfs-late-relcall])
-         (rename-in "./search-lattice/reduction-relations/search-dfs-seq-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/search-dfs-early-relcall-red.rkt"
                     [step-once step-once/search-dfs-early-relcall])
-         (rename-in "./search-lattice/reduction-relations/search-flip-fused-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/search-flip-late-relcall-red.rkt"
                     [step-once step-once/search-flip-late-relcall])
-         (rename-in "./search-lattice/reduction-relations/search-flip-seq-calls-red.rkt"
+         (rename-in "./search-lattice/reduction-relations/search-flip-early-relcall-red.rkt"
                     [step-once step-once/search-flip-early-relcall])
          (prefix-in wf:
                     "./search-lattice/wf/all.rkt")

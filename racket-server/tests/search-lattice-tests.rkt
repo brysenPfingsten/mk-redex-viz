@@ -348,19 +348,19 @@
                               scoped-flip-expected)
                         (list red:rail-early-red
                               cfg-scoped-rail
-                              "enter-right"
+                              "enter-right-through-scoped-delay"
                               scoped-rail-expected)
                         (list red:rail-late-red
                               cfg-scoped-rail
-                              "enter-right"
+                              "enter-right-through-scoped-delay"
                               scoped-rail-expected)
                         (list red:rail-early-red
                               scoped-return-rail
-                              "return-left"
+                              "return-left-through-scoped-delay"
                               scoped-return-expected)
                         (list red:rail-late-red
                               scoped-return-rail
-                              "return-left"
+                              "return-left-through-scoped-delay"
                               scoped-return-expected)))])
       (match-define (list rel cfg expected-name expected-next) entry)
       (define-values (step-name next)
@@ -601,8 +601,8 @@
 
   (test-case "rail search-only branches enter the railroad from delayed left disjunction"
     (for ([entry (in-list
-                  (list (list red:rail-early-red "enter-right")
-                        (list red:rail-late-red "enter-right")))])
+                  (list (list red:rail-early-red "enter-right-at-branch")
+                        (list red:rail-late-red "enter-right-at-branch")))])
       (match-define (list rel expected-name) entry)
       (define-values (step-name next)
         (named-step (apply-reduction-relation/tag-with-names rel cfg-rail)))
@@ -619,7 +619,7 @@
        (apply-reduction-relation/tag-with-names
         red:rail-early-red
         cfg-delayed-right-work)))
-    (check-equal? (~a enter-name) "enter-right")
+    (check-equal? (~a enter-name) "enter-right-at-branch")
     (define-values (invoke-name invoke-next)
       (named-step
        (apply-reduction-relation/tag-with-names

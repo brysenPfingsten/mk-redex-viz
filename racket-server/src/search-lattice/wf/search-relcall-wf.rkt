@@ -1,10 +1,10 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/search-base-calls-lang.rkt"
+         "../languages/search-relcall-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
-         "./calls-arity.rkt"
-         (rename-in "./search-base-wf.rkt"
+         "./relcall-arity.rkt"
+         (rename-in "./search-wf.rkt"
                     [wf-summary-answers/search? wf-summary-answers/search/base])
          "./core-wf.rkt")
 

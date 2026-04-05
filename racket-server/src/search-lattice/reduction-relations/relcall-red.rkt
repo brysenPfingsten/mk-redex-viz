@@ -1,7 +1,7 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/calls-lang.rkt"
+         "../languages/relcall-lang.rkt"
          (only-in "./delay-red.rkt"
                   delay-red)
          "./private/common.rkt"
@@ -14,7 +14,7 @@
 
 (check-redundancy #t)
 
-(define-lift-search-to-relcall lifted-delay-red
+(define-lift-search-to-relcall under-Gamma
   (extend-reduction-relation delay-red relcall-lang)
   relcall-lang)
 
@@ -30,7 +30,7 @@
 
 (define relcall-red
   (union-reduction-relations
-   lifted-delay-red
+   under-Gamma
    relcall-expand/raw))
 
 (define (step-once prog)

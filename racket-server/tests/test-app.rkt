@@ -684,7 +684,8 @@
                             (search-strategy "late" "flip"))
               (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
               (check-not-false (member "delay-swap-left" names))
-              (check-false (member "enter-right" names)))
+              (check-false (member "enter-right-at-branch" names))
+              (check-false (member "enter-right-through-scoped-delay" names)))
   )
 
 (define-test-suite RESET!
@@ -806,8 +807,10 @@
              (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
              (check-not-false (member "delay-swap-left" names))
              (check-not-false (member "invoke-delay" names))
-             (check-false (member "enter-right" names))
-             (check-false (member "return-left" names)))
+             (check-false (member "enter-right-at-branch" names))
+             (check-false (member "enter-right-through-scoped-delay" names))
+             (check-false (member "return-left-at-branch" names))
+             (check-false (member "return-left-through-scoped-delay" names)))
 
   (test-case "late flip hoist witness continues to a fourth step"
              (define ses (session (make-empty-zipper) step/const-tree-output 1 default-search-strategy))
@@ -849,7 +852,7 @@
              (check-equal? (response-code response) 200)
              (check-equal? (session-search-strategy ses^) (search-strategy "early" "rail"))
              (define names (collect-step-names ses^ STRATEGY-WITNESS-CAP))
-             (check-not-false (member "enter-right" names))
+             (check-not-false (member "enter-right-at-branch" names))
              (check-not-false (member "invoke-delay" names))
              (check-true (>= (length (filter (lambda (name)
                                                (equal? name "expand-relcall"))

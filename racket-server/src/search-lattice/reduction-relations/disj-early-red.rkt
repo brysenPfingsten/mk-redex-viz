@@ -2,7 +2,7 @@
 
 (require redex/reduction-semantics
          "../languages/disj-lang.rkt"
-         "./disj-base-red.rkt"
+         (prefix-in disj: "./disj-base-red.rkt")
          "./private/step-utils.rkt")
 
 (provide disj-early-red
@@ -12,7 +12,7 @@
 
 (define disj-early-shared-local/under-ShellCtx
   (context-closure
-   (context-closure disj-local/base disj-lang BranchCtx)
+   (context-closure disj:local/base disj-lang BranchCtx)
    disj-lang
    ShellCtx))
 
@@ -28,7 +28,7 @@
 
 (define disj-early-red
   (union-reduction-relations
-   disj-shell/base
+   disj:shell/base
    disj-early-shared-local/under-ShellCtx
    disj-early-local/under-ShellCtx))
 

@@ -100,7 +100,7 @@
    (list (search-strategy "early" "rail")
          "fives/fours"
          #f
-         "enter-right")
+         "enter-right-at-branch")
    (list (search-strategy "late" "flip")
          "fives/fours"
          #f

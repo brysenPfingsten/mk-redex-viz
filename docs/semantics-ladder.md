@@ -48,7 +48,6 @@ flowchart TD
   FLIPLATE["search-flip/late"]
   RAILEARLY["rail/early"]
   RAILLATE["rail/late"]
-  RELCALL["relcall overlay"]
 
   CORE --> DELAY
   CORE --> DISJ
@@ -64,7 +63,30 @@ flowchart TD
   SEARCHLATE --> FLIPLATE
   SEARCHEARLY --> RAILEARLY
   SEARCHLATE --> RAILLATE
-  DELAY --> RELCALL
+```
+
+The relcall family is an overlay on top of already-selected reducers, not a
+separate branch inside the primary lattice:
+
+```mermaid
+flowchart LR
+  DELAY["delay"]
+  SEARCH["search/{early,late}"]
+  DFS["search-dfs/{early,late}"]
+  FLIP["search-flip/{early,late}"]
+  RAIL["rail/{early,late}"]
+
+  RELCALLDELAY["delay + relcall"]
+  SEARCHRELCALL["search + relcall"]
+  DFSRELCALL["search-dfs + relcall"]
+  FLIPRELCALL["search-flip + relcall"]
+  RAILRELCALL["rail + relcall"]
+
+  DELAY --> RELCALLDELAY
+  SEARCH --> SEARCHRELCALL
+  DFS --> DFSRELCALL
+  FLIP --> FLIPRELCALL
+  RAIL --> RAILRELCALL
 ```
 
 ## Hoist Axis

@@ -6,14 +6,14 @@
                   subst-goal-host)
          "./private/step-utils.rkt")
 
-(provide core-local/base
-         core-shell/base
+(provide local/base
+         shell/base
          core-red
          step-once)
 
 (check-redundancy #t)
 
-(define core-local/base
+(define local/base
   (reduction-relation
    core-lang
    #:domain search
@@ -62,7 +62,7 @@
         (where #t (invalid? sub dis_1))
         "disequality-fail"]))
 
-(define core-shell/base
+(define shell/base
   (reduction-relation
    core-lang
    #:domain cfg
@@ -77,15 +77,15 @@
                   (in-hole FreshCtx+ (empty-tree))))
         "finish-fail"]))
 
-(define core-local
+(define local
   (context-closure
-   (context-closure core-local/base core-lang LocalCtx)
+   (context-closure local/base core-lang LocalCtx)
    core-lang
    ShellCtx))
 
 ;; Core splits unfinished tree work from the one final lift into the shell.
 (define core-red
-  (union-reduction-relations core-local core-shell/base))
+  (union-reduction-relations local shell/base))
 
 (define (step-once prog)
   (step-once/deterministic core-red prog))

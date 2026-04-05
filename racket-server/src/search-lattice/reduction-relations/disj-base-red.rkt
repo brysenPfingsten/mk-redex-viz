@@ -2,19 +2,16 @@
 
 (require redex/reduction-semantics
          "../languages/disj-lang.rkt"
-         (only-in "../languages/core-lang.rkt"
-                  fresh-tree-prefix->shell-prefix)
-         (only-in "./core-red.rkt"
-                  core-local/base
-                  core-shell/base))
+         (only-in "../languages/core-lang.rkt" fresh-tree-prefix->shell-prefix)
+         (prefix-in core: "./core-red.rkt"))
 
-(provide disj-local/base
-         disj-shell/base)
+(provide local/base
+         shell/base)
 
 (check-redundancy #t)
 
-(define disj-frontier/base
-  (let ([disj-frontier/local-base
+(define frontier/base
+  (let ([frontier/local-base
          (reduction-relation
            disj-lang
            #:domain cfg
@@ -29,10 +26,10 @@
            [--> (in-hole FreshCtx_1 ((in-hole FreshCtx_2 (empty-tree)) <-+ search_right))
                 (fresh-tree-prefix->shell-prefix (in-hole FreshCtx_1 search_right))
                 "skip-left-fail"])])
-    (context-closure disj-frontier/local-base disj-lang ShellCtx)))
+    (context-closure frontier/local-base disj-lang ShellCtx)))
 
-(define disj-local/base
-  (let ([disj-goal-local/base
+(define local/base
+  (let ([goal-local/base
          (reduction-relation
           disj-lang
           #:domain cfg
@@ -41,12 +38,12 @@
                "expand-disjunction"])])
     (union-reduction-relations
      (context-closure
-      (extend-reduction-relation core-local/base disj-lang)
+      (extend-reduction-relation core:local/base disj-lang)
       disj-lang
       LocalCtx)
-     disj-goal-local/base)))
+     goal-local/base)))
 
-(define disj-shell/base
-  (union-reduction-relations
-   (extend-reduction-relation core-shell/base disj-lang)
-   disj-frontier/base))
+(define shell/base
+ (union-reduction-relations
+   (extend-reduction-relation core:shell/base disj-lang)
+   frontier/base))

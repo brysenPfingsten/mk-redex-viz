@@ -1,7 +1,7 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/search-base-lang.rkt"
+         "../languages/search-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
          (rename-in "./disj-wf.rkt"
                     [wf-summary-goal/disj? wf-summary-goal/disj/base]

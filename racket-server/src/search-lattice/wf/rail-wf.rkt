@@ -3,7 +3,7 @@
 (require redex/reduction-semantics
          "../languages/rail-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
-         (rename-in "./search-base-wf.rkt"
+         (rename-in "./search-wf.rkt"
                     [wf-summary-goal/search? wf-summary-goal/search/base]
                     [wf-summary-answers/search? wf-summary-answers/search/base])
          "./core-wf.rkt")

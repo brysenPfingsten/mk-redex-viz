@@ -337,6 +337,8 @@ graph TD
   klocal["LocalCtx (L0 local work path)"]
   kbranch["BranchCtx (shared L2 left-branch path)"]
   klate["LateCtx (late-hoist extension)"]
+  kbranch_rail["BranchCtx in rail (adds +-> descent)"]
+  klate_rail["LateCtx in rail (inherits widened BranchCtx)"]
 
   qfresh --> qshell_delay
   qfresh --> qshell_disj
@@ -345,6 +347,8 @@ graph TD
 
   klocal --> kbranch
   kbranch --> klate
+  kbranch --> kbranch_rail
+  klate --> klate_rail
 ```
 
 This is a reuse graph inside the shared context grammar, not a second
@@ -370,9 +374,13 @@ semilattice.
 - `ShellCtx(search)` is the union of those shell stories.
 - `LocalCtx` is the L0 local-work path: a pure `FreshCtx` bottom or one more
   pending conjunction layer around a smaller `LocalCtx`.
-- `BranchCtx` is the shared L2 left-branch path through `<-+`.
+- `BranchCtx` is the shared L2 left-branch path through `<-+`; rail later
+  widens that same helper with `+->` instead of introducing a rail-only path
+  context.
 - `LateCtx` is the shared late-strength helper that keeps descending past the early
   cut through `×`; early does not use that extra descent rule, but late does.
+  In rail, `LateCtx` inherits the widened `BranchCtx` base rather than gaining
+  a separate rail-specific helper.
 
 Witness for why `BranchCtx` and `LateCtx` both remain necessary:
 
@@ -472,7 +480,7 @@ Late policy:
 | --- | --- |
 | Runtime constructors added | none; this is `delay ∪ disj` |
 | Helpers introduced or extended | `ShellCtx(search)` by language union |
-| First reducer family using them | `search-local/base`, `search-shell/base` |
+| First reducer family using them | `search-pre-red` |
 
 ### L3 early
 

@@ -1,8 +1,8 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/search-base-lang.rkt"
-         "./search-base-seq-pre-red.rkt"
+         "../languages/search-lang.rkt"
+         "./search-early-pre-red.rkt"
          "./private/step-utils.rkt")
 
 (provide search-early-red

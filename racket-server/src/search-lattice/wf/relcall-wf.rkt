@@ -1,9 +1,9 @@
 #lang racket
 
 (require redex/reduction-semantics
-         "../languages/calls-lang.rkt"
+         "../languages/relcall-lang.rkt"
          (only-in "../languages/core-lang.rkt" c-append)
-         "./calls-arity.rkt"
+         "./relcall-arity.rkt"
          "./core-wf.rkt")
 
 (provide wf-summary-goal/relcall?
