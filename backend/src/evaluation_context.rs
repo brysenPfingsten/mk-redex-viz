@@ -30,4 +30,21 @@ mod test {
         let t: Tree = Tree::GoalState(Goal::Unify(Term::Nat(1), Term::Nat(1)), empty_state());
         assert_eq!(es(t.clone()), t.clone())
     }
+
+    #[test]
+    fn deeply_nested_disjunction() {
+        let dummy_tree = Tree::GoalState(Goal::Success, empty_state());
+        let unify = Tree::GoalState(Goal::Unify(Term::Nat(1), Term::Nat(1)), empty_state());
+        let t = Tree::LeftDisj(
+            Box::new(Tree::LeftDisj(
+                Box::new(Tree::LeftDisj(
+                    Box::new(unify.clone()),
+                    Box::new(dummy_tree.clone()),
+                )),
+                Box::new(dummy_tree.clone()),
+            )),
+            Box::new(dummy_tree.clone()),
+        );
+        assert_eq!(ex(t), unify.clone())
+    }
 }
