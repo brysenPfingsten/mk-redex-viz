@@ -162,10 +162,10 @@
 (define (switch-model! ses req)
   (define json-data (request-post-data/raw req))
   (define new-model (hash-ref (bytes->jsexpr json-data) 'model))
-  (match new-model
-    ["microKanren" (set-session-stepper! ses (make-stepper mmk:step-once))]
-    ["dmitry"      (set-session-stepper! ses (make-stepper dmitry:step-once))]
-    ["dfs"         (set-session-stepper! ses (make-stepper dfs:step-once))])
+  (set-session-stepper! ses (match new-model
+    ["microKanren" (make-stepper mmk:step-once)]
+    ["dmitry"      (make-stepper dmitry:step-once)]
+    ["dfs"         (make-stepper dfs:step-once)]))
   (response/jsexpr (json-null) #:code 200))
 
 
