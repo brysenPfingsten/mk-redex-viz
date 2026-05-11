@@ -44,7 +44,7 @@
                         'value val)))
        sub))
 
-(define (trail->json trail sub)
+(define (trail->json trail)
   (map (λ (crumb) (let ([left (term (term->json ,(first crumb)))]
                         [right (term (term->json ,(third crumb)))]
                         [id (fourth crumb)])
@@ -113,7 +113,7 @@
   [(tree->json (g (_ sub dis c trail o)) natural)
    ,(let* ([goal-json (term (goal->json g))]
            [sub-json (sub->json (term sub))]
-           [trail-json (trail->json (term trail) (term sub))]
+           [trail-json (trail->json (term trail))]
            [reified (reify (term sub) (term dis) (add1 (term c)) (term natural))])
       (hash-union goal-json
                   (hasheq
@@ -133,7 +133,7 @@
   [(tree->json (proceed ((r t ... o) (_ sub dis c trail o_1))) natural)
    ,(let* ([goal-json (term (goal->json  (r t ...  o)))]
            [sub-json (sub->json (term sub))]
-           [trail-json (trail->json (term trail) (term sub))]
+           [trail-json (trail->json (term trail))]
            [reified (reify (term sub) (term dis) (add1 (term c)) (term natural))])
       (hasheq 'name "Proceed"
               'id (term o)
@@ -157,7 +157,7 @@
 
   [(tree->json ((⊤ (_ sub dis c trail o)) + ()) natural)
    ,(let* ([sub-json (sub->json (term sub))]
-           [trail-json (trail->json (term trail) (term sub))]
+           [trail-json (trail->json (term trail))]
            [reified (reify (term sub) (term dis) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
@@ -168,7 +168,7 @@
   [(tree->json ((⊤ (_ sub dis c trail o)) + s) natural)
    ,(let* ([sub-json (sub->json (term sub))]
            [rest-json (term (tree->json s natural))]
-           [trail-json (trail->json (term trail) (term sub))]
+           [trail-json (trail->json (term trail))]
            [reified (reify (term sub) (term dis) (term c) (term natural))])
       (hasheq 'name "Answer"
               'stateId (term o)
