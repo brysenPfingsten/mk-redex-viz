@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import "../styles.css";
 import { exampleProgs } from "../utils/example_programs.js";
 
-
 const modelOptions = [
   { value: "microKanren", label: "µKanren" },
+  { value: "dfs", label: "DFS" },
+  { value: "no-railway", label: "No Railway" },
   // { value: "dmitry",      label: "Dmitry et al." },
-  { value: "dfs",         label: "DFS"}
 ];
 
 export default function CodeHeader({
@@ -27,17 +27,17 @@ export default function CodeHeader({
   // TODO: Maybe add some error handling here
   const changeModel = async (newModel) => {
     onModelChange(newModel);
-    fetch('api/post/model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json'},
-      body: JSON.stringify({ model: newModel})
+    fetch("api/post/model", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: newModel }),
     });
-  }
+  };
 
   return (
     <div className="code-header">
       <a href="https://minikanren.org" target="_blank">
-        <img src={logoSrc} alt="Logo" className="logo"/>
+        <img src={logoSrc} alt="Logo" className="logo" />
       </a>
 
       <select
@@ -58,4 +58,5 @@ export default function CodeHeader({
         {renderOptions(modelOptions)}
       </select>
     </div>
-  ); }
+  );
+}

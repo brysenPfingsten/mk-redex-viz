@@ -110,6 +110,7 @@ function drawDirectedDisjunctionNode(group, _, isLeft, size = 30, strokeColor = 
 
 function drawLeftDisjunctionNode(group) { return drawDirectedDisjunctionNode(group, null, true); }
 function drawRightDisjunctionNode(group) { return drawDirectedDisjunctionNode(group, null, false); }
+function drawDisjunctionNode(group) { return drawPolygonNode(group, "#ff8000", "+", "black"); }
 function drawConjunctionNode(group) { return drawPolygonNode(group, "blue", "×", "white"); }
 
 function drawCircle(group, fill, text = "", textColor = "black", fontSize = "20px") {
@@ -222,6 +223,7 @@ const nodeDrawFunctions = {
     "Disequality": drawDisequalityNode,
     "<-+": drawLeftDisjunctionNode,
     "+->": drawRightDisjunctionNode,
+  "Disjunction": drawDisjunctionNode,
     "Delay": drawDelayNode,
     "Conjunction": drawConjunctionNode,
     "Fresh": drawFreshNode,

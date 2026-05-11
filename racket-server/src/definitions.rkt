@@ -37,6 +37,7 @@
      (∂ s maybe-state)          ; Partially Evaluated Tree
      (s +-> s)                  ; Right Disjunciton
      (s <-+ s)                  ; Left Disjunction
+     (s + s)                    ; Tree Disjunction
      ((⊤ σ) + s)                ; Answer Stream
      (s × g)                    ; Conjunction
      (proceed ((r t ... o) σ))  ; Proceed
@@ -96,6 +97,7 @@
   [Es hole
       (Es <-+ s)
       (s +-> Es)
+      (Es + s)
       (Es × g)]
 
   ;; Prog to first tree w/o sub-tree

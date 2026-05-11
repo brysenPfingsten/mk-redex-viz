@@ -8,6 +8,7 @@
 (require (prefix-in mmk:    "reduction-relations/reduction-relations.rkt")
          (prefix-in dmitry: "reduction-relations/dmitry-and-dmitry.rkt")
          (prefix-in dfs:    "reduction-relations/dfs.rkt")
+         (prefix-in no-rr:  "reduction-relations/no-railway.rkt")
          "metafunctions.rkt"
          "transpiler.rkt"
          "syntax-checking.rkt"
@@ -165,7 +166,8 @@
   (set-session-stepper! ses (match new-model
     ["microKanren" (make-stepper mmk:step-once)]
     ["dmitry"      (make-stepper dmitry:step-once)]
-    ["dfs"         (make-stepper dfs:step-once)]))
+    ["dfs"         (make-stepper dfs:step-once)])
+    ["no-railway"  (make-stepper no-rr:step-once)])
   (response/jsexpr (json-null) #:code 200))
 
 

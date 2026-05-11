@@ -173,6 +173,11 @@
    -------------------"answer stream closed"
    (closed-tree? ((⊤ (state sub _ c trail _)) + s) ((r (x ...)) ...))]
 
+  [(closed-tree? s_1 ((r (x ...)) ...))
+   (closed-tree? s_2 ((r (x ...)) ...))
+   -------------------"tree disj closed"
+   (closed-tree? (s_1 + s_2) ((r (x ...)) ...))]
+
   [(closed-tree? s ((r (x ...)) ...))
    (closed-goal? g ((r (x ...)) ...) () 0)
    -------------------"conj closed"

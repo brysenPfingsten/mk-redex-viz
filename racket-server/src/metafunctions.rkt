@@ -177,6 +177,12 @@
               'reified reified
               'children (list rest-json)))]
 
+  [(tree->json (s_1 + s_2) natural)
+   ,(let* ([left-json (term (tree->json s_1 natural))]
+           [right-json (term (tree->json s_2 natural))])
+      (hasheq 'name "Disjunction"
+              'children (list left-json right-json)))]
+
   [(tree->json (s × g) natural)
    ,(let* ([left-json (term (tree->json s natural))]
            [right-json (term (goal->json g))])
