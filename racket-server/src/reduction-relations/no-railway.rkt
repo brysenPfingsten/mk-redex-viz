@@ -11,16 +11,15 @@
 ;; Term -> [Listof [List String Term]]
 (define (step-once prog)
   (apply-reduction-relation/tag-with-names red (term ,prog)))
-
 (define red
   (reduction-relation L
                       ;; #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [--> ((in-hole Ex ((r_1 t ... o) σ))
+                      [--> ((in-hole Ex (proceed ((r_1 t ... o) σ)))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-                           ((in-hole Ex (delay ((substitute g_1 (x_1 t) ...) σ)))
+                           ((in-hole Ex ((substitute g_1 (x_1 t) ...) σ))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-                           "Delay and Substitute Relation Body"]
+                           "Substitute Relation Body And Proceed"]
 
                       [--> ((in-hole Ev (delay s)) Γ)
                            ((in-hole Ev s) Γ)
@@ -64,16 +63,16 @@
 
                       [--> (in-hole Ev ((⊤ σ) <-+ s))
                            (in-hole Ev ((⊤ σ) + s))
-                           "Promote Left Answer"]
+                           "Promote Answer"]
 
                       [==> ((∃ (x ...) g _) (state sub dis c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...))) 
                                         (state sub dis (bump c (x ...)) trail o))
                            "Substitute Fresh Variables"]
 
-                      ;; [==> ((r_1 t ... o) σ)
-                      ;;      (delay (proceed ((r_1 t ... o) σ)))
-                      ;;      "Relation Call And Add Delay"]
+                      [==> ((r_1 t ... o) σ)
+                           (delay (proceed ((r_1 t ... o) σ)))
+                           "Relation Call And Add Delay"]
 
                       [==> ((t_1 =? t_2 _) (state sub _ _ _ _))
                            ()
