@@ -26,12 +26,20 @@ export default function CodeHeader({
 
   // TODO: Maybe add some error handling here
   const changeModel = async (newModel) => {
+    const previousModel = modelValue;
     onModelChange(newModel);
-    fetch("api/post/model", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: newModel }),
-    });
+    try {
+      const res = await fetch("/api/post/model", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: newModel }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error("Failed to switch model:", err);
+      onModelChange(previousModel);
+    }
   };
 
   return (

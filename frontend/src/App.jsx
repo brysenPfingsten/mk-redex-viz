@@ -14,7 +14,7 @@ function App() {
   const [code, setCode] = useState('');
   const originalCodeRef = useRef('');
   const [predefinedCodeText, setPredefinedCodeText] = useState('');
-  const [model, setModel] = useState('');
+  const [model, setModel] = useState('microKanren');
   const [isFrozen, setFrozen] = useState(false);
   const [alert, setAlert] = useState({ isOpen: false, message: '' });
   const treeRef = useRef();

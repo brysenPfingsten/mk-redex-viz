@@ -16,11 +16,11 @@
   (reduction-relation L
                       ;; #:domain (side-condition (name prog p) (judgment-holds (closed-program? prog)))
 
-                      [--> ((in-hole Ex (proceed ((r_1 t ... o) σ)))
+                      [--> ((in-hole Ex ((r_1 t ... o) σ))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-                           ((in-hole Ex ((substitute g_1 (x_1 t) ...) σ))
+                           ((in-hole Ex (delay ((substitute g_1 (x_1 t) ...) σ)))
                             ((r_0 (x_0 ...) g_0) ... (r_1 (x_1 ...) g_1) (r_2 (x_2 ...) g_2) ...))
-                           "Substitute Relation Body And Proceed"]
+                           "Delay and Substitute Relation Body"]
 
                       [--> ((in-hole Ev (delay s)) Γ)
                            ((in-hole Ev s) Γ)
@@ -35,19 +35,19 @@
   (reduction-relation L
                       #:domain e
                       [==> ((g_1 ∨ g_2 _) (state sub dis c trail o))
-                           ((g_1 (state sub dis c trail o)) + (g_2 (state sub dis c trail ,(symbol->string (gensym)))))
+                           ((g_1 (state sub dis c trail o)) <-+ (g_2 (state sub dis c trail ,(symbol->string (gensym)))))
                            "Distribute State Over Disjunction"]
 
                       [==> ((g_1 ∧ g_2 _) σ)
                            ((g_1 σ) × g_2)
                            "Distribute State Over Conjunction"]
 
-                      [==> (((⊤ σ) + s) × g)
-                           (((⊤ σ) × g) + (s × g))
+                      [==> (((⊤ σ) <-+ s) × g)
+                           (((⊤ σ) × g) <-+ (s × g))
                            "Distribute Disjunction Answer Over Conjunction"]
 
-                      [==> (((⊤ σ) + s) + s_2)
-                           ((⊤ σ) + (s + s_2))
+                      [==> (((⊤ σ) <-+ s) <-+ s_2)
+                           ((⊤ σ) <-+ (s <-+ s_2))
                            "Reassociate Disjunction"]
 
                       [==> ((⊤ σ) × g)
@@ -58,22 +58,22 @@
                            ()
                            "Prune Failed Conjuncts"]
 
-                      [==> (() + s)
+                      [==> (() <-+ s)
                            s
                            "Prune Disjunction Failure"]
 
-                      ;; [--> (in-hole Ev ((⊤ σ) + s))
-                      ;;      (in-hole Ev ((⊤ σ) + s))
-                      ;;      "Promote Left Answer"]
+                      [--> (in-hole Ev ((⊤ σ) <-+ s))
+                           (in-hole Ev ((⊤ σ) + s))
+                           "Promote Left Answer"]
 
                       [==> ((∃ (x ...) g _) (state sub dis c trail o))
                            ((substitute g ,@(term (fresh-sub c x ...))) 
                                         (state sub dis (bump c (x ...)) trail o))
                            "Substitute Fresh Variables"]
 
-                      [==> ((r_1 t ... o) σ)
-                           (delay (proceed ((r_1 t ... o) σ)))
-                           "Relation Call And Add Delay"]
+                      ;; [==> ((r_1 t ... o) σ)
+                      ;;      (delay (proceed ((r_1 t ... o) σ)))
+                      ;;      "Relation Call And Add Delay"]
 
                       [==> ((t_1 =? t_2 _) (state sub _ _ _ _))
                            ()
@@ -108,8 +108,8 @@
                            (delay (s × g))
                            "Propagate Delay Through Conjunction"]
 
-                      [==> ((delay s_1) + s_2)
-                           (delay (s_2 + s_1))
+                      [==> ((delay s_1) <-+ s_2)
+                           (delay (s_2 <-+ s_1))
                            "Propagate Delay Through Left Disjunction And Flip"]
 
                       with [(--> (in-hole Ex a) (in-hole Ex b))

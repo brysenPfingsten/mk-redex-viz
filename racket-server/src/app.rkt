@@ -16,7 +16,8 @@
 
 (provide step! back! reset! init! init-session! 
          make-stepper step step-name 
-         session session-zipper session-stepper session-nqv)
+         session session-zipper session-stepper session-nqv
+         dispatcher)
 
 (define-struct step (name prog) #:transparent)
 (define-struct session 
@@ -163,24 +164,34 @@
 (define (switch-model! ses req)
   (define json-data (request-post-data/raw req))
   (define new-model (hash-ref (bytes->jsexpr json-data) 'model))
-  (set-session-stepper! ses (match new-model
-    ["microKanren" (make-stepper mmk:step-once)]
-    ["dmitry"      (make-stepper dmitry:step-once)]
-    ["dfs"         (make-stepper dfs:step-once)])
-    ["no-railway"  (make-stepper no-rr:step-once)])
+  (set-session-stepper!
+   ses
+   (match new-model
+     ["microKanren" (make-stepper mmk:step-once)]
+     ["dmitry"      (make-stepper dmitry:step-once)]
+     ["dfs"         (make-stepper dfs:step-once)]
+     ["no-railway"  (make-stepper no-rr:step-once)]
+     [_             (make-stepper mmk:step-once)]))
   (response/jsexpr (json-null) #:code 200))
 
 
-;; get-or-create-session-id: req -> string
-;; Purpose: Gets the session id from cookies or creates a new one
+;; get-or-create-session-id: req -> (values string boolean)
+;; Purpose: Gets the session id from cookies or creates a new one, returning
+;;          a flag indicating whether a new session id was created.
 (define (get-or-create-session-id req)
   (let* ([cookies (map (λ (c) (cons (client-cookie-name c)
                                     (client-cookie-value c)))
                        (request-cookies req))]
          [maybe-session (assoc "session-id" cookies)])
     (if maybe-session
-        (cdr maybe-session)
-        (symbol->string (gensym 'sess-)))))
+        (values (cdr maybe-session) #f)
+        (values (symbol->string (gensym 'sess-)) #t))))
+
+(define (session-cookie-header session-id)
+  (make-header
+   #"Set-Cookie"
+   (string->bytes/utf-8
+    (format "session-id=~a; Path=/; SameSite=Lax" session-id))))
 
 
 ;; get-session: string -> session
@@ -202,14 +213,22 @@
 ;; dispatcher: request -> response
 ;; Purpose: Maps the input request to an output response
 (define (dispatcher req)
-  (let* ([session-id (get-or-create-session-id req)]
-         [session (get-session session-id)])
-    (match (get-path req)
+  (define-values (session-id created-new-session-id?)
+    (get-or-create-session-id req))
+  (define session (get-session session-id))
+  (define path (get-path req))
+  (define resp
+    (match path
       ["get/next"   (step! session)]
       ["post/init"  (init! session req session-id)]
       ["post/reset" (reset! session session-table session-id)]
       ["post/back"  (back! session)]
-      ["post/model" (switch-model! session req)])))
+      ["post/model" (switch-model! session req)]))
+  (if (and created-new-session-id? (not (equal? path "post/init")))
+      (struct-copy response resp
+                   [headers (cons (session-cookie-header session-id)
+                                  (response-headers resp))])
+      resp))
 
 (define (handled-dispatcher req)
   (with-handlers

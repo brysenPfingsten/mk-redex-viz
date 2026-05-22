@@ -215,6 +215,81 @@
               (check-equal? (zipper-idx new-zipper) 1))
   )
 
+(define (find-header headers field-bytes)
+  (for/first ([h headers]
+              #:when (bytes=? (header-field h) field-bytes))
+    h))
+
+(define (extract-session-id-from-set-cookie headers)
+  (define h (find-header headers #"Set-Cookie"))
+  (and h
+       (let* ([v (bytes->string/utf-8 (header-value h))]
+              [m (regexp-match #rx"session-id=([^;]+)" v)])
+         (and m (cadr m)))))
+
+(define-test-suite SWITCH-MODEL!
+  #:before (thunk (displayln "Running tests for switch-model!..."))
+  #:after  (thunk (displayln "Finished running tests for switch-model."))
+
+  (test-case "dispatcher sets session cookie on model switch before init"
+    (define req
+      (make-request
+       #"POST"
+       (make-url #f #f #f #f #t
+                 (list (make-path/param "post" empty)
+                       (make-path/param "model" empty))
+                 empty
+                 #f)
+       (list (make-header #"content-type" #"application/json"))
+       (delay '())
+       (string->bytes/utf-8 "{\"model\":\"no-railway\"}")
+       "127.0.0.1"
+       5000
+       "127.0.0.1"))
+    (define response (dispatcher req))
+    (check-equal? (response-code response) 200)
+    (check-not-false (extract-session-id-from-set-cookie (response-headers response))))
+
+  (test-case "dispatcher reuses cookie session on subsequent model switch"
+    (define first-req
+      (make-request
+       #"POST"
+       (make-url #f #f #f #f #t
+                 (list (make-path/param "post" empty)
+                       (make-path/param "model" empty))
+                 empty
+                 #f)
+       (list (make-header #"content-type" #"application/json"))
+       (delay '())
+       (string->bytes/utf-8 "{\"model\":\"dfs\"}")
+       "127.0.0.1"
+       5000
+       "127.0.0.1"))
+    (define first-response (dispatcher first-req))
+    (define session-id
+      (extract-session-id-from-set-cookie (response-headers first-response)))
+    (check-not-false session-id)
+
+    (define second-req
+      (make-request
+       #"POST"
+       (make-url #f #f #f #f #t
+                 (list (make-path/param "post" empty)
+                       (make-path/param "model" empty))
+                 empty
+                 #f)
+       (list (make-header #"content-type" #"application/json")
+             (make-header #"cookie" (string->bytes/utf-8 (format "session-id=~a" session-id))))
+       (delay '())
+       (string->bytes/utf-8 "{\"model\":\"microKanren\"}")
+       "127.0.0.1"
+       5000
+       "127.0.0.1"))
+    (define second-response (dispatcher second-req))
+    (check-equal? (response-code second-response) 200)
+    (check-false (find-header (response-headers second-response) #"Set-Cookie")))
+  )
+
 (define/provide-test-suite APP
   #:before (thunk (displayln "Running tests for app.rkt..."))
   #:after (thunk (displayln "Finished running tests for app.rkt"))
@@ -222,7 +297,7 @@
   INIT!
   RESET!
   BACK!
-  ;; TODO: switch-model!
+  SWITCH-MODEL!
 )
 
 ;; (run-tests APP)
