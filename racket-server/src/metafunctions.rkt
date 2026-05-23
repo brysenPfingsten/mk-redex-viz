@@ -141,7 +141,7 @@
               'goal goal-json
               'sub sub-json
               'trail trail-json
-              'refied reified))]
+              'reified reified))]
 
   [(tree->json (s_1 +-> s_2) natural)
    ,(let* ([left-json (term (tree->json s_1 natural))]
