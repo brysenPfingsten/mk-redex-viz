@@ -14,12 +14,12 @@ No stage executes by converting its configuration to another representation.
 Each feature uses its own literal source rule set, recursive goal/computation
 grammar, and value/observation predicates. The exported native instances are:
 
-| Feature | S | E | N |
-| --- | --- | --- | --- |
-| Core | `SCore` | `ECore` | `NCore` |
-| Delay | `SDelay` | `EDelay` | `NDelay` |
+| Feature     | S              | E              | N              |
+|-------------|----------------|----------------|----------------|
+| Core        | `SCore`        | `ECore`        | `NCore`        |
+| Delay       | `SDelay`       | `EDelay`       | `NDelay`       |
 | Disjunction | `SDisjunction` | `EDisjunction` | `NDisjunction` |
-| Search | `S` | `E` | `N` |
+| Search      | `S`            | `E`            | `N`            |
 
 Relation calls are outside these twelve call-free instances; `full.rkt` adds
 them separately, as described below. `tests.rkt` exercises all twelve

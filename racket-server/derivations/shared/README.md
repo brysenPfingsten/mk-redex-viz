@@ -17,17 +17,17 @@ payload because its private introductions do not belong to the residual.
 [constructor-tests.rkt](../constructor-tests.rkt) checks the accepted and
 rejected forms, eager-tail contexts, and the unchanged commitment boundary.
 
-| Module | Responsibility |
-| --- | --- |
-| `core/{s,e,n}/language.rkt` | Live primitive grammars, allocation operations, and unification/disequality kernels; byte-identical provenance is in [core/PROVENANCE.md](core/PROVENANCE.md) |
-| `kernel.rkt` | Allocation, substitution, introduction-group and allocated-name support operations, native S/E/N atomic kernel outcomes |
-| `kernel-equations.rkt` | S atomic equations instantiated with functional or data outcome constructors by the S reference derivation |
-| `grammar-{s,e,n}.rkt`, `ownerless-grammar.rkt`, `feature-schema.rkt` | Search/control/frontier syntax and feature productions, without source contractions |
-| `relation-grammar.rkt` | Relation definitions, calls, and program syntax extending the S/E/N grammars |
-| `maps.rkt`, `wf.rkt` | Structural S/E/N maps and well-formedness predicates |
-| `stages/schema.rkt`, `stages/views.rkt`, `stages/maps.rkt` | Generic decomposition/refocusing machinery, constructor views, and structural stage maps |
-| `control-transform.rkt` | Syntactic tail-call transformation used by the machine generators |
-| `runtime.rkt` | Budget validation and exhaustion data for machine drivers |
+| Module                                                               | Responsibility                                                                                                                                                |
+|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `core/{s,e,n}/language.rkt`                                          | Live primitive grammars, allocation operations, and unification/disequality kernels; byte-identical provenance is in [core/PROVENANCE.md](core/PROVENANCE.md) |
+| `kernel.rkt`                                                         | Allocation, substitution, introduction-group and allocated-name support operations, native S/E/N atomic kernel outcomes                                       |
+| `kernel-equations.rkt`                                               | S atomic equations instantiated with functional or data outcome constructors by the S reference derivation                                                    |
+| `grammar-{s,e,n}.rkt`, `ownerless-grammar.rkt`, `feature-schema.rkt` | Search/control/frontier syntax and feature productions, without source contractions                                                                           |
+| `relation-grammar.rkt`                                               | Relation definitions, calls, and program syntax extending the S/E/N grammars                                                                                  |
+| `maps.rkt`, `wf.rkt`                                                 | Structural S/E/N maps and well-formedness predicates                                                                                                          |
+| `stages/schema.rkt`, `stages/views.rkt`, `stages/maps.rkt`           | Generic decomposition/refocusing machinery, constructor views, and structural stage maps                                                                      |
+| `control-transform.rkt`                                              | Syntactic tail-call transformation used by the machine generators                                                                                             |
+| `runtime.rkt`                                                        | Budget validation and exhaustion data for machine drivers                                                                                                     |
 
 The `core/` providers are required by current execution and validation. Their
 historical origin records provenance, not archival status; removing a retired

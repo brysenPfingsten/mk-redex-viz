@@ -55,32 +55,40 @@
         (eval ,(owners-append (term owners) (term owners_1)) g σ) bind-one]
    [--> (bind owners (Yield owners_1 (Answer owners_2 σ) SV) g)
         (mplus ,(owners-append (term owners) (term owners_1))
-               (eval owners_2 g σ) (bind (Owners) SV g)) bind-yield]
+               (eval owners_2 g σ)
+               (bind (Owners) SV g))
+        bind-yield]
    [--> (bind owners (Delay owners_1 c) g)
         (Delay ,(owners-append (term owners) (term owners_1))
                (bind (Owners) c g)) bind-delay]
    [--> (force (Delay owners c)) ,(lift-owners/s (term owners) (term c)) force-delay]
+
    [--> (render (Empty owners)) (Done owners) render-empty]
-   [--> (render (One owners σ)) (Solo owners σ) render-one]
-   [--> (render (Yield owners A SV)) (Emit owners A (render SV)) render-yield]
-   [--> (render (Delay owners c))
-        (Forced owners (render c)) render-delay]
    [--> (commit (Empty owners)) (Done owners) commit-empty]
+
+   [--> (render (One owners σ)) (Solo owners σ) render-one]
    [--> (commit (One owners σ)) (Solo owners σ) commit-one]
+
+   [--> (render (Yield owners A SV)) (Emit owners A (render SV)) render-yield]
    [--> (commit (Yield owners A SV)) (Emit owners A (commit SV)) commit-yield]
+
+   [--> (render (Delay owners c)) (Forced owners (render c)) render-delay]
    [--> (commit (Delay owners c)) (More (Delay owners c)) commit-delay]
+
    [--> (advance (Done owners)) (Done owners) advance-done]
-   [--> (advance (Solo owners σ)) (Solo owners σ) advance-solo]
-   [--> (advance (Emit owners A F)) (Emit owners A (advance F)) advance-emit]
-   [--> (advance (Forced owners F)) (Forced owners (advance F)) advance-forced]
-   [--> (advance (More (Delay owners c)))
-        (Forced owners (commit c)) advance-delay]
    [--> (collect (Done owners)) (Done owners) collect-done]
+
+   [--> (advance (Solo owners σ)) (Solo owners σ) advance-solo]
    [--> (collect (Solo owners σ)) (Solo owners σ) collect-solo]
+
+   [--> (advance (Emit owners A F)) (Emit owners A (advance F)) advance-emit]
    [--> (collect (Emit owners A F)) (Emit owners A (collect F)) collect-emit]
+
+   [--> (advance (Forced owners F)) (Forced owners (advance F)) advance-forced]
    [--> (collect (Forced owners F)) (Forced owners (collect F)) collect-forced]
-   [--> (collect (More (Delay owners c)))
-        (Forced owners (collect (commit c))) collect-delay])))
+
+   [--> (advance (More (Delay owners c))) (Forced owners (commit c)) advance-delay]
+   [--> (collect (More (Delay owners c))) (Forced owners (collect (commit c))) collect-delay])))
 
 (define-s-control s-control-raw StrictS search)
 
