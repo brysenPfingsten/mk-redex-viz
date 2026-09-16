@@ -17,9 +17,10 @@
 (define (tree->picture term introductions query-variables [committed? #f] [oriented? #f])
   (define (render child [world introductions] [answer? #f])
     (tree->picture child world query-variables answer? oriented?))
-  (match term
+  (define picture
+    (match term
     [`(,constructor ,(and owners `(Owners ,_ ...)) ,parts ...)
-     (with-owners
+     (with-owner-annotations
       owners introductions
       (lambda (here)
         (match (cons constructor parts)
@@ -70,6 +71,15 @@
            (if (eq? operation 'force) "internal-force" "observation")
            (list (render body)) 0)]
     [_ (error 'tree->picture "unknown source computation: ~e" term)]))
+  (hash-set
+   picture 'semanticKind
+   (match term
+     [`(,(or 'Empty 'One 'Delay) ,_ ...) "search"]
+     [`(,(or 'Yield 'YieldR) ,_ ...)
+      (if (scheduler-value? term) "search" "operation")]
+     [`(Answer ,_ ,_) (if committed? "answer" "search")]
+     [`(,(or 'Done 'Last 'Emit 'Forced 'More) ,_ ...) "frontier"]
+     [_ "operation"])))
 
 (define (cfg->operational-picture configuration query-variables [oriented? #f])
   (tree->picture (configuration-body configuration) '() query-variables #f oriented?))

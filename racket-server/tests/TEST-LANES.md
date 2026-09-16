@@ -206,6 +206,26 @@ racket -y -l raco -- test racket-server/tests/test-all-headless.rkt
 
 HEADLESS raises on nonzero failures rather than silently succeeding.
 
+The owner-annotation GUI checkpoint (2026-09-15) passed 3,765 backend tests,
+including all 91 HEADLESS cases, and 60 frontend tests. The production build
+passed; lint reported zero errors and the same three hook warnings.
+Picture checks cover grouped and empty introductions, common/private scope,
+source identity, eager-tail classification, and internal/public Delay
+contractions. These checks establish the projection contract; visual
+inspection is a separate check.
+
+A fresh backend on port 5027 and frontend on port 5187 were also checked in
+a real browser. `fresh branch disj` showed committed Frontier structure,
+pending commitment, Search values, and their distinct owner annotations in
+one intermediate picture. For `same`, No Interleave completed with four
+answers after 44 reductions and three public advances; Flip-Flop, Railroad,
+and the strict reference each took 42 reductions and three public advances.
+The checks exercised the advancement button, exact configuration display,
+owner-source highlighting, Back, and Reset. The test servers were separate
+from any previously running browser/backend build.
+
+Earlier checkpoints:
+
 | Validation | Status |
 | --- | --- |
 | Relocated current strict aggregate | 3,294 tests passed |

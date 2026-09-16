@@ -30,6 +30,36 @@ export function parseStepperPayload(text) {
   }
 }
 
+export function readStepperView(payload) {
+  return {
+    tree: JSON.parse(payload.program),
+    stepInfo: {
+      step: payload.step,
+      stepName: payload.stepName,
+      stepKind: payload.stepKind,
+      executionStatus: payload.executionStatus,
+      answerCount: payload.answerCount,
+      reductionCount: payload.reductionCount,
+      advanceCount: payload.advanceCount,
+      configuration: payload.configuration,
+    },
+  };
+}
+
+export function nextStepperAction(executionStatus) {
+  return executionStatus === "paused"
+    ? {
+      kind: "public-operation",
+      label: "Advance past Delay",
+      description: "Request public advancement of the exposed Delay. Subsequent reduction steps evaluate and commit its result.",
+    }
+    : {
+      kind: "reduction",
+      label: "Reduction step",
+      description: "Apply one reduction of the current configuration.",
+    };
+}
+
 export function responseErrorMessage(response, payload) {
   if (payload && typeof payload.error === "string" && payload.error.trim() !== "") {
     return payload.error;

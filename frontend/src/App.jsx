@@ -9,6 +9,7 @@ import CustomAlert from './components/CustomAlert';
 import useStepper from './hooks/useStepper';
 import Resizable from './components/Resizable';
 import Sidebar from './components/Sidebar';
+import { SEMANTIC_STYLES } from './utils/drawing.js';
 import { exampleById } from './utils/example_programs.js';
 import {
   buildSearchStrategy,
@@ -335,11 +336,24 @@ function App() {
             canReset={!isInitializing && toolbarState.canReset}
             canBack={!isInitializing && toolbarState.canBack}
             canStep={!isInitializing && toolbarState.canStep}
+            executionStatus={stepInfo.executionStatus}
           />
         </div>
 
         <div className="right-pane">
           <StepInfo {...stepInfo} darkMode={darkMode} setDarkMode={setDarkMode} />
+          <div className="picture-key" aria-label="Picture legend">
+            <div className="picture-key-kinds">
+              {Object.entries(SEMANTIC_STYLES).map(([kind, style]) => (
+                <span key={kind} className={`picture-key-${kind}`}
+                  style={{ background: style.fill, borderColor: style.stroke, color: style.stroke }}>
+                  {style.label}
+                </span>
+              ))}
+            </div>
+            <div>Each <code>intro […]</code> group belongs to its node; its source is shown below it.
+              {' '}Dotted edges lead into suspended bodies.</div>
+          </div>
           <Scrollbar style={{ width: '100%', height: '100%' }}>
             <div style={{ display: 'block', width: 'max-content', margin: '0 auto' }}>
               <TreeCanvas

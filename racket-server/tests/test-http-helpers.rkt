@@ -78,6 +78,10 @@
   (check-true (hash? payload) (format "~a: payload must be json object" where))
   (match-define (hash* ['step step]
                        ['stepName step-name]
+                       ['stepKind step-kind]
+                       ['configuration configuration]
+                       ['reductionCount reductions]
+                       ['advanceCount advances]
                        ['program program-json]
                        #:open)
     payload)
@@ -85,6 +89,16 @@
               (format "~a: missing/non-integer step" where))
   (check-true (nonempty-string? step-name)
               (format "~a: missing/non-string stepName" where))
+  (check-not-false (member step-kind '("initialization" "reduction" "public-operation"))
+                  (format "~a: missing/unknown stepKind" where))
+  (check-true (nonempty-string? configuration)
+              (format "~a: missing/non-string configuration" where))
+  (check-true (exact-nonnegative-integer? reductions)
+              (format "~a: missing/non-integer reductionCount" where))
+  (check-true (exact-nonnegative-integer? advances)
+              (format "~a: missing/non-integer advanceCount" where))
+  (check-equal? (+ reductions advances) step
+                (format "~a: history position must include both kinds of operation" where))
   (check-true (string? program-json)
               (format "~a: missing/non-string program field" where))
   (define tree (string->jsexpr program-json))

@@ -24,6 +24,7 @@
          model-session-current-answers
          model-session-current-host-answers
          model-session-step-index
+         model-session-operation-counts
          model-session-status
          model-session-done?
          model-session-step
@@ -151,11 +152,14 @@
 (define (model-session-current-step-name session)
   (model-step-name (model-session-current-step session)))
 
-(define (model-session-current-step-kind session)
-  (match (model-session-current-step-name session)
+(define (model-step-kind step)
+  (match (model-step-name step)
     ["Initialize Program" 'initialization]
     ["advance" 'public-operation]
     [_ 'reduction]))
+
+(define (model-session-current-step-kind session)
+  (model-step-kind (model-session-current-step session)))
 
 (define (model-session-current-config session)
   (model-step-config (model-session-current-step session)))
@@ -177,6 +181,16 @@
 
 (define (model-session-step-index session)
   (zipper-idx (model-session-zipper session)))
+
+;; Count only the history prefix ending at the displayed configuration. Moving
+;; back excludes future entries; replaying them restores the same counts.
+(define (model-session-operation-counts session)
+  (match-define (zipper previous current _ _) (model-session-zipper session))
+  (for/fold ([reductions 0] [advances 0]) ([step (in-list (cons current previous))])
+    (match (model-step-kind step)
+      ['initialization (values reductions advances)]
+      ['reduction (values (add1 reductions) advances)]
+      ['public-operation (values reductions (add1 advances))])))
 
 (define (model-session-status session)
   (configuration-status (model-session-current-config session)))

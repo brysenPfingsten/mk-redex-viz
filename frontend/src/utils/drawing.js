@@ -1,6 +1,87 @@
 import * as d3 from 'd3';
 import { termToString } from './strings.js';
 
+export const SEMANTIC_STYLES = Object.freeze({
+    search: { label: "Search value", fill: "#fff7dc", stroke: "#986700" },
+    operation: { label: "Pending operation", fill: "#edf4ff", stroke: "#285aa0" },
+    frontier: { label: "Frontier", fill: "#eaf5ef", stroke: "#28734a" },
+    answer: { label: "Committed answer", fill: "#def0e4", stroke: "#22613f" },
+    goal: { label: "Goal syntax", fill: "#f5f5f8", stroke: "#737386" },
+});
+
+function semanticNodeTitle(data) {
+    switch (data.name) {
+        case "Unify": return `(== ${termToString(data.left)} ${termToString(data.right)})`;
+        case "Disequality": return `(=/= ${termToString(data.left)} ${termToString(data.right)})`;
+        case "Fresh": return `fresh (${(data.vars ?? []).map(termToString).join(' ')})`;
+        case "Rel-Call": return `(${data.rel}${(data.args ?? []).map(t => ` ${termToString(t)}`).join('')})`;
+        case "<-+": return "← mplus";
+        case "+->": return "mplusR →";
+        case "Delay": return "Delay · suspended body";
+        case "More": return "More · paused Frontier";
+        default: return data.name;
+    }
+}
+
+// An Owner is an annotation on this card, never another tree vertex.
+// The source IDs and group boundaries remain visible even for empty groups.
+function drawSemanticNode(group, data) {
+    const style = SEMANTIC_STYLES[data.semanticKind];
+    group.attr("data-semantic-kind", data.semanticKind)
+        .attr("data-node-name", data.name);
+    const content = group.append("g").attr("class", "node-content");
+    const category = data.name === "Candidate" ? "Search candidate" : style.label;
+    content.append("text").attr("class", "node-category")
+        .attr("text-anchor", "middle").attr("y", 0)
+        .style("fill", style.stroke).style("font-size", "11px")
+        .style("font-weight", 700).text(category);
+    content.append("text").attr("class", "node-title")
+        .attr("text-anchor", "middle").attr("y", 23)
+        .style("fill", "#172334").style("font-size", "14px")
+        .text(semanticNodeTitle(data));
+
+    const ownerGroups = content.selectAll("g.owner-group")
+        .data(data.owners ?? []).join("g")
+        .attr("class", "owner-group")
+        .attr("data-source-id", owner => owner.sourceId)
+        .attr("transform", (_, index) => `translate(0,${47 + index * 44})`);
+    ownerGroups.append("text").attr("text-anchor", "middle")
+        .style("font-size", "12px").style("fill", "#47386b")
+        .text(owner => `intro [${owner.vars.map(termToString).join(' ')}]`);
+    ownerGroups.append("text").attr("text-anchor", "middle").attr("y", 15)
+        .style("font-size", "10px").style("fill", "#57476f")
+        .text(owner => `source ${owner.sourceId}`);
+    ownerGroups.append("title").text(owner =>
+        `Introduced together: [${owner.vars.map(termToString).join(' ')}]\nSource: ${owner.sourceId}`);
+    ownerGroups.each(function () {
+        const owner = d3.select(this);
+        const bounds = this.getBBox();
+        owner.insert("rect", ":first-child")
+            .attr("x", bounds.x - 7).attr("y", bounds.y - 4)
+            .attr("width", bounds.width + 14).attr("height", bounds.height + 8)
+            .attr("rx", 4).style("fill", "#f0eaf8").style("stroke", "#c9bbdc");
+    });
+
+    const bounds = content.node().getBBox();
+    const width = Math.max(164, bounds.width + 26);
+    const height = bounds.height + 24;
+    content.attr("transform", `translate(0,${-bounds.y - bounds.height / 2})`);
+    const outline = group.insert("rect", ":first-child")
+        .attr("class", "node-outline")
+        .attr("x", -width / 2).attr("y", -height / 2)
+        .attr("width", width).attr("height", height)
+        .attr("rx", data.semanticKind === "search" ? 16 : 5)
+        .style("fill", style.fill).style("stroke", style.stroke)
+        .style("stroke-width", "2px")
+        .style("stroke-dasharray", data.semanticKind === "operation" ? "6 3" : null);
+    if (data.semanticKind === "frontier" || data.semanticKind === "answer") {
+        group.insert("path", ".node-content")
+            .attr("d", `M${-width / 2 + 6},${-height / 2 + 8}v${height - 16}`)
+            .style("stroke", style.stroke).style("stroke-width", "3px");
+    }
+    outline.append("title").text(`${category}: ${semanticNodeTitle(data)}`);
+}
+
 
 function applyStroke(selection, hasSub, isPartial, hasAnswer) {
     if (hasSub && !isPartial) {
@@ -287,6 +368,10 @@ export function drawTree(nodeGroups) {
     nodeGroups.each(function (d) {
         const group = d3.select(this);
         const data = d.data;
+        if (SEMANTIC_STYLES[data.semanticKind]) {
+            drawSemanticNode(group, data);
+            return;
+        }
         const drawFunction = nodeDrawFunctions[data.name];
 
         if (drawFunction) {
@@ -319,7 +404,12 @@ export function drawLinks(container, links) {
     .data(links)
     .join("path")
     .attr("class", "link")
-    .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y))
+    .attr("d", d => d3.linkVertical()({
+        source: [d.source.x, d.source.y + d.source.data.measuredHeight / 2],
+        target: [d.target.x, d.target.y - d.target.data.measuredHeight / 2],
+    }))
+    .attr("data-suspended", d => d.source.data.suspended ? "true" : null)
+    .style("stroke-dasharray", d => d.source.data.suspended ? "4 5" : null)
     .style("stroke", d => (d.target.data.edgeColor ?? d.target.data.color ?? "#ccc"))
-    .style("stroke-width", 4);
+    .style("stroke-width", d => d.target.data.edgeColor ? 4 : 2);
 }

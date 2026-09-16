@@ -4,6 +4,7 @@ import {
   emptyResponseMessage,
   parseStepperPayload,
   readStepperHeaders,
+  readStepperView,
   responseErrorMessage,
   thrownErrorMessage,
 } from '../utils/stepper_protocol.js';
@@ -48,10 +49,9 @@ export default function useStepper({ onSuccess = () => {} } = {}) {
       }
 
       if (data != null) {
-        setStep({ step: data.step, stepName: data.stepName,
-          executionStatus: data.executionStatus, stepKind: data.stepKind,
-          answerCount: data.answerCount });
-        setTree(JSON.parse(data.program));
+        const view = readStepperView(data);
+        setStep(view.stepInfo);
+        setTree(view.tree);
       }
 
       return {

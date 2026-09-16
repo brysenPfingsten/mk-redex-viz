@@ -39,6 +39,28 @@
     "+->",
     "<-+"
   ],
+  "optionalNodeProperties": {
+    "semanticKind": {
+      "description": "The current strict view supplies this on every node. An eager Yield whose tail is still computing is an operation; Candidate is uncommitted Search data.",
+      "enum": ["search", "operation", "frontier", "answer", "goal"]
+    },
+    "owners": {
+      "description": "Introduction groups on the source node that owns them, in source order. Preserve empty groups and hidden source identities. Hidden source IDs must not select a visible source expression. These groups do not replace the node id or stateId.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["vars", "sourceId"],
+        "additionalProperties": false,
+        "properties": {
+          "vars": {
+            "description": "Introduced variables encoded as visible terms; an empty array is a retained empty group.",
+            "type": "array"
+          },
+          "sourceId": { "type": "string" }
+        }
+      }
+    }
+  },
   "activePathCarrierNames": [
     "Deferred",
     "Conjunction",

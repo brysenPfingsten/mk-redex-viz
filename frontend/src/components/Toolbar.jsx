@@ -1,6 +1,9 @@
 import React from 'react';
+import { nextStepperAction } from '../utils/stepper_protocol.js';
 
-export default function Toolbar({ onStart, onStep, onBack, onReset, canStart, canReset, canBack, canStep }) {
+export default function Toolbar({ onStart, onStep, onBack, onReset, canStart, canReset,
+  canBack, canStep, executionStatus }) {
+    const nextAction = nextStepperAction(executionStatus);
     return (
       <div className="trace-controls">
         <div className="control-section control-section-trace">
@@ -9,7 +12,9 @@ export default function Toolbar({ onStart, onStep, onBack, onReset, canStart, ca
             <button onClick={onStart} disabled={!canStart}>Start</button>
             <button onClick={onReset} disabled={!canReset}>Reset</button>
             <button onClick={onBack} disabled={!canBack}>Back</button>
-            <button onClick={onStep} disabled={!canStep}>Step</button>
+            <button onClick={onStep} disabled={!canStep}
+              className={`next-action next-action-${nextAction.kind}`}
+              title={nextAction.description}>{nextAction.label}</button>
           </div>
         </div>
       </div>

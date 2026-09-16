@@ -242,6 +242,29 @@ At a paused `More(Delay(...))` Frontier, the next manual step records public
 `force-delay` remains a reduction. Completed payloads retain Done/Last. GUI stepping
 ignores the source `run n` limit; automatic consumption is a library operation.
 
+### Reading the picture
+
+The strict S picture draws each introduction group **on its owning node**,
+with the variables introduced together and their source identity. Clicking a
+visible group's source selects its source expression. Empty groups remain
+visible. Common introductions govern the owner's children; private
+introductions stay on their Answer payload. The current view does not insert
+`Freshened` wrapper nodes.
+
+Cards label Search values, pending operations, Frontier structure, committed
+answers, and goal syntax separately. Pending operations have dashed borders;
+Search values have rounded borders; Frontier and committed-answer cards have
+a double left border. An eager `Yield` whose tail is still computing is a
+pending operation. A dotted edge below `Delay` leads to suspended work, not
+the active reduction path. The legend remains beside the drawing.
+
+The toolbar offers **Reduction step** while running and **Advance past Delay**
+at a public boundary. Advancement records the request; subsequent reductions
+evaluate and commit its result. History position includes both kinds of
+action, with separate reduction and public-advance counts. **Underlying
+configuration** expands the exact backend term, including Owners and source
+labels, alongside the picture. Back and Reset restore that term and its counts.
+
 ## **Direct Library Surface**
 
 If you want to run programs without the site, import

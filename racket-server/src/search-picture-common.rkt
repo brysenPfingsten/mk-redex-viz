@@ -6,7 +6,7 @@
 ;; Shared presentation of S goals, logical states, scope, and settled Frontiers.
 ;; These functions inspect existing data without executing a semantic operation.
 (provide label->visible-id term->visible-json with-source-id
-         state-fields state-node node goal->picture with-owners
+         state-fields state-node node goal->picture with-owners with-owner-annotations
          frontier-answer-nodes)
 
 (define (label->visible-id tag)
@@ -102,6 +102,7 @@
   (hash-union
    (hasheq 'name (if committed? "Answer" "Candidate")
            'renderRole (if committed? "answer-node" "candidate")
+           'semanticKind (if committed? "answer" "search")
            'nodeColor (if committed? "green" "#fff2cc"))
    (state-fields state introductions query-variables)))
 
@@ -111,7 +112,8 @@
   (if active (hash-set focused 'activeChildIndex active) focused))
 
 (define (goal->picture goal)
-  (match goal
+  (define picture
+    (match goal
     [`(,(and name (or 'succeed 'fail)) ,tag)
      (with-source-id (hasheq 'name (if (eq? name 'succeed) "Succeed" "Fail")
                               'renderRole "goal-leaf") tag)]
@@ -134,7 +136,24 @@
                              'rel (visible-name relation)
                              'args (map term->visible-json arguments)) tag)]
     [_ (error 'goal->picture "unknown source goal: ~e" goal)]))
+  (hash-set picture 'semanticKind "goal"))
 
+;; An Owner belongs to the source node that carries it. Keep the groups on
+;; that picture node while threading their names into its descendants' scope.
+;; Empty groups and hidden source identities still carry source information;
+;; neither is an instruction to synthesize a wrapper or a selectable source id.
+(define (with-owner-annotations owners introductions render)
+  (match-define `(Owners ,groups ...) owners)
+  (hash-set
+   (render (owners-support owners introductions))
+   'owners
+   (for/list ([group (in-list groups)])
+     (match-define `(Owner ,introduced ,tag) group)
+     (hasheq 'vars (map term->visible-json introduced)
+             'sourceId (label->visible-id tag)))))
+
+;; The earlier dormant work-tree inspection keeps its historical wrapper view.
+;; The current strict source uses with-owner-annotations instead.
 (define (with-owners owners introductions render)
   (match owners
     ['(Owners) (render introductions)]
@@ -150,10 +169,12 @@
     (match frontier
       [`(Emit ,owners (Answer ,private ,state) ,tail)
        (define here (owners-support owners introductions))
-       (cons (state-node state (owners-support private here) query-variables #t)
+       (cons (with-owner-annotations private here
+               (lambda (scope) (state-node state scope query-variables #t)))
              (walk-frontier tail here))]
       [`(Last ,owners (Answer ,private ,state))
-       (list (state-node state (owners-support private (owners-support owners introductions)) query-variables #t))]
+       (list (with-owner-annotations private (owners-support owners introductions)
+               (lambda (scope) (state-node state scope query-variables #t))))]
       [`(Forced ,owners ,tail) (walk-frontier tail (owners-support owners introductions))]
       [`(,(or 'advance 'collect) ,frontier) (walk-frontier frontier introductions)]
       [_ '()]))

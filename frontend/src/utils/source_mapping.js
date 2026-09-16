@@ -4,7 +4,8 @@ export function selectedSourceSegments(segments, goalId) {
 }
 
 export function goalIdFromTreeNodeData(data) {
-  return data?.id ?? null;
+  const id = data?.id;
+  return typeof id === "string" && !id.startsWith("hidden:") ? id : null;
 }
 
 export function stateKeyFromTreeNodeData(data) {
@@ -12,7 +13,7 @@ export function stateKeyFromTreeNodeData(data) {
 }
 
 export function treeNodesWithGoalId(node, goalId, acc = []) {
-  if (goalId == null || node == null) return acc;
+  if (typeof goalId !== "string" || goalId.startsWith("hidden:") || node == null) return acc;
   if (Array.isArray(node)) {
     for (const child of node) {
       treeNodesWithGoalId(child, goalId, acc);
@@ -20,7 +21,8 @@ export function treeNodesWithGoalId(node, goalId, acc = []) {
     return acc;
   }
   if (typeof node !== "object") return acc;
-  if (node.id === goalId) {
+  if (node.id === goalId || (Array.isArray(node.owners)
+    && node.owners.some(owner => owner.sourceId === goalId))) {
     acc.push(node);
   }
   if (Array.isArray(node.children)) {

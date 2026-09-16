@@ -24,13 +24,23 @@
   (define role (hash-ref node 'renderRole #f))
   (define children (hash-ref node 'children '()))
   (and (list? children)
+       (member (hash-ref node 'semanticKind #f)
+               '("search" "operation" "frontier" "answer" "goal"))
+       (or (not (hash-has-key? node 'owners))
+           (and (list? (hash-ref node 'owners))
+                (for/and ([owner (in-list (hash-ref node 'owners))])
+                  (and (hash? owner)
+                       (list? (hash-ref owner 'vars #f))
+                       (string? (hash-ref owner 'sourceId #f))))))
        (match (list name role (length children))
          [(list "Candidate" "candidate" 0)
-          (and (equal? (hash-ref node 'nodeColor #f) "#fff2cc")
+          (and (equal? (hash-ref node 'semanticKind) "search")
+               (equal? (hash-ref node 'nodeColor #f) "#fff2cc")
                (andmap (lambda (key) (hash-has-key? node key))
                        '(stateId stateKey scope sub disequalities trail reified)))]
          [(list "Answer" "answer-node" 0)
-          (and (equal? (hash-ref node 'nodeColor #f) "green")
+          (and (equal? (hash-ref node 'semanticKind) "answer")
+               (equal? (hash-ref node 'nodeColor #f) "green")
                (andmap (lambda (key) (hash-has-key? node key))
                        '(stateId stateKey scope sub disequalities trail reified)))]
          [(list (or "Succeed" "Fail" "Unify" "Disequality" "Rel-Call") "goal-leaf" 0) #t]
@@ -38,7 +48,6 @@
          [(list "Done" "completed" 0) #t]
          [(list "Last" "completed" 1) #t]
          [(list "Fresh" "goal-fresh" 1) #t]
-         [(list "Freshened" "freshened" 1) #t]
          [(list "Goal-Delay" "goal-delay" 1) #t]
          [(list (or "Goal-Conj" "Goal-Disj") "goal-branch" 2) #t]
          [(list "Eval" "evaluation" 1) #t]
@@ -85,7 +94,7 @@
   (check-trace response session 12 context))
 
 (define/provide-test-suite VISIBLE-CONTRACTS
-  (test-case "empty and nonempty introductions wrap Forced and Done in exact outer-to-inner order"
+  (test-case "empty and nonempty introductions annotate their owning Forced node in source order"
     (define picture
       (cfg->operational-picture
        '(program () (Forced (Owners (Owner () (label "outer"))
@@ -93,12 +102,12 @@
                              (Done (Owners)))) '(u:0)))
     (check-picture picture "owner order")
     (check-equal? (map (lambda (node) (hash-ref node 'name)) (nodes picture))
-                  '("Freshened" "Freshened" "Forced" "Done"))
-    (check-equal? (hash-ref picture 'id) "outer")
-    (check-equal? (hash-ref picture 'vars) '())
-    (define inner (first (hash-ref picture 'children)))
-    (check-equal? (hash-ref inner 'id) "inner")
-    (check-equal? (hash-ref inner 'vars) '(0 1)))
+                  '("Forced" "Done"))
+    (check-equal? (hash-ref picture 'owners)
+                  (list (hasheq 'vars '() 'sourceId "outer")
+                        (hasheq 'vars '(0 1) 'sourceId "inner")))
+    (check-false (hash-has-key? picture 'id))
+    (check-equal? (hash-ref (first (hash-ref picture 'children)) 'owners) '()))
 
   (test-case "every frontend example emits the explicit strict computation/Frontier tree contract"
     (for ([example (in-list (frontend-example-programs))])

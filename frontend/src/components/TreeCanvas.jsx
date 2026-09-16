@@ -13,15 +13,19 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
         selection.selectAll('g.node')
             .select('circle, rect, polygon')
             .classed('highlighted', false);
+        selection.selectAll('.owner-group rect').classed('highlighted', false);
     };
 
     const applyGoalHighlights = (goalId, selection = d3.select(svgRef.current)) => {
         clearHighlights(selection);
-        if (!goalId) return;
+        if (goalId == null) return;
         selection.selectAll('g.node')
             .filter(d => d.data.id === goalId)
             .select('circle, rect, polygon')
             .classed('highlighted', true);
+        selection.selectAll('.owner-group')
+            .filter(owner => owner.sourceId === goalId)
+            .select('rect').classed('highlighted', true);
     };
 
     const nodePayload = (d) => {
@@ -48,7 +52,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
     
     useImperativeHandle(ref, () => ({
         updateSidebar: (sId) => {
-            if (!sId) return;
+            if (sId == null) return;
             const nodeSel = d3.select(svgRef.current)
                 .selectAll('g.node')
                 .filter(d => stateKeyFromTreeNodeData(d?.data) === sId);
@@ -92,6 +96,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
                 const bbox = this.getBBox();
                 d.data.measuredWidth = bbox.width;
                 d.data.measuredHeight = bbox.height;
+                d.data.measuredBounds = { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height };
             });
             tempSvg.remove();
             
@@ -106,16 +111,29 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
             
             // Compute the layout with adjusted spacing
             treeLayout(root);
+
+            // Owner groups increase a card's height without increasing tree
+            // depth. Leave enough space at every level for all those groups.
+            const levelHeights = [];
+            root.each(d => {
+                levelHeights[d.depth] = Math.max(levelHeights[d.depth] ?? 0, d.data.measuredHeight);
+            });
+            const levelY = [0];
+            for (let depth = 1; depth < levelHeights.length; depth += 1) {
+                levelY[depth] = levelY[depth - 1] + levelHeights[depth - 1] / 2
+                    + levelHeights[depth] / 2 + 56;
+            }
+            root.each(d => { d.y = levelY[d.depth]; });
             
             // Calculate dimensions after layout
             const nodes = root.descendants();
             const links = root.links();
 
             // 1. Calculate true bounding box including node sizes
-            const trueMinX = Math.min(...nodes.map(d => d.x - d.data.measuredWidth/2));
-            const trueMaxX = Math.max(...nodes.map(d => d.x + d.data.measuredWidth/2));
-            const trueMinY = Math.min(...nodes.map(d => d.y));
-            const trueMaxY = Math.max(...nodes.map(d => d.y + d.data.measuredHeight));
+            const trueMinX = Math.min(...nodes.map(d => d.x + d.data.measuredBounds.x));
+            const trueMaxX = Math.max(...nodes.map(d => d.x + d.data.measuredBounds.x + d.data.measuredWidth));
+            const trueMinY = Math.min(...nodes.map(d => d.y + d.data.measuredBounds.y));
+            const trueMaxY = Math.max(...nodes.map(d => d.y + d.data.measuredBounds.y + d.data.measuredHeight));
 
             // 2. Calculate required dimensions
             const padding = 50;
@@ -130,14 +148,6 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
                 .attr("height", svgHeight)
                 .attr("viewBox", `${trueMinX - padding} ${trueMinY - padding} ${svgWidth} ${svgHeight}`)
                 .style("overflow", "visible");
-
-            // 4. Calculate centering translation
-            const rootCenterX = root.x;
-            const svgCenterX = (trueMinX - padding) + svgWidth/2;
-            const translateX = svgCenterX - rootCenterX;
-
-            // 5. Apply translation to the <g> element
-            g.attr("transform", `translate(${translateX},0)`);
 
             // Draw elements
             drawLinks(g, links);
@@ -156,18 +166,35 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
                     visible: true,
                     x: event.clientX,
                     y: event.clientY,
-                    content: termToString(d.data.reified).replace(/\n/g, "<br>")
+                    content: termToString(d.data.reified)
                 });
                 }
             })
             .on("mouseleave", () => {
                 setTooltip(prev => ({ ...prev, visible: false }));
             });
+
+            const selectOwner = (event, owner) => {
+                event.stopPropagation();
+                onNodeClick({ gId: owner.sourceId, sId: null });
+            };
+            g.selectAll('.owner-group')
+                .on('click', event => event.stopPropagation())
+                .filter(owner => typeof owner.sourceId === 'string' && !owner.sourceId.startsWith('hidden:'))
+                .attr('role', 'button').attr('tabindex', 0)
+                .attr('aria-label', owner => `Show introduction source ${owner.sourceId}`)
+                .on('click', selectOwner)
+                .on('keydown', (event, owner) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectOwner(event, owner);
+                    }
+                });
         }
     }));
     return (
         <>
-            <svg ref={svgRef} />
+            <svg ref={svgRef} role="img" aria-label="Search configuration with introductions on their owning nodes" />
             {tooltip.visible && (
                 <div className="reified-tooltip"
                     style={{
@@ -177,8 +204,7 @@ const TreeCanvas = forwardRef(({ onNodeClick, selectedGoalId }, ref) => {
                         zIndex: 1000,
                         pointerEvents: "none"
                     }}
-                    dangerouslySetInnerHTML={{ __html: tooltip.content }}
-                />
+                >{tooltip.content}</div>
             )}
         </>
     );

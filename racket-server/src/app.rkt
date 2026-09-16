@@ -25,12 +25,18 @@
 ;; observation boundaries, and committed-answer extraction for each model.
 (define (session->response ses #:html [html #f] #:cookie [session-id #f])
   (define status (model-session-status ses))
+  (define-values (reductions advances) (model-session-operation-counts ses))
   (define body
     (hasheq 'stepName (model-session-current-step-name ses)
             'stepKind (symbol->string (model-session-current-step-kind ses))
             'step (model-session-step-index ses)
+            'reductionCount reductions
+            'advanceCount advances
             'executionStatus (symbol->string status)
             'answerCount (length (model-session-current-answer-nodes ses))
+            'configuration
+            (with-output-to-string
+              (lambda () (pretty-write (model-session-current-config ses))))
             'program (jsexpr->string (model-session-current-picture ses))))
   (define headers
     (append

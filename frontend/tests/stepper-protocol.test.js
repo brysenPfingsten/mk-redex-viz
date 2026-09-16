@@ -5,6 +5,8 @@ import {
   emptyResponseMessage,
   parseStepperPayload,
   readStepperHeaders,
+  readStepperView,
+  nextStepperAction,
   responseErrorMessage,
   thrownErrorMessage,
 } from "../src/utils/stepper_protocol.js";
@@ -77,4 +79,53 @@ test("responseErrorMessage prefers backend error text and falls back to HTTP sta
 test("thrownErrorMessage always returns a user-facing message", () => {
   assert.equal(thrownErrorMessage(new Error("Network down")), "Network down");
   assert.equal(thrownErrorMessage("boom"), "Unexpected request failure.");
+});
+
+test("stepper views retain exact configuration and separate reductions from public advancement", () => {
+  const pausedConfiguration = "(program () (More (Delay (Owners) (eval () g s))))\n";
+  const initial = {
+    step: 0, stepName: "Initialize Program", stepKind: "initialization",
+    executionStatus: "running", answerCount: 0, reductionCount: 0, advanceCount: 0,
+    configuration: "(program () (commit (eval () g s)))\n",
+    program: JSON.stringify({ name: "commit", children: [] }),
+  };
+  const paused = {
+    ...initial, step: 3, stepName: "commit-delay", stepKind: "reduction",
+    executionStatus: "paused", reductionCount: 3,
+    configuration: pausedConfiguration,
+    program: JSON.stringify({ name: "More", children: [] }),
+  };
+  const advancing = {
+    ...paused, step: 4, stepName: "advance", stepKind: "public-operation",
+    executionStatus: "running", advanceCount: 1,
+    configuration: "(program () (advance (More (Delay (Owners) (eval () g s)))))\n",
+    program: JSON.stringify({ name: "advance", children: [] }),
+  };
+  const reducing = {
+    ...advancing, step: 5, stepName: "advance-delay", stepKind: "reduction",
+    reductionCount: 4,
+    configuration: "(program () (Forced (Owners) (commit (eval () g s))))\n",
+    program: JSON.stringify({ name: "Forced", children: [] }),
+  };
+
+  // Snapshots are authoritative, including when back/reset decrease counts.
+  // No state is inferred from the picture or accumulated in the browser.
+  for (const payload of [initial, paused, advancing, reducing, advancing, paused, initial]) {
+    const { tree, stepInfo } = readStepperView(payload);
+    assert.deepEqual(tree, JSON.parse(payload.program));
+    assert.equal(stepInfo.configuration, payload.configuration);
+    assert.equal(stepInfo.stepKind, payload.stepKind);
+    assert.equal(stepInfo.step, payload.reductionCount + payload.advanceCount);
+    assert.equal(stepInfo.reductionCount, payload.reductionCount);
+    assert.equal(stepInfo.advanceCount, payload.advanceCount);
+    assert.equal(stepInfo.executionStatus, payload.executionStatus);
+    assert.equal(stepInfo.answerCount, payload.answerCount);
+  }
+});
+
+test("paused boundaries offer public advancement; its resulting running state offers a reduction", () => {
+  assert.equal(nextStepperAction("paused").label, "Advance past Delay");
+  assert.equal(nextStepperAction("paused").kind, "public-operation");
+  assert.equal(nextStepperAction("running").label, "Reduction step");
+  assert.equal(nextStepperAction("running").kind, "reduction");
 });

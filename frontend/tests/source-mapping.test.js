@@ -35,6 +35,63 @@ test("goalIdFromTreeNodeData only returns a source UUID when the tree node actua
   assert.equal(goalIdFromTreeNodeData({ id: "eq-1", stateId: "st-1" }), "eq-1");
   assert.equal(goalIdFromTreeNodeData({ stateId: "st-1" }), null);
   assert.equal(goalIdFromTreeNodeData(null), null);
+  assert.equal(goalIdFromTreeNodeData({ id: "hidden:query" }), null);
+  const owners = [{ vars: [{ var: "u:0" }], sourceId: "fresh-1" }];
+  assert.equal(goalIdFromTreeNodeData({ owners, stateId: "st-1" }), null);
+  assert.equal(goalIdFromTreeNodeData({ id: "eq-1", owners, stateId: "st-1" }), "eq-1");
+});
+
+test("source selection finds exact owning nodes without merging common and answer-private introductions", () => {
+  const common = [
+    { vars: [{ var: "u:0" }, { var: "u:1" }], sourceId: "fresh-common" },
+    { vars: [], sourceId: "fresh-empty" },
+  ];
+  const privateOwners = [{ vars: [{ var: "u:2" }], sourceId: "fresh-private" }];
+  const answer = { name: "Answer", stateId: "st-1", owners: privateOwners };
+  const delayed = {
+    name: "Delay",
+    owners: [{ vars: [{ var: "u:2" }], sourceId: "fresh-residual" }],
+  };
+  const tree = {
+    name: "Emit", owners: common,
+    children: [answer, { name: "More", children: [delayed] }],
+  };
+  const { segments } = parseTaggedText(
+    "[[fresh-common]](fresh (x y) [[fresh-empty]](fresh () "
+    + "(disj [[fresh-private]](fresh (private) succeed)[[/fresh-private]] "
+    + "[[fresh-residual]](fresh (residual) (Zzz succeed))[[/fresh-residual]]))"
+    + "[[/fresh-empty]])[[/fresh-common]]",
+  );
+
+  for (const [id, owner] of [
+    ["fresh-common", tree], ["fresh-empty", tree],
+    ["fresh-private", answer], ["fresh-residual", delayed],
+  ]) {
+    assert.equal(selectedSourceSegments(segments, id).length, 1);
+    assert.deepEqual(treeNodesWithGoalId(tree, id), [owner]);
+  }
+  assert.equal(goalIdFromTreeNodeData(answer), null);
+  assert.equal(stateKeyFromTreeNodeData(answer), "st-1");
+  assert.deepEqual(treeNodesWithGoalId(tree, "st-1"), []);
+  assert.equal(tree.owners, common);
+  assert.equal(answer.owners, privateOwners);
+  assert.equal(common.length, 2);
+  assert.equal(common[0].vars.length, 2);
+  assert.equal(common[1].vars.length, 0);
+});
+
+test("owner source matching preserves repeated origins without duplicating a node or selecting hidden owners", () => {
+  const visibleOwner = { vars: [], sourceId: "fresh-1" };
+  const hiddenOwner = { vars: [{ var: "u:0" }], sourceId: "hidden:fresh-1" };
+  const ownOrigin = { name: "Eval", id: "fresh-1", owners: [visibleOwner, visibleOwner] };
+  const sharedOrigin = { name: "Forced", owners: [visibleOwner] };
+  const hiddenOrigin = { name: "Last", owners: [hiddenOwner] };
+  const tree = { name: "Mplus", children: [ownOrigin, sharedOrigin, hiddenOrigin] };
+
+  assert.deepEqual(treeNodesWithGoalId(tree, "fresh-1"), [ownOrigin, sharedOrigin]);
+  assert.deepEqual(treeNodesWithGoalId(tree, "hidden:fresh-1"), []);
+  assert.equal(goalIdFromTreeNodeData(hiddenOrigin), null);
+  assert.deepEqual(hiddenOrigin.owners, [hiddenOwner]);
 });
 
 test("treeNodesWithGoalId finds all RHS tree nodes that share a source UUID", () => {

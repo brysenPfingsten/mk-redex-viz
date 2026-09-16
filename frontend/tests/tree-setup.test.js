@@ -136,25 +136,23 @@ test("addColors keeps the active edge colored through a spine prefix to an answe
   assert.equal(result.children[0].children[1].edgeColor, "#ff8000");
 });
 
-test("addColors carries spine color through freshened nodes", () => {
+test("addColors follows a strict Frontier without turning owner groups into control nodes", () => {
+  const common = [{ vars: [{ var: "u:0" }], sourceId: "fresh-common" }];
+  const privateOwners = [{ vars: [{ var: "u:1" }], sourceId: "fresh-private" }];
+  const resumed = [{ vars: [], sourceId: "fresh-empty" }];
   const tree = {
-    name: "Freshened",
-    activeChildIndex: 0,
+    name: "Emit", semanticKind: "frontier", owners: common,
+    resolvedChildIndices: [0], resolvedColor: "green", activeChildIndex: 1,
     children: [
+      { name: "Answer", semanticKind: "answer", nodeColor: "green", owners: privateOwners },
       {
-        name: "Emit",
-        resolvedChildIndices: [0],
-        resolvedColor: "green",
-        activeChildIndex: 1,
+        name: "Forced", semanticKind: "frontier", owners: resumed, activeChildIndex: 0,
         children: [
-          { name: "Answer", nodeColor: "green" },
           {
-            name: "<-+",
-            focusColor: "#ff8000",
-            activeChildIndex: 0,
+            name: "Commit", semanticKind: "operation", focusColor: "blue", activeChildIndex: 0,
             children: [
-              { name: "Answer", nodeColor: "green" },
-              { name: "Unify" },
+              { name: "Eval", semanticKind: "operation", activeChildIndex: 0,
+                children: [{ name: "Unify", semanticKind: "goal" }] },
             ],
           },
         ],
@@ -164,10 +162,14 @@ test("addColors carries spine color through freshened nodes", () => {
 
   const result = addColors(tree);
 
-  assert.equal(result.color, "#ff8000");
-  assert.equal(result.children[0].edgeColor, "#ff8000");
-  assert.equal(result.children[0].children[0].edgeColor, "green");
-  assert.equal(result.children[0].children[1].edgeColor, "#ff8000");
+  assert.equal(result.color, "blue");
+  assert.equal(result.children[0].edgeColor, "green");
+  assert.equal(result.children[1].edgeColor, "blue");
+  assert.equal(result.children[1].children[0].children[0].children[0].edgeColor, "blue");
+  assert.equal(result.owners, common);
+  assert.equal(result.children[0].owners, privateOwners);
+  assert.equal(result.children[1].owners, resumed);
+  assert.equal(result.children.length, 2);
 });
 
 test("addColors keeps the active edge colored through nested rail disjunctions", () => {
