@@ -77,14 +77,14 @@
 (define (commit/d search k)
   (match search
     [`(Empty ,owners) (return/d `(Done ,owners) k)]
-    [`(One ,owners ,state) (return/d `(Last (Owners) (Answer ,owners ,state)) k)]
+    [`(One ,owners ,state) (return/d `(Solo ,owners ,state) k)]
     [`(Yield ,owners ,answer ,rest) (commit/d rest (KCommitEmit owners answer k))]
     [`(Delay ,_ ,_) (return/d `(More ,search) k)]))
 
 (define (advance/d frontier inherited k)
   (match frontier
     [`(Done ,_) (return/d frontier k)]
-    [`(Last (Owners) ,_) (return/d frontier k)]
+    [`(Solo ,_ ,_) (return/d frontier k)]
     [`(Emit ,owners ,answer ,rest)
      (advance/d rest (owners-support owners inherited) (KAdvanceEmit owners answer k))]
     [`(Forced ,owners ,rest)
@@ -96,7 +96,7 @@
 (define (collect/d frontier inherited k)
   (match frontier
     [`(Done ,_) (return/d frontier k)]
-    [`(Last (Owners) ,_) (return/d frontier k)]
+    [`(Solo ,_ ,_) (return/d frontier k)]
     [`(Emit ,owners ,answer ,rest)
      (collect/d rest (owners-support owners inherited) (KCollectEmit owners answer k))]
     [`(Forced ,owners ,rest)

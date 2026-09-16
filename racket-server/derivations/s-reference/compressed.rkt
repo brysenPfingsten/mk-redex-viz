@@ -303,7 +303,7 @@
       (match
        search
        (`(Empty ,owners) (jump! bank 'return/d `(Done ,owners) k))
-       (`(One ,owners ,state) (jump! bank 'return/d `(Last (Owners) (Answer ,owners ,state)) k))
+       (`(One ,owners ,state) (jump! bank 'return/d `(Solo ,owners ,state) k))
        (`(Yield ,owners ,answer ,rest)
         (jump! bank 'commit/d rest (KCommitEmit owners answer k)))
        (`(Delay ,_ ,_) (jump! bank 'return/d `(More ,search) k)))))
@@ -315,7 +315,7 @@
       (match
        frontier
        (`(Done ,_) (jump! bank 'return/d frontier k))
-       (`(Last (Owners) ,_) (jump! bank 'return/d frontier k))
+       (`(Solo ,_ ,_) (jump! bank 'return/d frontier k))
        (`(Emit ,owners ,answer ,rest)
         (jump!
          bank
@@ -346,7 +346,7 @@
       (match
        frontier
        (`(Done ,_) (jump! bank 'return/d frontier k))
-       (`(Last (Owners) ,_) (jump! bank 'return/d frontier k))
+       (`(Solo ,_ ,_) (jump! bank 'return/d frontier k))
        (`(Emit ,owners ,answer ,rest)
         (jump!
          bank

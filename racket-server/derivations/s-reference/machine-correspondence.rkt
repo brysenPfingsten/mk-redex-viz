@@ -131,14 +131,14 @@
     [(f:Call 'advance/d (list frontier _ _))
      (match frontier
        [`(Done ,_) "advance-done"]
-       [`(Last ,_ ,_) "advance-last"]
+       [`(Solo ,_ ,_) "advance-solo"]
        [`(Emit ,_ ,_ ,_) "advance-emit"]
        [`(Forced ,_ ,_) "advance-forced"]
        [`(More ,_) "advance-delay"])]
     [(f:Call 'collect/d (list frontier _ _))
      (match frontier
        [`(Done ,_) "collect-done"]
-       [`(Last ,_ ,_) "collect-last"]
+       [`(Solo ,_ ,_) "collect-solo"]
        [`(Emit ,_ ,_ ,_) "collect-emit"]
        [`(Forced ,_ ,_) "collect-forced"]
        [`(More ,_) "collect-delay"])]

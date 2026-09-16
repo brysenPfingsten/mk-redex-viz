@@ -102,8 +102,8 @@ merge. Bind over `Yield` evaluates the continuation result and recursive
 residual before merging. A `Delay` is a value without a premise for its body.
 The [source observation and scope rules](../README.md#program-active-search-and-settled-frontier)
 determine the distinct internal-force and public-resumption premises.
-Conclusions preserve exact `Emit`, `Forced`, `Last`, and `Done` structure,
-including the commit-one Owner transfer, and all native state fields.
+Conclusions preserve exact `Emit`, `Forced`, `Solo`, and `Done` structure,
+including the terminal answer's Owner groups, and all native state fields.
 An exposed advancement records `advance-delay`, then the resumed computation's
 strict search labels, then its `commit-*` labels. It introduces no synthetic
 `force-delay` event. Collection additionally

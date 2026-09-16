@@ -76,7 +76,7 @@
     (check-match paused `(program () (More (Delay (Owners) (mplus (Owners) (force ,_) (One ,_ ,_))))))
     (match-define `(program ,definitions ,body) paused)
     (define completed (round strict-dfs-red `(program ,definitions (advance ,body))))
-    (check-match completed `(program () (Forced ,_ (Emit ,_ (Answer ,_ (state ,_ ,_ (((sym "A") =? ,_ ,_)) ,_)) (Last ,_ ,_))))))
+    (check-match completed `(program () (Forced ,_ (Emit ,_ (Answer ,_ (state ,_ ,_ (((sym "A") =? ,_ ,_)) ,_)) (Solo ,_ ,_))))))
 
   (test-case "oriented empty and nested eager chunks obey the same exact step squares"
     (define state '(state () () () (label "state")))

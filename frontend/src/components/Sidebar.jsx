@@ -14,7 +14,7 @@ const Sidebar = ({
   const rows = activeTab === 0 ? substitutionData : trailData;
   const emptyMessage = hasStateSelection
     ? `No ${activeTab === 0 ? 'substitution' : 'trail'} entries for this state.`
-    : 'Select an Answer or active goal to inspect its state.';
+    : 'Select a Solo, Answer, candidate, or active goal to inspect its state.';
 
   return (
     <>

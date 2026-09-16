@@ -59,7 +59,7 @@ Relation expansion adds no implicit Delay. Γ is explicit in the program and
 retained data frames; suspension is present in the compiled goal itself.
 Query-variable identities come from compiler metadata, not a scan of a changing
 search tree. The [picture projection](../racket-server/src/search-picture.rkt)
-distinguishes active candidates from committed answers and retains Done/Last,
+distinguishes active candidates from committed answers and retains Done/Solo,
 common/private introductions, and exposed delayed residuals.
 All choices share compiled goals, source identity, and the strict program
 carrier. Public advancement records `advance` before reduction; internal

@@ -10,6 +10,7 @@
          (prefix-in rail: "../source/reduction-relations/rail-relcall-red.rkt")
          (prefix-in wf: "../source/wf/all.rkt")
          (only-in "../../../shared/wf.rkt" wf-s-rel?)
+         (only-in "../../../shared/kernel.rkt" owners-append)
          (only-in "../../../s-reference/relations.rkt" goal-body)
          "../../../shared/kernel-equations.rkt"
          "../../../test-support/witnesses.rkt")
@@ -23,6 +24,8 @@
 ;; Static scope abstraction for reusing the established S WF predicate ONLY.
 ;; Yield's two worlds become mplus's two worlds; their exact Owner paths and
 ;; states are retained. This never evaluates or translates an executing state.
+;; The historical terminal's two Owner fields form one path with no residual;
+;; its scope-only image uses the current terminal grammar for this WF check.
 (define (scope-shape term)
   (match term
     [`(program ,_ ,definitions ,body) `(program ,definitions ,(scope-shape body))]
@@ -33,6 +36,8 @@
     [(or `(mplus ,owners ,left ,right) `(mplusR ,owners ,left ,right))
      `(mplus ,owners ,(scope-shape left) ,(scope-shape right))]
     [`(bind ,owners ,body ,goal) `(bind ,owners ,(scope-shape body) ,goal)]
+    [`(Last ,owners (Answer ,private ,state))
+     `(Solo ,(owners-append owners private) ,state)]
     [`(Emit ,owners ,answer ,tail) `(Emit ,owners ,answer ,(scope-shape tail))]
     [`(,(and constructor (or 'Delay 'Forced)) ,owners ,body)
      `(,constructor ,owners ,(scope-shape body))]

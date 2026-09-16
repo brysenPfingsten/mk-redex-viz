@@ -2,6 +2,7 @@
 
 (require rackunit redex/reduction-semantics
          "shared/grammar-s.rkt" "shared/grammar-e.rkt" "shared/grammar-n.rkt"
+         "shared/wf.rkt"
          (prefix-in q: "shared/maps.rkt")
          (only-in "s-reference/source.rkt" ScopeS)
          (prefix-in i: "s-reference/interpreter.rkt"))
@@ -12,7 +13,7 @@
 (define pending `(More (Delay (Owners) (eval (Owners) ,goal ,state))))
 
 (module+ test
-  (test-case "retained and shared S grammars separate Yield Search from More Frontier"
+  (test-case "reference and shared S grammars separate Yield Search from More Frontier"
     (for ([predicates
            (in-list
             (list (list (lambda (x) (redex-match? ScopeS SV x))
@@ -65,18 +66,44 @@
     (define search (i:eval/s `(,goal ∨ ,goal (label "choice")) state '(Owners) '()))
     (check-match search `(Yield (Owners) (Answer (Owners) ,_) (One (Owners) ,_)))
     (check-true (redex-match? ScopeS SV search))
-    (check-match (i:commit/s search) `(Emit (Owners) ,_ (Last (Owners) ,_))))
+    (check-match (i:commit/s search) `(Emit (Owners) ,_ (Solo (Owners) ,_))))
 
   (test-case "commit retains unary More and public advance crosses its Delay"
     (define search (i:eval/s `(suspend ,goal (label "delay")) state '(Owners) '()))
     (define frontier (i:commit/s search))
     (check-equal? frontier `(More ,search))
-    (check-match (i:resume-once frontier) `(Forced (Owners) (Last (Owners) ,_))))
+    (check-match (i:resume-once frontier) `(Forced (Owners) (Solo (Owners) ,_))))
 
-  (test-case "terminal success and failure retain Last and Done"
+  (test-case "terminal success and failure retain Solo and Done"
     (define answer `(Answer (Owners) ,state))
     (check-equal? (i:commit/s '(Empty (Owners))) '(Done (Owners)))
-    (check-equal? (i:commit/s `(One (Owners) ,state)) `(Last (Owners) ,answer))
+    (check-equal? (i:commit/s `(One (Owners) ,state)) `(Solo (Owners) ,state))
     ;; An existing eager cell followed by failure has different structure
     ;; from terminal success; commitment does not normalize them together.
-    (check-equal? (i:commit/s active) `(Emit (Owners) ,answer (Done (Owners))))))
+    (check-equal? (i:commit/s active) `(Emit (Owners) ,answer (Done (Owners)))))
+
+  (test-case "terminal grammar rejects the former Last shell and Answer payload"
+    (define owners '(Owners (Owner () (label "empty"))
+                            (Owner (u:a) (label "unused"))))
+    (define solo `(Solo ,owners ,state))
+    (check-equal? (i:commit/s `(One ,owners ,state)) solo)
+    (check-true (redex-match? ScopeS F solo))
+    (check-true (redex-match? StrictS O solo))
+    (check-true (wf-s? solo))
+    (check-false (redex-match? ScopeS SV solo))
+    (check-false (redex-match? ScopeS c solo))
+    (for ([obsolete (in-list (list `(Last (Owners) (Answer ,owners ,state))
+                                  `(Last ,owners (Answer (Owners) ,state))
+                                  `(Solo ,owners (Answer (Owners) ,state))))])
+      (check-false (redex-match? ScopeS F obsolete))
+      (check-false (redex-match? StrictS F obsolete))
+      (check-false (wf-s? obsolete)))
+    (for ([row (in-list
+                (list (list q:Q-SE wf-e? (lambda (x) (redex-match? StrictE F x)))
+                      (list q:Q-SN wf-n? (lambda (x) (redex-match? StrictN F x)))))])
+      (match-define (list project well-formed? frontier?) row)
+      (define projected (project solo))
+      (check-match projected `(Solo (state ,_ ,_ ,_ ,_ ,_)))
+      (check-true (frontier? projected))
+      (check-true (well-formed? projected))
+      (check-false (frontier? (cons 'Last (cdr projected)))))))

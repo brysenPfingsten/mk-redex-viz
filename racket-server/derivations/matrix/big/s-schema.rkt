@@ -155,7 +155,7 @@
   [---------------------------------------------------- "render empty"
    (render-big env ... P (Empty owners) (Done owners) ("render-empty"))]
   [---------------------------------------------------- "render one"
-   (render-big env ... P (One owners σ) (Last (Owners) (Answer owners σ)) ("render-one"))]
+   (render-big env ... P (One owners σ) (Solo owners σ) ("render-one"))]
   [(render-big env ... (support+ P owners) SV O trace)
    ---------------------------------------------------- "render Yield"
    (render-big env ... P (Yield owners A SV) (Emit owners A O)
@@ -172,7 +172,7 @@
   [---------------------------------------------------- "commit empty"
    (commit-big env ... P (Empty owners) (Done owners) ("commit-empty"))]
   [---------------------------------------------------- "commit one"
-   (commit-big env ... P (One owners σ) (Last (Owners) (Answer owners σ)) ("commit-one"))]
+   (commit-big env ... P (One owners σ) (Solo owners σ) ("commit-one"))]
   [(commit-big env ... (support+ P owners) SV F trace)
    ---------------------------------------------------- "commit eager tail"
    (commit-big env ... P (Yield owners A SV) (Emit owners A F)
@@ -185,8 +185,8 @@
   #:contract (advance-big env ... P F F trace)
   [---------------------------------------------------- "advance done"
    (advance-big env ... P (Done owners) (Done owners) ("advance-done"))]
-  [---------------------------------------------------- "advance last"
-   (advance-big env ... P (Last owners A) (Last owners A) ("advance-last"))]
+  [---------------------------------------------------- "advance solo"
+   (advance-big env ... P (Solo owners σ) (Solo owners σ) ("advance-solo"))]
   [(advance-big env ... (support+ P owners) F_1 F_2 trace)
    ---------------------------------------------------- "advance Emit"
    (advance-big env ... P (Emit owners A F_1) (Emit owners A F_2)
@@ -206,8 +206,8 @@
   #:contract (collect-big env ... P F O trace)
   [---------------------------------------------------- "collect done"
    (collect-big env ... P (Done owners) (Done owners) ("collect-done"))]
-  [---------------------------------------------------- "collect last"
-   (collect-big env ... P (Last owners A) (Last owners A) ("collect-last"))]
+  [---------------------------------------------------- "collect solo"
+   (collect-big env ... P (Solo owners σ) (Solo owners σ) ("collect-solo"))]
   [(collect-big env ... (support+ P owners) F O trace)
    ---------------------------------------------------- "collect Emit"
    (collect-big env ... P (Emit owners A F) (Emit owners A O)
@@ -313,7 +313,7 @@
 (define (promote-render env ... search ancestry)
   (match search
     [`(Empty ,owners) `(Done ,owners)]
-    [`(One ,owners ,state) `(Last (Owners) (Answer ,owners ,state))]
+    [`(One ,owners ,state) `(Solo ,owners ,state)]
     [`(Yield ,owners ,answer ,tail)
      `(Emit ,owners ,answer ,(promote-render env ... tail (owners-support owners ancestry)))]
     [`(Delay ,owners ,body)
@@ -323,7 +323,7 @@
 (define (promote-commit env ... search ancestry)
   (match search
     [`(Empty ,owners) `(Done ,owners)]
-    [`(One ,owners ,state) `(Last (Owners) (Answer ,owners ,state))]
+    [`(One ,owners ,state) `(Solo ,owners ,state)]
     [`(Yield ,owners ,answer ,tail)
      `(Emit ,owners ,answer ,(promote-commit env ... tail (owners-support owners ancestry)))]
     [`(Delay ,owners ,body) `(More (Delay ,owners ,body))]))
@@ -331,7 +331,7 @@
 (define (promote-advance env ... frontier ancestry)
   (match frontier
     [`(Done ,_) frontier]
-    [`(Last ,_ ,_) frontier]
+    [`(Solo ,_ ,_) frontier]
     [`(Emit ,owners ,answer ,tail)
      `(Emit ,owners ,answer ,(promote-advance env ... tail (owners-support owners ancestry)))]
     [`(Forced ,owners ,tail)
@@ -343,7 +343,7 @@
 (define (promote-collect env ... frontier ancestry)
   (match frontier
     [`(Done ,_) frontier]
-    [`(Last ,_ ,_) frontier]
+    [`(Solo ,_ ,_) frontier]
     [`(Emit ,owners ,answer ,tail)
      `(Emit ,owners ,answer ,(promote-collect env ... tail (owners-support owners ancestry)))]
     [`(Forced ,owners ,tail)

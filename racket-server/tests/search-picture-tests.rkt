@@ -83,8 +83,7 @@
     (define frontier
       `(Emit (Owners (Owner () (label "unused")) (Owner (u:9) (label "common")))
              (Answer (Owners (Owner (u:2) (label "private-first"))) ,first-state)
-             (Last (Owners)
-                   (Answer (Owners (Owner (u:3) (label "private-second"))) ,second-state))))
+             (Solo (Owners (Owner (u:3) (label "private-second"))) ,second-state)))
     (define picture (check-picture frontier '(u:9)))
     (check-equal? (map (lambda (node) (hash-ref node 'scope))
                        (committed-answer-nodes frontier '(u:9)))
@@ -93,14 +92,14 @@
     (check-equal? (hash-ref picture 'owners)
                   (list (hasheq 'vars '() 'sourceId "unused")
                         (hasheq 'vars '(9) 'sourceId "common")))
-    (check-equal? (map (lambda (node) (hash-ref node 'owners)) (named picture "Answer"))
+    (define answers (append (named picture "Answer") (named picture "Solo")))
+    (check-equal? (map (lambda (node) (hash-ref node 'owners)) answers)
                   (list (list (hasheq 'vars '(2) 'sourceId "private-first"))
                         (list (hasheq 'vars '(3) 'sourceId "private-second"))))
-    (check-equal? (map (lambda (node) (hash-ref node 'scope)) (named picture "Answer"))
+    (check-equal? (map (lambda (node) (hash-ref node 'scope)) answers)
                   '((9 2) (9 3)))
-    (check-equal? (hash-ref (car (named picture "Last")) 'owners) '())
     (check-equal? (map (lambda (node) (hash-ref node 'name)) (nodes picture))
-                  '("Emit" "Answer" "Last" "Answer")))
+                  '("Emit" "Answer" "Solo")))
 
   (test-case "owner annotations preserve grouping and source identity without replacing node or state identity"
     (define groups
@@ -138,12 +137,34 @@
     (check-equal? (hash-ref right 'scope) '(9 30))
     (check-equal? (hash-ref picture 'activeChildIndex) 1))
 
-  (test-case "Done Last and Emit followed by Done remain visibly distinct"
-    (define last `(Last (Owners) (Answer (Owners) ,empty-state)))
+  (test-case "Done Solo and Emit followed by Done remain visibly distinct"
+    (define solo `(Solo (Owners) ,empty-state))
     (define emitted `(Emit (Owners) (Answer (Owners) ,empty-state) (Done (Owners))))
     (check-equal? (hash-ref (check-picture '(Done (Owners))) 'name) "Done")
-    (check-not-equal? (check-picture last) (check-picture emitted))
-    (check-equal? (hash-ref (check-picture last) 'name) "Last"))
+    (check-not-equal? (check-picture solo) (check-picture emitted))
+    (check-equal? (hash-ref (check-picture solo) 'name) "Solo"))
+
+  (test-case "Solo directly owns its introductions and inspectable committed state"
+    (define owners
+      '(Owners (Owner () (label "unused")) (Owner (u:9 u:2) (label "query"))))
+    (define state '(state ((u:9 (sym "ready"))) () () (label "terminal")))
+    (define frontier `(Solo ,owners ,state))
+    (define picture (check-picture frontier '(u:9)))
+    (check-equal? (map (lambda (node) (hash-ref node 'name)) (nodes picture)) '("Solo"))
+    (check-equal? (hash-ref picture 'children) '())
+    (check-equal? (hash-ref picture 'semanticKind) "frontier")
+    (check-equal? (hash-ref picture 'renderRole) "terminal-answer")
+    (check-equal? (hash-ref picture 'nodeColor) "green")
+    (check-equal? (hash-ref picture 'owners)
+                  (list (hasheq 'vars '() 'sourceId "unused")
+                        (hasheq 'vars '(9 2) 'sourceId "query")))
+    (check-equal? (hash-ref picture 'scope) '(9 2))
+    (check-equal? (hash-ref picture 'stateId) "terminal")
+    (check-equal? (hash-ref picture 'reified) (hasheq 'sym "ready"))
+    (check-equal? (committed-answer-nodes frontier '(u:9)) (list picture))
+    (check-equal? (committed-answer-nodes `(One ,owners ,state) '(u:9)) '())
+    (check-exn exn:fail?
+               (lambda () (check-picture `(Last (Owners) (Answer ,owners ,state)) '(u:9)))))
 
   (test-case "semantic categories distinguish mature Search, eager-tail work, and committed structure"
     (define one `(One (Owners) ,empty-state))
@@ -161,14 +182,17 @@
                                         `(force ,delay) `(commit ,one)
                                         `(advance (More ,delay))))])
       (check-equal? (hash-ref (check-picture configuration) 'semanticKind) "operation"))
-    (for ([configuration (in-list (list '(Done (Owners)) `(Last (Owners) ,answer)
+    (for ([configuration (in-list (list '(Done (Owners)) `(Solo (Owners) ,empty-state)
                                         `(Emit (Owners) ,answer (commit ,delay))
                                         `(Forced (Owners) (More ,delay)) `(More ,delay)))])
       (check-equal? (hash-ref (check-picture configuration) 'semanticKind) "frontier"))
     (define uncommitted (check-picture `(commit ,one)))
     (check-equal? (hash-ref (car (named uncommitted "Candidate")) 'semanticKind) "search")
-    (define committed (check-picture `(Last (Owners) ,answer)))
-    (check-equal? (hash-ref (car (named committed "Answer")) 'semanticKind) "answer")
+    (define committed (check-picture `(Solo (Owners) ,empty-state)))
+    (check-equal? (hash-ref committed 'semanticKind) "frontier")
+    (check-equal? (named committed "Answer") '())
+    (check-equal? (hash-ref (car (named (check-picture `(Emit (Owners) ,answer (Done (Owners)))) "Answer"))
+                            'semanticKind) "answer")
     (check-equal? (hash-ref (car (named (check-picture pending) "Succeed")) 'semanticKind) "goal"))
 
   (test-case "Delay retains its unevaluated resumption and prevents active-path descent"
@@ -220,7 +244,7 @@
               ((u:30 (str "tea")))
               ((u:9 =? u:2 (label "alias"))) (label "state")))
     (define frontier
-      `(Last (Owners) (Answer (Owners (Owner (u:9 u:2 u:30) (label "sparse"))) ,state)))
+      `(Solo (Owners (Owner (u:9 u:2 u:30) (label "sparse"))) ,state))
     (define answer (car (committed-answer-nodes frontier '(u:9 u:30))))
     (check-equal? (hash-ref answer 'reified)
                   (list (hasheq 'pair (list "_.0" (hasheq 'pair (list "_.0" '())))) "_.0"))
@@ -232,8 +256,7 @@
 
   (test-case "literal strings and booleans retain their type in reified query values"
     (define state '(state ((u:9 (str "_.0")) (u:2 #f)) () () (label "typed")))
-    (define frontier `(Last (Owners)
-                           (Answer (Owners (Owner (u:9 u:2) (label "query"))) ,state)))
+    (define frontier `(Solo (Owners (Owner (u:9 u:2) (label "query"))) ,state))
     (check-equal? (hash-ref (car (committed-answer-nodes frontier '(u:9 u:2))) 'reified)
                   (list (hasheq 'str "_.0") #f)))
 
@@ -251,9 +274,8 @@
   (test-case "state inspection distinguishes substitutions that preserve the same semantic state tag"
     (define (answer value)
       (car (committed-answer-nodes
-            `(Last (Owners)
-                   (Answer (Owners (Owner (u:9) (label "query")))
-                           (state ((u:9 (sym ,value))) () () (label "initial"))))
+            `(Solo (Owners (Owner (u:9) (label "query")))
+                   (state ((u:9 (sym ,value))) () () (label "initial")))
             '(u:9))))
     (define left (answer "a"))
     (define right (answer "b"))

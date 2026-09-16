@@ -3,6 +3,23 @@ import assert from "node:assert/strict";
 
 import { addColors } from "../src/utils/treeSetup.js";
 
+test("a committed Solo is one green leaf with its state and ownership intact", () => {
+  const owners = [{ vars: [], sourceId: "unused" }, { vars: [9], sourceId: "query" }];
+  const solo = {
+    name: "Solo", semanticKind: "frontier", renderRole: "terminal-answer",
+    nodeColor: "green", children: [], owners,
+    stateId: "terminal", sub: [{ key: 9, value: { sym: "ready" } }],
+  };
+  const result = addColors(solo);
+  assert.equal(result.color, "green");
+  assert.deepEqual(result.children, []);
+  assert.equal(result.owners, owners);
+  assert.equal(result.stateId, "terminal");
+  assert.deepEqual(result.sub, [{ key: 9, value: { sym: "ready" } }]);
+  assert.equal(result.activeChildIndex, undefined);
+  assert.equal(result.resolvedChildIndices, undefined);
+});
+
 test("strict maturation highlights the right operand without resolving the left candidate as an answer", () => {
   const tree = {
     name: "Mplus", focusColor: "#ff8000", activeChildIndex: 1,

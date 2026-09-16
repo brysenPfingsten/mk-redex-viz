@@ -10,6 +10,10 @@ That reuse does not place their callers' source semantics in this directory.
 Active Search uses `Yield`; unary Frontier `More` holds an unfinished Delay.
 The grammars, constructor views, and S/E/N maps preserve this distinction.
 There is no active `More` alias or name-conversion adapter.
+The committed terminal answer is `Solo(Owners,state)` in S and `Solo(state)`
+in E/N. `One` remains an uncommitted Search value; the current strict grammars
+reject the older `Last` shell. `Yield` and `Emit` still retain an `Answer`
+payload because its private introductions do not belong to the residual.
 [constructor-tests.rkt](../constructor-tests.rkt) checks the accepted and
 rejected forms, eager-tail contexts, and the unchanged commitment boundary.
 

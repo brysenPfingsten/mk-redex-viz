@@ -49,6 +49,48 @@
   (define success '(succeed (label "success")))
   (define nested-delay `(suspend (suspend ,success (label "inner")) (label "outer")))
 
+  (test-case "Solo commits one candidate with its exact owners and is terminal in every feature row"
+    (define owners '(Owners (Owner () (label "unused"))
+                             (Owner (u:9 u:2) (label "sparse"))))
+    (define one `(One ,owners ,state))
+    (define solo `(Solo ,owners ,state))
+    (check-equal? (s-contract `(commit ,one)) (list "commit-one" solo))
+    (check-equal? (s-contract `(render ,one)) (list "render-one" solo))
+    (check-equal? (check-source-square `(commit ,one)) solo)
+    (for ([map-row (in-list (list values Q-SE Q-SN))]
+          [value? (in-list (list s-value? e-value? n-value?))]
+          [wf? (in-list (list wf-s? wf-e? wf-n?))]
+          [frontier-predicates
+           (in-list (list (list s-core-frontier? s-delay-frontier? s-disjunction-frontier? s-frontier?)
+                          (list e-core-frontier? e-delay-frontier? e-disjunction-frontier? e-frontier?)
+                          (list n-core-frontier? n-delay-frontier? n-disjunction-frontier? n-frontier?)))])
+      (define terminal (map-row solo))
+      (check-true (wf? terminal))
+      (check-false (value? terminal))
+      (check-true (value? (map-row one)))
+      (for ([frontier? (in-list frontier-predicates)]) (check-true (frontier? terminal))))
+    (for ([operation '(advance collect)] [label '("advance-solo" "collect-solo")])
+      (check-equal? (s-trace `(,operation ,solo)) (list (list label solo)))
+      (check-equal? (check-source-square `(,operation ,solo)) solo)))
+
+  (test-case "current strict grammar WF and maps reject the retired Last shell and nested Solo answers"
+    (define owners '(Owners (Owner (u:9) (label "owner"))))
+    (for ([retired (in-list (list `(Last (Owners) (Answer ,owners ,state))
+                                  `(Last ,owners (Answer (Owners) ,state))
+                                  `(Solo ,owners (Answer (Owners) ,state))))])
+      (check-false (redex-match? StrictS q retired))
+      (check-false (wf-s? retired))
+      (check-false (s-frontier? retired)))
+    (for ([map-row (in-list (list Q-SE Q-SN))])
+      (check-exn exn:fail:contract?
+                 (lambda () (map-row `(Last (Owners) (Answer ,owners ,state))))))
+    (define e-state (second (Q-SE `(One ,owners ,state))))
+    (define n-state (second (Q-SN `(One ,owners ,state))))
+    (check-false (redex-match? StrictE q `(Last ,e-state)))
+    (check-false (redex-match? StrictN q `(Last ,n-state)))
+    (check-false (wf-e? `(Last ,e-state)))
+    (check-false (wf-n? `(Last ,n-state))))
+
   (test-case "public resumption and delayed bind expose the stored computation directly"
     (define owners '(Owners (Owner (u:9) (label "saved"))))
     (define body `(eval (Owners) ,success ,state))
@@ -138,7 +180,7 @@
     (check-equal? second
                   `(Forced (Owners) (More (Delay (Owners) (eval (Owners) ,success ,state)))))
     (define third (check-source-square `(advance ,second)))
-    (check-equal? third `(Forced (Owners) (Forced (Owners) (Last (Owners) (Answer (Owners) ,state)))))
+    (check-equal? third `(Forced (Owners) (Forced (Owners) (Solo (Owners) ,state))))
     (check-equal? (s-run `(advance ,third)) third)
     (check-equal? (check-source-square `(collect ,first)) third))
 
@@ -167,8 +209,7 @@
                   `(Emit ,common (Answer ,private ,state)
                          (Forced ,history
                                  (Forced ,local
-                                         (Last (Owners)
-                                               (Answer (Owners (Owner (u:0) (label "fresh"))) ,state))))))
+                                         (Solo (Owners (Owner (u:0) (label "fresh"))) ,state)))))
     (check-true (s-observation? final))
     (check-equal? (s-run `(collect ,initial)) final))
 

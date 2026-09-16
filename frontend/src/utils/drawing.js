@@ -220,6 +220,8 @@ function drawEmptyNode(group)    { return drawCircle(group, "white") }
 function drawCandidateNode(group) { return drawCircle(group, "#fff2cc", "Candidate", "black", "10px"); }
 function drawOperation(group, data) { return drawTextNode(group, data.name, 12, "#edf2fa"); }
 function drawDoneNode(group) { return drawCircle(group, "white", "Done", "black", "11px"); }
+function drawSoloNode(group) { return drawCircle(group, "green", "Solo", undefined, "11px"); }
+// Last belongs only to the earlier dormant-branch picture contract.
 function drawLastNode(group) { return drawCircle(group, "#e3f2dd", "Last", "black", "11px"); }
 
 function drawTextNode(group, textContent, padding = 10, fill = "lightgray") {
@@ -341,6 +343,7 @@ const nodeDrawFunctions = {
     "More": drawOperation,
     "Forced": drawOperation,
     "Done": drawDoneNode,
+    "Solo": drawSoloNode,
     "Last": drawLastNode,
     "Succeed": drawSucceedNode,
     "Fail": drawFailNode,

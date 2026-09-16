@@ -6,7 +6,7 @@
 ;; Shared presentation of S goals, logical states, scope, and settled Frontiers.
 ;; These functions inspect existing data without executing a semantic operation.
 (provide label->visible-id term->visible-json with-source-id
-         state-fields state-node node goal->picture with-owners with-owner-annotations
+         state-fields state-node solo-node node goal->picture with-owners with-owner-annotations
          frontier-answer-nodes)
 
 (define (label->visible-id tag)
@@ -106,6 +106,13 @@
            'nodeColor (if committed? "green" "#fff2cc"))
    (state-fields state introductions query-variables)))
 
+;; A terminal committed answer owns its state and introductions directly.
+;; There is no residual requiring a separate Answer payload or container node.
+(define (solo-node state introductions query-variables)
+  (hash-set* (state-node state introductions query-variables #t)
+             'name "Solo" 'renderRole "terminal-answer" 'semanticKind "frontier"
+             'children '()))
+
 (define (node name role children [active #f] [color #f])
   (define result (hasheq 'name name 'renderRole role 'children children))
   (define focused (if color (hash-set result 'focusColor color) result))
@@ -172,9 +179,9 @@
        (cons (with-owner-annotations private here
                (lambda (scope) (state-node state scope query-variables #t)))
              (walk-frontier tail here))]
-      [`(Last ,owners (Answer ,private ,state))
-       (list (with-owner-annotations private (owners-support owners introductions)
-               (lambda (scope) (state-node state scope query-variables #t))))]
+      [`(Solo ,owners ,state)
+       (list (with-owner-annotations owners introductions
+               (lambda (scope) (solo-node state scope query-variables))))]
       [`(Forced ,owners ,tail) (walk-frontier tail (owners-support owners introductions))]
       [`(,(or 'advance 'collect) ,frontier) (walk-frontier frontier introductions)]
       [_ '()]))

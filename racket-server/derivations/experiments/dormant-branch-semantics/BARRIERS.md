@@ -26,6 +26,14 @@ Strict results are also checked against the S reference direct interpreter.
 These tests do not modify either semantics or evaluate a proposed
 representation map to make the traces agree.
 
+The historical sources retain `Last(Owners, Answer(Owners, state))`; the
+current strict source has `Solo(Owners, state)`. Cross-account tests read each
+native terminal directly into neutral `terminal-answer` observation data.
+They do not convert a historical configuration into a current configuration
+or add historical constructors to the current representation maps. The
+separate source tests reuse current scope checking through an explicitly
+static scope abstraction; that abstraction is never stepped.
+
 ## Positive evidence for the earlier dormant-branch semantics
 
 The [dormant-branch interpreter](derivation/interpreter.rkt) changes demand as well as
@@ -39,7 +47,7 @@ lattice run to finish within an explicit bound. These 60 comparisons check:
 
 - the dormant-branch direct interpreter's complete result equals its source result;
 - derived source and native lattice have equal `world-frontier` observations,
-  retaining exact Forced/Emit/Last/Done shape, answer order, complete ordered
+  retaining Forced/Emit structure, terminal success/failure, answer order, complete ordered
   Owner groups and tags on every world path, and scoped logical states;
 - their **ordered atomic work** agrees after the same scoped renaming of each
   attempt's Owner path, pending goal, substitution, disequalities, and trail.
@@ -149,9 +157,17 @@ variable makes the observer fail. Allocation observations are compared as
 multisets, explicitly forgetting their different global execution order.
 
 The final `canonical-frontier` observer retains Owner groups and tags, branch
-scope, and Frontier structure. Its one constructor convention joins Last's
-root Owners with its Answer Owners, because Last has no residual world.
-`Q-SN` equality is checked separately. It is insufficient on its own: two
+scope, and Frontier structure. Its terminal convention joins historical
+Last's root Owners with its Answer Owners, because Last has no residual
+world; it reads current Solo's Owners directly. Both produce the neutral
+`terminal-answer` observation without changing either source representation.
+
+Separate allocation observations forget Owner groups and tags, either
+retaining each world's ordered named support or addressing its state
+numerically. On current strict results, these are independently checked
+against observations of the actual `Q-SE` and `Q-SN` images. Historical
+results are observed directly and never passed to those current maps.
+Numeric equality is insufficient on its own: two
 reachable executions differing by an empty Owner group, or by one two-name
 group versus two one-name groups, have equal numeric images but different
 provenance observations. Tests assert those inequalities.

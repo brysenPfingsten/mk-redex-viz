@@ -155,7 +155,7 @@
     (check-equal? (hash-ref (payload reset-response) 'configuration)
                   (hash-ref (payload initial-response) 'configuration)))
 
-  (test-case "Done and Last are completed terminal structures"
+  (test-case "Done and Solo are completed terminal structures"
     (for ([source '("(run* (q) fail)" "(run* (q) succeed)")]
           [expected '(() (_.0))])
       (define-values (_response initial) (initialize source "micro"))

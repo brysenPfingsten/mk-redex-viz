@@ -41,8 +41,8 @@
     [`(,(and constructor (or 'force 'render 'commit 'advance 'collect 'More)) ,body)
      `(,constructor ,(Q-SE body prefix))]
     [`(Done ,owners) `(Done (Support ,@(owners-support owners prefix)))]
-    [`(Last ,owners (Answer ,answer-owners ,state))
-     `(Last ,(state-SE state (owners-support answer-owners (owners-support owners prefix))))]
+    [`(Solo ,owners ,state)
+     `(Solo ,(state-SE state (owners-support owners prefix)))]
     [`(Emit ,owners (Answer ,answer-owners ,state) ,tail)
      (define here (owners-support owners prefix))
      `(Emit ,(state-SE state (owners-support answer-owners here)) ,(Q-SE tail here))]
@@ -56,7 +56,7 @@
     [`(mplus ,left ,right) (append (world-supports left) (world-supports right))]
     [`(bind ,search ,_) (world-supports search)]
     [`(,(or 'Empty 'Done) (Support ,support ...)) (list support)]
-    [`(,(or 'One 'Last) ,state) (list (state-support state))]
+    [`(,(or 'One 'Solo) ,state) (list (state-support state))]
     [`(,(or 'Yield 'Emit) ,state ,tail) (cons (state-support state) (world-supports tail))]
     [`(,(or 'Delay 'force 'render 'commit 'advance 'collect 'Forced 'More) ,body)
      (world-supports body)]
@@ -89,7 +89,7 @@
      (unless (valid-support? support)
        (raise-argument-error 'Q-EN "valid failure support" support))
      `(,constructor ,(length support))]
-    [`(,(and constructor (or 'One 'Last)) ,state)
+    [`(,(and constructor (or 'One 'Solo)) ,state)
      `(,constructor ,(address-state state (state-support state)))]
     [`(,(and constructor (or 'Yield 'Emit)) ,state ,tail)
      `(,constructor ,(address-state state (state-support state)) ,(Q-EN tail))]
@@ -128,8 +128,8 @@
      `(Delay ,(Q-SN body (owners-support owners prefix)))]
     [`(,(and constructor (or 'force 'render 'commit 'advance 'collect 'More)) ,body)
      `(,constructor ,(Q-SN body prefix))]
-    [`(Last ,owners (Answer ,answer-owners ,state))
-     `(Last ,(state-SN state (owners-support answer-owners (owners-support owners prefix))))]
+    [`(Solo ,owners ,state)
+     `(Solo ,(state-SN state (owners-support owners prefix)))]
     [`(Emit ,owners (Answer ,answer-owners ,state) ,tail)
      (define here (owners-support owners prefix))
      `(Emit ,(state-SN state (owners-support answer-owners here)) ,(Q-SN tail here))]

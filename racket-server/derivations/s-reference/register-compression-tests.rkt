@@ -416,7 +416,7 @@
             '((eval/d (FEmpty owners k) (FEmpty (quote (Owners)) k))
               (outcome/d (failure/d failure) (success/d failure state))
               (failure/d Empty Done)
-              (success/d One Last)))])
+              (success/d One Solo)))])
       (match-define (list target needle replacement) mutation)
       (define mutated
         (for/list ([definition (in-list original)])

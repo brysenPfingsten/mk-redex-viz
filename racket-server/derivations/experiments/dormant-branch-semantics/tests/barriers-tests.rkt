@@ -15,7 +15,7 @@
          (prefix-in online: "../derivation/interpreter.rkt")
          (prefix-in source: "../derivation/source.rkt")
          (only-in "../../../shared/kernel.rkt"
-                  owners-support owners-append named-variable?)
+                  owners-support owners-append named-variable? address-state)
          (only-in "../../../shared/maps.rkt" Q-SE Q-SN)
          "../../../test-support/witnesses.rkt")
 
@@ -102,6 +102,7 @@
   (match frontier
     [`(Emit ,_ (Answer ,_ ,state) ,rest) (cons state (answer-states rest))]
     [`(Last ,_ (Answer ,_ ,state)) (list state)]
+    [`(Solo ,_ ,state) (list state)]
     [`(,(or 'Forced) ,_ ,rest) (answer-states rest)]
     [`(advance ,rest) (answer-states rest)]
     [_ '()]))
@@ -181,11 +182,14 @@
   (match frontier
     [`(Done ,owners) `(Done ,(rename-scoped owners (owners-support owners inherited)))]
     [`(Last ,owners (Answer ,answer-owners ,state))
-     ;; Last has no residual world. The lattice puts final root introductions
-     ;; on Last; Strict puts them on its Answer. Joining these is explicit.
+     ;; Observe the historical terminal's complete path. This neutral tag is
+     ;; observation data, not a conversion to the current Solo constructor.
      (define local (owners-append owners answer-owners))
      (define here (owners-support local inherited))
-     `(Last ,(rename-scoped local here) ,(rename-scoped state here))]
+     `(terminal-answer ,(rename-scoped local here) ,(rename-scoped state here))]
+    [`(Solo ,owners ,state)
+     (define here (owners-support owners inherited))
+     `(terminal-answer ,(rename-scoped owners here) ,(rename-scoped state here))]
     [`(Emit ,owners (Answer ,answer-owners ,state) ,rest)
      (define here (owners-support owners inherited))
      (define answer-world (owners-support answer-owners here))
@@ -210,7 +214,11 @@
     [`(Last ,owners (Answer ,answer-owners ,state))
      (define world (owners-append inherited (owners-append owners answer-owners)))
      (define support (owners-support world))
-     `(Last ,(rename-scoped world support) ,(rename-scoped state support))]
+     `(terminal-answer ,(rename-scoped world support) ,(rename-scoped state support))]
+    [`(Solo ,owners ,state)
+     (define world (owners-append inherited owners))
+     (define support (owners-support world))
+     `(terminal-answer ,(rename-scoped world support) ,(rename-scoped state support))]
     [`(Emit ,owners (Answer ,answer-owners ,state) ,rest)
      (define here (owners-append inherited owners))
      (define world (owners-append here answer-owners))
@@ -220,6 +228,46 @@
     [`(Forced ,owners ,rest)
      `(Forced ,(world-frontier rest (owners-append inherited owners)))]
     [_ (raise-argument-error 'world-frontier "completed native Frontier" frontier)]))
+
+;; Test-only observations consume each native terminal directly. Neither
+;; observer constructs a configuration to execute or passes historical Last
+;; values to the current S/E/N representation maps. The named observation
+;; retains literal supports; the numeric one addresses each world's state
+;; using that world's support. Both deliberately forget Owner groups/tags.
+(define (allocation-state state support carrier)
+  (match-define `(state ,sub ,dis ,trail ,tag) state)
+  (define supported `(state (Support ,@support) ,sub ,dis ,trail ,tag))
+  (match carrier
+    ['named supported]
+    ['numeric (address-state supported support)]))
+
+(define (allocation-frontier frontier carrier [inherited '()])
+  (match frontier
+    [`(Done ,owners)
+     (define support (owners-support owners inherited))
+     `(Done ,(match carrier ['named `(Support ,@support)] ['numeric (length support)]))]
+    [`(Last ,owners (Answer ,private ,state))
+     `(terminal-answer
+       ,(allocation-state state (owners-support (owners-append owners private) inherited) carrier))]
+    [`(Solo ,owners ,state)
+     `(terminal-answer ,(allocation-state state (owners-support owners inherited) carrier))]
+    [`(Emit ,owners (Answer ,private ,state) ,rest)
+     (define here (owners-support owners inherited))
+     `(Emit ,(allocation-state state (owners-support private here) carrier)
+            ,(allocation-frontier rest carrier here))]
+    [`(Forced ,owners ,rest)
+     `(Forced ,(allocation-frontier rest carrier (owners-support owners inherited)))]
+    [_ (raise-argument-error 'allocation-frontier "completed native Frontier" frontier)]))
+
+;; Independently observe a current E or N map result to check the test
+;; observation above. This accepts only those rows' native terminal shape.
+(define (mapped-frontier-observation frontier)
+  (match frontier
+    [`(Done ,supply) `(Done ,supply)]
+    [`(Solo ,state) `(terminal-answer ,state)]
+    [`(Emit ,state ,rest) `(Emit ,state ,(mapped-frontier-observation rest))]
+    [`(Forced ,rest) `(Forced ,(mapped-frontier-observation rest))]
+    [_ (raise-argument-error 'mapped-frontier-observation "completed native E/N Frontier" frontier)]))
 
 (define (allocation-observations strategy execution)
   (sort
@@ -294,6 +342,35 @@
      (list definitions owners goal state)]))
 
 (module+ test
+  (test-case "terminal observations preserve native ownership paths without extending current maps"
+    (define root '(Owners (Owner (u:9) (label "root")) (Owner () (label "empty"))))
+    (define private '(Owners (Owner (u:2) (label "private"))))
+    (define state '(state ((u:2 u:9)) ((u:2 (sym "avoid")))
+                          ((u:2 =? u:9 (label "alias"))) (label "terminal")))
+    (define historical `(Last ,root (Answer ,private ,state)))
+    (define current `(Solo ,(owners-append root private) ,state))
+    (check-not-equal? historical current)
+    (check-equal? (answer-states historical) (list state))
+    (check-equal? (answer-states current) (list state))
+    (check-equal? (canonical-frontier historical) (canonical-frontier current))
+    (check-equal? (world-frontier historical) (world-frontier current))
+    (check-equal? (canonical-frontier current)
+                  '(terminal-answer
+                    (Owners (Owner ((allocated 0)) (label "root"))
+                            (Owner () (label "empty"))
+                            (Owner ((allocated 1)) (label "private")))
+                    (state (((allocated 1) (allocated 0)))
+                           (((allocated 1) (sym "avoid")))
+                           (((allocated 1) =? (allocated 0) (label "alias")))
+                           (label "terminal"))))
+    (for ([carrier '(named numeric)] [map (list Q-SE Q-SN)])
+      (check-equal? (allocation-frontier historical carrier)
+                    (allocation-frontier current carrier))
+      (check-equal? (allocation-frontier current carrier)
+                    (mapped-frontier-observation (map current)))
+      (check-exn exn:fail? (lambda () (map historical))))
+    (check-exn exn:fail? (lambda () (canonical-frontier `(One ,root ,state)))))
+
   (test-case "eager siblings perform semantic work before Strict can commit their first answer"
     (define goal (disj (atom "A") (atom "B")))
     (for ([strategy (in-list strategies)])
@@ -324,7 +401,7 @@
       (for ([transition (in-list (trace-edges execution))])
         (check-equal? (answer-states (configuration-body (edge-after transition))) '()))))
 
-  (test-case "left delay changes work timing even when Strict and interleaving final Frontiers agree"
+  (test-case "left delay changes work timing even when completed Frontier observations agree"
     (define goal (disj (suspend-goal (atom "A")) (atom "B")))
     (define executions
       (for/list ([strategy (in-list strategies)])
@@ -340,8 +417,8 @@
                         [(search-strategy (or "flip" "rail"))
                          '(public-force (work "B") (commit ("B")) (work "A") (commit ("A")))]))
         execution))
-    (check-equal? (configuration-body (trace-configuration (first executions)))
-                  (configuration-body (trace-configuration (fourth executions)))))
+    (check-equal? (canonical-frontier (configuration-body (trace-configuration (first executions))))
+                  (canonical-frontier (configuration-body (trace-configuration (fourth executions))))))
 
   (test-case "compiler policy stays fixed across the eager and divergent scheduler comparisons"
     (for ([case (in-list
@@ -413,6 +490,10 @@
                             (witness-owners example) (witness-state example))))
       (check-complete strict-execution)
       (define strict-final (configuration-body (trace-configuration strict-execution)))
+      (check-equal? (allocation-frontier strict-final 'named)
+                    (mapped-frontier-observation (Q-SE strict-final)))
+      (check-equal? (allocation-frontier strict-final 'numeric)
+                    (mapped-frontier-observation (Q-SN strict-final)))
       (check-equal? (direct:collect-all
                     (direct:run (witness-goal example) #:owners (witness-owners example)
                                 #:state (witness-state example))) strict-final)
@@ -429,9 +510,11 @@
               (check-equal? (canonical-frontier final) (canonical-frontier strict-final)))
           (check-equal? (allocation-observations strategy execution)
                         (allocation-observations (strict-search) strict-execution))
-          (check-equal? (Q-SN final) (Q-SN strict-final))
+          (check-equal? (allocation-frontier final 'numeric)
+                        (allocation-frontier strict-final 'numeric))
           (when (eq? name 'sibling-reuse)
-            (check-not-equal? (Q-SE final) (Q-SE strict-final)))))))
+            (check-not-equal? (allocation-frontier final 'named)
+                              (allocation-frontier strict-final 'named)))))))
 
   (test-case "numeric erasure cannot replace preservation of Owner groups and tags"
     (define goals
@@ -446,9 +529,11 @@
           (check-complete execution)
           (configuration-body (trace-configuration execution))))
       ;; Both sides come from actual complete reachable executions.
-      (check-equal? (Q-SN (first finals)) (Q-SN (second finals)))
+      (check-equal? (allocation-frontier (first finals) 'numeric)
+                    (allocation-frontier (second finals) 'numeric))
       (check-not-equal? (canonical-frontier (first finals)) (canonical-frontier (second finals)))
-      (check-equal? (Q-SN (third finals)) (Q-SN (fourth finals)))
+      (check-equal? (allocation-frontier (third finals) 'numeric)
+                    (allocation-frontier (fourth finals) 'numeric))
       (check-not-equal? (canonical-frontier (third finals)) (canonical-frontier (fourth finals)))))
 
   (test-case "twenty full-owner online witnesses preserve ordered atomic work and completed path-worlds"

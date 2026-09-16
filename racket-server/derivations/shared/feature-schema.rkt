@@ -9,7 +9,7 @@
 (begin-for-syntax
   (define core-labels
     '(eval-atom allocate-fresh eval-conj bind-empty bind-one render-empty render-one
-      commit-empty commit-one advance-done advance-last collect-done collect-last))
+      commit-empty commit-one advance-done advance-solo collect-done collect-solo))
   (define delay-labels
     '(eval-suspend bind-delay force-delay render-delay
       commit-delay advance-forced advance-delay collect-forced collect-delay))

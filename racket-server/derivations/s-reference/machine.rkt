@@ -195,8 +195,7 @@
       (match
        search
        (`(Empty ,owners) (Call 'return/d (list `(Done ,owners) k)))
-       (`(One ,owners ,state)
-        (Call 'return/d (list `(Last (Owners) (Answer ,owners ,state)) k)))
+       (`(One ,owners ,state) (Call 'return/d (list `(Solo ,owners ,state) k)))
        (`(Yield ,owners ,answer ,rest)
         (Call 'commit/d (list rest (KCommitEmit owners answer k))))
        (`(Delay ,_ ,_) (Call 'return/d (list `(More ,search) k))))))
@@ -205,7 +204,7 @@
       (match
        frontier
        (`(Done ,_) (Call 'return/d (list frontier k)))
-       (`(Last (Owners) ,_) (Call 'return/d (list frontier k)))
+       (`(Solo ,_ ,_) (Call 'return/d (list frontier k)))
        (`(Emit ,owners ,answer ,rest)
         (Call
          'advance/d
@@ -227,7 +226,7 @@
       (match
        frontier
        (`(Done ,_) (Call 'return/d (list frontier k)))
-       (`(Last (Owners) ,_) (Call 'return/d (list frontier k)))
+       (`(Solo ,_ ,_) (Call 'return/d (list frontier k)))
        (`(Emit ,owners ,answer ,rest)
         (Call
          'collect/d

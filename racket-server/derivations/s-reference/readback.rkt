@@ -114,8 +114,8 @@
     [`(Done ,owners)
      (extend owners inherited)
      frontier]
-    [`(Last (Owners) (Answer ,answer-owners ,_))
-     (extend answer-owners inherited)
+    [`(Solo ,owners ,_)
+     (extend owners inherited)
      frontier]
     [`(Emit ,owners (Answer ,answer-owners ,state) ,tail)
      (define here (extend owners inherited))
@@ -132,7 +132,7 @@
     [`(program ,_ ,_) (reify-frontier value inherited)]
     [`(More (Delay ,_ ,_)) (reify-frontier value inherited)]
     [`(,(or 'Empty 'One 'Yield 'Delay) ,_ ...) (reify-search value inherited)]
-    [`(,(or 'Done 'Last 'Emit 'Forced) ,_ ...) (reify-frontier value inherited)]
+    [`(,(or 'Done 'Solo 'Emit 'Forced) ,_ ...) (reify-frontier value inherited)]
     [_ (raise-argument-error 'reify-value "defunctionalized Search or Frontier" value)]))
 
 ;; Read from the outermost continuation inward. Saved siblings and private
@@ -188,7 +188,7 @@
     [`(program ,_ ,body) (source-kind body)]
     [`(More (Delay ,_ ,_)) 'frontier]
     [`(,(or 'eval 'mplus 'bind 'force 'Empty 'One 'Yield 'Delay) ,_ ...) 'search]
-    [`(,(or 'commit 'advance 'collect 'render 'Done 'Last 'Emit 'Forced) ,_ ...) 'frontier]
+    [`(,(or 'commit 'advance 'collect 'render 'Done 'Solo 'Emit 'Forced) ,_ ...) 'frontier]
     [_ (raise-argument-error 'source-kind "retained-scope computation" computation)]))
 
 ;; This whole-tree map is independent of the direct native-machine map.

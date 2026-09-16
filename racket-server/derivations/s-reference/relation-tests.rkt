@@ -271,4 +271,4 @@
       `(program ,definitions (More (Delay (Owners) ,(REval (ProgramGoal '() goal) state)))))
     (check-exn #rx"environment" (lambda () (readback-halted changed-resumption)))
     (check-equal? (f:run '(succeed (label "empty-program")) #:relations '())
-                  '(program () (Last (Owners) (Answer (Owners) (state () () () (label "initial"))))))))
+                  '(program () (Solo (Owners) (state () () () (label "initial")))))))

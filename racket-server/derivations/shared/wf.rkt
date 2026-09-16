@@ -108,17 +108,13 @@
      (and here (s-valid? search here)
           (goal-valid? goal named-variable? (named-allocated here)))]
     [`(,(or 'Empty 'Done) ,owners) (and (extend-valid-owners owners prefix) #t)]
-    [`(One ,owners ,state)
+    [`(,(or 'One 'Solo) ,owners ,state)
      (define here (extend-valid-owners owners prefix))
      (and here (state-s-valid? state here))]
     [`(,(or 'Yield 'Emit) ,owners (Answer ,answer-owners ,state) ,tail)
      (define here (extend-valid-owners owners prefix))
      (define answer (and here (extend-valid-owners answer-owners here)))
      (and answer (state-s-valid? state answer) (s-valid? tail here))]
-    [`(Last ,owners (Answer ,answer-owners ,state))
-     (define here (extend-valid-owners owners prefix))
-     (define answer (and here (extend-valid-owners answer-owners here)))
-     (and answer (state-s-valid? state answer))]
     [`(,(or 'Delay 'Forced) ,owners ,body)
      (define here (extend-valid-owners owners prefix))
      (and here (s-valid? body here))]
@@ -147,7 +143,7 @@
      (and (e-valid? search)
           (goal-valid? goal named-variable? (named-allocated (common-support search))))]
     [`(,(or 'Empty 'Done) (Support ,support ...)) (valid-support? support)]
-    [`(,(or 'One 'Last) ,state) (state-e-valid? state)]
+    [`(,(or 'One 'Solo) ,state) (state-e-valid? state)]
     [`(,(or 'Yield 'Emit) ,state ,tail) (and (state-e-valid? state) (e-valid? tail))]
     [`(,(or 'Delay 'force 'render 'commit 'advance 'collect 'Forced 'More) ,body)
      (e-valid? body)]
@@ -171,7 +167,7 @@
     [`(mplus ,left ,right) (append (world-nexts left) (world-nexts right))]
     [`(bind ,search ,_) (world-nexts search)]
     [`(,(or 'Empty 'Done) ,next) (list next)]
-    [`(,(or 'One 'Last) (state ,next ,_ ,_ ,_ ,_)) (list next)]
+    [`(,(or 'One 'Solo) (state ,next ,_ ,_ ,_ ,_)) (list next)]
     [`(,(or 'Yield 'Emit) (state ,next ,_ ,_ ,_ ,_) ,tail) (cons next (world-nexts tail))]
     [`(,(or 'Delay 'force 'render 'commit 'advance 'collect 'Forced 'More) ,body)
      (world-nexts body)]))
@@ -187,7 +183,7 @@
      (and (n-valid? search)
           (goal-valid? goal exact-nonnegative-integer? (lambda (v) (< v next))))]
     [`(,(or 'Empty 'Done) ,next) (exact-nonnegative-integer? next)]
-    [`(,(or 'One 'Last) ,state) (state-n-valid? state)]
+    [`(,(or 'One 'Solo) ,state) (state-n-valid? state)]
     [`(,(or 'Yield 'Emit) ,state ,tail) (and (state-n-valid? state) (n-valid? tail))]
     [`(,(or 'Delay 'force 'render 'commit 'advance 'collect 'Forced 'More) ,body)
      (n-valid? body)]

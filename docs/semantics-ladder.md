@@ -61,7 +61,7 @@ For the S reference account:
 ```text
 Search   ::= Empty(O) | One(O,σ) | Yield(O,A,Search) | Delay(O,c)
 A        ::= Answer(O,σ)
-Frontier ::= Done(O) | Last(O,A) | Emit(O,A,Frontier)
+Frontier ::= Done(O) | Solo(O,σ) | Emit(O,A,Frontier)
            | Forced(O,Frontier) | More(Delay(O,c))
 ```
 
@@ -73,9 +73,13 @@ operand and builds settled Frontier output; it does not force a Delay.
 
 A Frontier ending in `More(Delay(...))` is a paused normal form. `advance`
 preserves its committed prefix and crosses one exposed Delay. `Done` and
-`Last` are completed normal forms. Internal `force` and public `advance` are
+`Solo` are completed normal forms. Internal `force` and public `advance` are
 separate operations, and host dispatch/trampolining does not create an
 object-language Delay.
+
+Terminal success is a single `Solo(O,σ)` node, with its own introductions and
+state. The separate `Answer(O,σ)` payload is needed for `Yield`/`Emit` heads,
+whose private scope differs from the common scope shared with the residual.
 
 S retains ordered tagged Owner groups around active computations. Common
 groups scope both branches or the answer and residual; answer-private groups

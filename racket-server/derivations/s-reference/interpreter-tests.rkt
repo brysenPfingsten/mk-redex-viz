@@ -153,51 +153,47 @@
 (define (ownership-shape observation)
   (match observation
     [`(Done ,owners) `(Done ,owners)]
-    [`(Last ,owners (Answer ,local ,_)) `(Last ,owners (Answer ,local))]
+    [`(Solo ,owners ,_) `(Solo ,owners)]
     [`(Emit ,owners (Answer ,local ,_) ,rest)
      `(Emit ,owners (Answer ,local) ,(ownership-shape rest))]
     [`(Forced ,owners ,rest) `(Forced ,owners ,(ownership-shape rest))]))
 
 (define exact-ownership
   '((empty-binder
-     (Last (Owners) (Answer (Owners (Owner () (label "empty-fresh"))))))
+     (Solo (Owners (Owner () (label "empty-fresh")))))
     (unused-binder
-     (Last (Owners) (Answer (Owners (Owner (u:0 u:1) (label "multi"))))))
+     (Solo (Owners (Owner (u:0 u:1) (label "multi")))))
     (shadowed-binder
-     (Last (Owners)
-           (Answer (Owners (Owner (u:0) (label "outer-fresh"))
-                           (Owner (u:1) (label "inner-fresh"))))))
+     (Solo (Owners (Owner (u:0) (label "outer-fresh"))
+                   (Owner (u:1) (label "inner-fresh")))))
     (shared-outer
      (Emit (Owners (Owner (u:0) (label "shared"))) (Answer (Owners))
-           (Last (Owners) (Answer (Owners)))))
+           (Solo (Owners))))
     (sibling-reuse
      (Emit (Owners) (Answer (Owners (Owner (u:0) (label "left-owner"))))
-           (Last (Owners) (Answer (Owners (Owner (u:0) (label "right-owner")))))))
+           (Solo (Owners (Owner (u:0) (label "right-owner"))))))
     (answer-local-continuation
      (Emit (Owners)
            (Answer (Owners (Owner (u:0 u:1) (label "left-two"))
                            (Owner (u:2) (label "later-owner"))))
-           (Last (Owners)
-                 (Answer (Owners (Owner (u:0) (label "right-one"))
-                                 (Owner (u:1) (label "later-owner")))))))
+           (Solo (Owners (Owner (u:0) (label "right-one"))
+                         (Owner (u:1) (label "later-owner"))))))
     (allocated-failure (Done (Owners (Owner (u:0) (label "failed-owner")))))
     (failed-sibling
-     (Last (Owners) (Answer (Owners (Owner (u:0) (label "surviving-owner"))))))
+     (Solo (Owners (Owner (u:0) (label "surviving-owner")))))
     (allocation-across-delay
      (Forced (Owners (Owner (u:0) (label "outer-owner")))
-             (Last (Owners) (Answer (Owners (Owner (u:1) (label "inner-owner")))))))
+             (Solo (Owners (Owner (u:1) (label "inner-owner"))))))
     (delayed-sibling-capture
      (Forced (Owners (Owner (u:0) (label "shared-owner")))
              (Emit (Owners) (Answer (Owners (Owner (u:1 u:2) (label "eager-owner"))))
-                   (Last (Owners)
-                         (Answer (Owners (Owner (u:1) (label "delayed-owner"))))))))
+                   (Solo (Owners (Owner (u:1) (label "delayed-owner")))))))
     (eager-bind-residual
      (Emit (Owners)
            (Answer (Owners (Owner (u:0) (label "fresh-A"))
                            (Owner (u:1) (label "later-fresh"))))
-           (Last (Owners)
-                 (Answer (Owners (Owner (u:0) (label "fresh-B"))
-                                 (Owner (u:1) (label "later-fresh")))))))
+           (Solo (Owners (Owner (u:0) (label "fresh-B"))
+                         (Owner (u:1) (label "later-fresh"))))))
     (nested-rail
      (Forced (Owners)
              (Forced (Owners)
@@ -207,22 +203,19 @@
                                            (Answer (Owners (Owner (u:0) (label "fresh-A"))))
                                            (Emit (Owners)
                                                  (Answer (Owners (Owner (u:0) (label "fresh-B"))))
-                                                 (Last (Owners)
-                                                       (Answer (Owners (Owner (u:0) (label "fresh-C"))))))))))))
+                                                 (Solo (Owners (Owner (u:0) (label "fresh-C")))))))))))
     (sparse-inherited-ancestry
-     (Last (Owners)
-           (Answer (Owners (Owner (u:9 u:2) (label "outer-pair"))
-                           (Owner (u:7) (label "unused-ancestor"))
-                           (Owner (u:0) (label "fresh"))))))
+     (Solo (Owners (Owner (u:9 u:2) (label "outer-pair"))
+                   (Owner (u:7) (label "unused-ancestor"))
+                   (Owner (u:0) (label "fresh")))))
     (inherited-state-and-trail
-     (Last (Owners)
-           (Answer (Owners (Owner (u:9 u:2) (label "sparse"))
-                           (Owner (u:0) (label "new-owner"))))))))
+     (Solo (Owners (Owner (u:9 u:2) (label "sparse"))
+                   (Owner (u:0) (label "new-owner")))))))
 
 (define (answer-states observation)
   (match observation
     [`(Done ,_) '()]
-    [`(Last ,_ (Answer ,_ ,state)) (list state)]
+    [`(Solo ,_ ,state) (list state)]
     [`(Emit ,_ (Answer ,_ ,state) ,rest) (cons state (answer-states rest))]
     [`(Forced ,_ ,rest) (answer-states rest)]))
 
@@ -297,11 +290,10 @@
                              (Answer (Owners (Owner (u:0) (label "fresh-B")))
                                      (state ((u:0 (sym "B"))) ()
                                             ((u:0 =? (sym "B") (label "B"))) (label "initial")))
-                             (Last (Owners)
-                                   (Answer (Owners (Owner (u:0) (label "fresh-C")))
-                                           (state ((u:0 (sym "C"))) ()
-                                                  ((u:0 =? (sym "C") (label "C")))
-                                                  (label "initial")))))))))))
+                             (Solo (Owners (Owner (u:0) (label "fresh-C")))
+                                   (state ((u:0 (sym "C"))) ()
+                                          ((u:0 =? (sym "C") (label "C")))
+                                          (label "initial"))))))))))
   (check-equal?
    (frontier-shape (run-witness run values 'allocation-across-delay))
    '(More (Delay (Owners (Owner (u:0) (label "outer-owner"))) pending)))
@@ -309,19 +301,18 @@
    (resume-once (run-witness run values 'allocation-across-delay))
    '(Forced
      (Owners (Owner (u:0) (label "outer-owner")))
-     (Last (Owners)
-           (Answer (Owners (Owner (u:1) (label "inner-owner")))
-                   (state ((u:1 (sym "A")) (u:0 (sym "A"))) ()
-                          ((u:0 =? (sym "A") (label "outer-value"))
-                           (u:1 =? u:0 (label "inner-alias")))
-                          (label "initial"))))))
+     (Solo (Owners (Owner (u:1) (label "inner-owner")))
+           (state ((u:1 (sym "A")) (u:0 (sym "A"))) ()
+                  ((u:0 =? (sym "A") (label "outer-value"))
+                   (u:1 =? u:0 (label "inner-alias")))
+                  (label "initial")))))
   (check-equal?
    (frontier-shape (run-witness run values 'delayed-sibling-capture))
    '(More (Delay (Owners (Owner (u:0) (label "shared-owner"))) pending)))
   (check-equal?
    (run-witness run values 'empty-binder)
-   '(Last (Owners) (Answer (Owners (Owner () (label "empty-fresh")))
-                          (state () () () (label "initial")))))
+   '(Solo (Owners (Owner () (label "empty-fresh")))
+         (state () () () (label "initial"))))
   (check-equal?
    (run-witness run values 'allocated-failure)
    '(Done (Owners (Owner (u:0) (label "failed-owner")))))

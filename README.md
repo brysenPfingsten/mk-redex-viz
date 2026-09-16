@@ -239,7 +239,7 @@ Relation expansion adds no implicit Delay.
 Payload status distinguishes `running`, `paused`, `complete`, and `stuck`.
 At a paused `More(Delay(...))` Frontier, the next manual step records public
 `advance` before its source contractions, for every scheduler. Internal
-`force-delay` remains a reduction. Completed payloads retain Done/Last. GUI stepping
+`force-delay` remains a reduction. Completed payloads retain Done/Solo. GUI stepping
 ignores the source `run n` limit; automatic consumption is a library operation.
 
 ### Reading the picture
@@ -247,9 +247,10 @@ ignores the source `run n` limit; automatic consumption is a library operation.
 The strict S picture draws each introduction group **on its owning node**,
 with the variables introduced together and their source identity. Clicking a
 visible group's source selects its source expression. Empty groups remain
-visible. Common introductions govern the owner's children; private
-introductions stay on their Answer payload. The current view does not insert
-`Freshened` wrapper nodes.
+visible. Common introductions govern the owner's children; the head-private
+introductions of `Yield` and `Emit` stay on their `Answer` payload. A terminal
+`Solo` owns its introductions and state directly, without a separate Answer
+child. The current view does not insert `Freshened` wrapper nodes.
 
 Cards label Search values, pending operations, Frontier structure, committed
 answers, and goal syntax separately. Pending operations have dashed borders;

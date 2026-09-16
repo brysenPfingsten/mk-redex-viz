@@ -39,8 +39,8 @@
            [SV (Empty owners) (One owners σ) feature-value ...]
            [c SV (eval owners g σ) (bind owners c g) feature-computation ...]
            [E hole (bind owners E g) feature-context ...]
-           [O (Done owners) (Last owners A) feature-observation ...]
-           [F (Done owners) (Last owners A) feature-frontier ...]
+           [O (Done owners) (Solo owners σ) feature-observation ...]
+           [F (Done owners) (Solo owners σ) feature-frontier ...]
            [o F (render c) (commit c) (advance o) (collect o) feature-observer ...]
            [C E (render E) (commit E) (advance C) (collect C)
               feature-observer-context ...])

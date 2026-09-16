@@ -145,9 +145,9 @@
    (cons "owners+ grammar workaround"
          #px"(?:^|[^A-Za-z0-9_-])owners\\+(?=$|[^A-Za-z0-9_-])")
    (cons "untagged empty owner field"
-         #px"\\(\\s*(?:Answer|Returned|Work|Dead|Conj|Done|Last|PendingDelay|Forced|DisjL|DisjR|Emit)\\s+\\(\\)(?=\\s|\\))")
+         #px"\\(\\s*(?:Answer|Returned|Work|Dead|Conj|Done|Solo|Last|PendingDelay|Forced|DisjL|DisjR|Emit)\\s+\\(\\)(?=\\s|\\))")
    (cons "untagged nonempty owner field"
-         #px"\\(\\s*(?:Answer|Returned|Work|Dead|Conj|Done|Last|PendingDelay|Forced|DisjL|DisjR|Emit)\\s+\\(\\s*\\(\\s*Owner(?=\\s|\\))")))
+         #px"\\(\\s*(?:Answer|Returned|Work|Dead|Conj|Done|Solo|Last|PendingDelay|Forced|DisjL|DisjR|Emit)\\s+\\(\\s*\\(\\s*Owner(?=\\s|\\))")))
 
 (define retired-grammar-abbreviation-patterns
   (list

@@ -17,6 +17,20 @@ test("state inspection uses structural identity when distinct states retain the 
   assert.equal(stateKeyFromTreeNodeData(null), null);
 });
 
+test("a terminal Solo directly exposes its state and each introduction source", () => {
+  const solo = {
+    name: "Solo", semanticKind: "frontier", renderRole: "terminal-answer", children: [],
+    stateId: "terminal", stateKey: "(scope terminal-state)",
+    sub: [{ key: 9, value: { sym: "ready" } }], reified: { sym: "ready" },
+    owners: [{ vars: [], sourceId: "unused" }, { vars: [9, 2], sourceId: "query" }],
+  };
+  assert.equal(stateKeyFromTreeNodeData(solo), "(scope terminal-state)");
+  assert.deepEqual(treeNodesWithGoalId(solo, "unused"), [solo]);
+  assert.deepEqual(treeNodesWithGoalId(solo, "query"), [solo]);
+  assert.deepEqual(solo.children, []);
+  assert.deepEqual(solo.sub, [{ key: 9, value: { sym: "ready" } }]);
+});
+
 test("selectedSourceSegments returns every source span sharing the selected UUID", () => {
   const segments = [
     { id: "u-1", start: 0, end: 4 },
@@ -85,7 +99,7 @@ test("owner source matching preserves repeated origins without duplicating a nod
   const hiddenOwner = { vars: [{ var: "u:0" }], sourceId: "hidden:fresh-1" };
   const ownOrigin = { name: "Eval", id: "fresh-1", owners: [visibleOwner, visibleOwner] };
   const sharedOrigin = { name: "Forced", owners: [visibleOwner] };
-  const hiddenOrigin = { name: "Last", owners: [hiddenOwner] };
+  const hiddenOrigin = { name: "Solo", owners: [hiddenOwner] };
   const tree = { name: "Mplus", children: [ownOrigin, sharedOrigin, hiddenOrigin] };
 
   assert.deepEqual(treeNodesWithGoalId(tree, "fresh-1"), [ownOrigin, sharedOrigin]);

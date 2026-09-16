@@ -17,7 +17,9 @@
 
 (define (final-frontier? frontier)
   (match frontier
-    [(or `(Done ,_) `(Last ,_ (Answer ,_ ,_))) #t]
+    ;; Solo belongs to the current account; Last is observed only in tests
+    ;; of the independent earlier dormant-branch account.
+    [(or `(Done ,_) `(Solo ,_ ,_) `(Last ,_ (Answer ,_ ,_))) #t]
     [(or `(Emit ,_ (Answer ,_ ,_) ,tail) `(Forced ,_ ,tail))
      (final-frontier? tail)]
     [_ #f]))
@@ -64,9 +66,9 @@
     (define state '(state () () () (label "initial")))
     (define paused `(More (Delay (Owners) (eval (Owners) (succeed (label "ready")) ,state))))
     (for ([frontier (list '(Done (Owners))
-                         `(Last (Owners) (Answer (Owners) ,state)))])
-      (check-true (final-config? `(program () ,frontier)))
-      (check-true (final-config? `(() ,frontier))))
+                         `(Solo (Owners) ,state))])
+      (check-true (final-config? `(program () ,frontier))))
+    (check-true (final-config? `(() (Last (Owners) (Answer (Owners) ,state)))))
     (check-false (final-config? `(program () ,paused)))
     (check-false (final-config? `(program () (Forced (Owners) ,paused))))
     (check-false (final-config? `(() (More (PendingDelay (Owners)

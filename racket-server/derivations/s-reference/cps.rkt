@@ -100,7 +100,7 @@
 (define (commit/k search k)
   (match search
     [`(Empty ,owners) (k `(Done ,owners))]
-    [`(One ,owners ,state) (k `(Last (Owners) (Answer ,owners ,state)))]
+    [`(One ,owners ,state) (k `(Solo ,owners ,state))]
     [`(Yield ,owners ,answer ,rest)
      (commit/k rest
                (lambda (tail) ; KCommitEmit
@@ -110,7 +110,7 @@
 (define (advance/k frontier inherited k)
   (match frontier
     [`(Done ,_) (k frontier)]
-    [`(Last (Owners) ,_) (k frontier)]
+    [`(Solo ,_ ,_) (k frontier)]
     [`(Emit ,owners ,answer ,rest)
      (advance/k rest (owners-support owners inherited)
                 (lambda (tail) ; KAdvanceEmit
@@ -127,7 +127,7 @@
 (define (collect/k frontier inherited k)
   (match frontier
     [`(Done ,_) (k frontier)]
-    [`(Last (Owners) ,_) (k frontier)]
+    [`(Solo ,_ ,_) (k frontier)]
     [`(Emit ,owners ,answer ,rest)
      (collect/k rest (owners-support owners inherited)
                 (lambda (tail) ; KCollectEmit

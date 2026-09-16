@@ -55,9 +55,7 @@
           [`(bind ,search ,goal)
            (node "Bind" "search-bind" (list (render search here) (goal->picture goal))
                  (and (not (scheduler-value? search)) 0) "blue")]
-          [`(Last ,answer)
-           (hash-set* (node "Last" "completed" (list (render answer here #t)))
-                      'resolvedChildIndices '(0) 'resolvedColor "green")]
+          [`(Solo ,state) (solo-node state here query-variables)]
           [`(Emit ,answer ,tail)
            (hash-set* (node "Emit" "stream-emit"
                             (list (render answer here #t) (render tail here)) 1)
@@ -78,7 +76,7 @@
      [`(,(or 'Yield 'YieldR) ,_ ...)
       (if (scheduler-value? term) "search" "operation")]
      [`(Answer ,_ ,_) (if committed? "answer" "search")]
-     [`(,(or 'Done 'Last 'Emit 'Forced 'More) ,_ ...) "frontier"]
+     [`(,(or 'Done 'Solo 'Emit 'Forced 'More) ,_ ...) "frontier"]
      [_ "operation"])))
 
 (define (cfg->operational-picture configuration query-variables [oriented? #f])

@@ -89,6 +89,21 @@
     (atomic-focus before)))
 
 (module+ test
+  (test-case "terminal commitment keeps introductions directly on Solo and separates it from One"
+    (define owners '(Owners (Owner () (label "empty-introduction"))
+                            (Owner (u:9 u:2) (label "unused-introductions"))))
+    (define candidate `(One ,owners ,state))
+    (define frontier `(Solo ,owners ,state))
+    (check-true (retained-value? candidate))
+    (check-false (retained-frontier? candidate))
+    (check-false (retained-value? frontier))
+    (check-true (retained-frontier? frontier))
+    (check-true (wf-s? frontier))
+    (check-equal? (retained-contract `(commit ,candidate)) (list "commit-one" frontier))
+    (check-equal? (retained-contract `(render ,candidate)) (list "render-one" frontier))
+    (check-equal? (retained-contract `(advance ,frontier)) (list "advance-solo" frontier))
+    (check-equal? (retained-contract `(collect ,frontier)) (list "collect-solo" frontier)))
+
   (define ordinary-inputs
     (remove-duplicates
      (append (map witness-initial validation-witnesses)
@@ -121,13 +136,12 @@
     (check-equal?
      (retained-run input)
      '(Forced (Owners (Owner (u:9) (label "ancestor")))
-              (Last (Owners)
-                    (Answer (Owners (Owner (u:2 u:0) (label "saved"))
-                                    (Owner () (label "empty-saved"))
-                                    (Owner (u:1) (label "fresh")))
-                            (state ((u:1 (sym "new"))) ()
-                                   ((u:1 =? (sym "new") (label "new-value")))
-                                   (label "initial"))))))
+              (Solo (Owners (Owner (u:2 u:0) (label "saved"))
+                            (Owner () (label "empty-saved"))
+                            (Owner (u:1) (label "fresh")))
+                    (state ((u:1 (sym "new"))) ()
+                           ((u:1 =? (sym "new") (label "new-value")))
+                           (label "initial")))))
     (check-no-prefix-frames input))
 
   (test-case "root scope transport preserves support, allocation and every Search constructor"

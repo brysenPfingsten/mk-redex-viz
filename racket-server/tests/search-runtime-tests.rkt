@@ -59,7 +59,7 @@
     (define unfinished `(program () (Emit (Owners) (Answer (Owners) ,state) (commit (Empty (Owners))))))
     (check-equal? (configuration-status unfinished) 'running)
     (check-exn exn:fail? (lambda () (advance-configuration unfinished)))
-    (for ([frontier (in-list `((Done (Owners)) (Last (Owners) (Answer (Owners) ,state))))])
+    (for ([frontier (in-list `((Done (Owners)) (Solo (Owners) ,state)))])
       (define completed `(program () ,frontier))
       (check-equal? (configuration-status completed) 'complete)
       (check-equal? (step completed) '())
@@ -75,7 +75,15 @@
       (check-true (search-config-well-formed? default-search-strategy configuration))
       (match-define (list (list name next)) (step configuration))
       (check-equal? name (if (zero? index) "allocate-fresh" "eval-call"))
-      next)))
+      next))
+
+  (test-case "every current strategy accepts direct Solo and rejects Last packaging"
+    (define state '(state () () () (label "terminal")))
+    (for ([spec (in-list all-strategy-specs)])
+      (define strategy (strategy-spec-strategy spec))
+      (check-true (search-config-in-domain? strategy `(program () (Solo (Owners) ,state))))
+      (check-false
+       (search-config-in-domain? strategy `(program () (Last (Owners) (Answer (Owners) ,state))))))))
 
 (module+ test
   (run-tests SEARCH-RUNTIME))

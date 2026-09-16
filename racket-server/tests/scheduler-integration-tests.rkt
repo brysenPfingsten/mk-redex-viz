@@ -46,7 +46,7 @@
 (define (answer-states term)
   (match term
     [`(Emit ,_ (Answer ,_ ,state) ,rest) (cons state (answer-states rest))]
-    [`(Last ,_ (Answer ,_ ,state)) (list state)]
+    [`(Solo ,_ ,state) (list state)]
     [`(Forced ,_ ,rest) (answer-states rest)]
     [`(,(or 'advance 'collect) ,rest) (answer-states rest)]
     [_ '()]))
@@ -74,7 +74,8 @@
     (check-false (contains-constructor? configuration 'YieldR)))
   (define answer-count (length (answer-states (configuration-body configuration))))
   (check-equal? (length (model-session-current-answer-nodes api)) answer-count)
-  (check-equal? (count (lambda (node) (equal? (hash-ref node 'renderRole #f) "answer-node"))
+  (check-equal? (count (lambda (node) (member (hash-ref node 'renderRole #f)
+                                           '("answer-node" "terminal-answer")))
                        (picture-nodes (model-session-current-picture api)))
                 answer-count)
   (match (model-session-status api)
@@ -135,7 +136,7 @@
   (match frontier
     [`(Forced ,_ ,rest) `(Forced ,(frontier-shape rest))]
     [`(Emit ,_ (Answer ,_ ,state) ,rest) `(Emit ,(state-label state) ,(frontier-shape rest))]
-    [`(Last ,_ (Answer ,_ ,state)) `(Last ,(state-label state))]
+    [`(Solo ,_ ,state) `(Solo ,(state-label state))]
     [`(More ,_) 'More]
     [`(Done ,_) 'Done]))
 
@@ -233,8 +234,8 @@
       (check-equal?
        (frontier-shape (configuration-body (model-session-current-config final)))
        (match strategy
-         [(search-strategy "dfs") '(Forced (Emit "A" (Emit "B" (Forced (Last "C")))))]
-         [_ '(Forced (Emit "B" (Forced (Emit "A" (Last "C")))))]))
+         [(search-strategy "dfs") '(Forced (Emit "A" (Emit "B" (Forced (Solo "C")))))]
+         [_ '(Forced (Emit "B" (Forced (Emit "A" (Solo "C")))))]))
       (when (equal? strategy (search-strategy "rail"))
         (check-true (ormap (lambda (transition) (contains-constructor? (edge-after transition) 'mplusR)) edges)))
       (check-equal?

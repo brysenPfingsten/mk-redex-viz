@@ -155,7 +155,7 @@
    (render-big env ... (Empty supply) (Done supply) ("render-empty"))]
 
   [----------------------------------------------- "render one"
-   (render-big env ... (One σ) (Last σ) ("render-one"))]
+   (render-big env ... (One σ) (Solo σ) ("render-one"))]
 
   [(render-big env ... SV O trace)
    ----------------------------------------------- "render Yield"
@@ -174,7 +174,7 @@
   [----------------------------------------------- "commit empty"
    (commit-big env ... (Empty supply) (Done supply) ("commit-empty"))]
   [----------------------------------------------- "commit one"
-   (commit-big env ... (One σ) (Last σ) ("commit-one"))]
+   (commit-big env ... (One σ) (Solo σ) ("commit-one"))]
   [(commit-big env ... SV F trace)
    ----------------------------------------------- "commit eager tail"
    (commit-big env ... (Yield σ SV) (Emit σ F) (traces ("commit-yield") trace))]
@@ -186,8 +186,8 @@
   #:contract (advance-big env ... F F trace)
   [----------------------------------------------- "advance done"
    (advance-big env ... (Done supply) (Done supply) ("advance-done"))]
-  [----------------------------------------------- "advance last"
-   (advance-big env ... (Last σ) (Last σ) ("advance-last"))]
+  [----------------------------------------------- "advance solo"
+   (advance-big env ... (Solo σ) (Solo σ) ("advance-solo"))]
   [(advance-big env ... F_1 F_2 trace)
    ----------------------------------------------- "advance Emit"
    (advance-big env ... (Emit σ F_1) (Emit σ F_2) (traces ("advance-emit") trace))]
@@ -205,8 +205,8 @@
   #:contract (collect-big env ... F O trace)
   [----------------------------------------------- "collect done"
    (collect-big env ... (Done supply) (Done supply) ("collect-done"))]
-  [----------------------------------------------- "collect last"
-   (collect-big env ... (Last σ) (Last σ) ("collect-last"))]
+  [----------------------------------------------- "collect solo"
+   (collect-big env ... (Solo σ) (Solo σ) ("collect-solo"))]
   [(collect-big env ... F O trace)
    ----------------------------------------------- "collect Emit"
    (collect-big env ... (Emit σ F) (Emit σ O) (traces ("collect-emit") trace))]
@@ -292,26 +292,26 @@
     (define (promote-render env ... search)
       (match search
         [`(Empty ,supply) `(Done ,supply)]
-        [`(One ,state) `(Last ,state)]
+        [`(One ,state) `(Solo ,state)]
         [`(Yield ,state ,tail) `(Emit ,state ,(promote-render env ... tail))]
         [`(Delay ,body) `(Forced ,(promote-render env ... (promote-search env ... body)))]))
     (define (promote-commit env ... search)
       (match search
         [`(Empty ,supply) `(Done ,supply)]
-        [`(One ,state) `(Last ,state)]
+        [`(One ,state) `(Solo ,state)]
         [`(Yield ,state ,tail) `(Emit ,state ,(promote-commit env ... tail))]
         [`(Delay ,body) `(More (Delay ,body))]))
     (define (promote-advance env ... frontier)
       (match frontier
         [`(Done ,_) frontier]
-        [`(Last ,_) frontier]
+        [`(Solo ,_) frontier]
         [`(Emit ,state ,tail) `(Emit ,state ,(promote-advance env ... tail))]
         [`(Forced ,tail) `(Forced ,(promote-advance env ... tail))]
         [`(More (Delay ,body)) `(Forced ,(promote-commit env ... (promote-search env ... body)))]))
     (define (promote-collect env ... frontier)
       (match frontier
         [`(Done ,_) frontier]
-        [`(Last ,_) frontier]
+        [`(Solo ,_) frontier]
         [`(Emit ,state ,tail) `(Emit ,state ,(promote-collect env ... tail))]
         [`(Forced ,tail) `(Forced ,(promote-collect env ... tail))]
         [`(More (Delay ,body))

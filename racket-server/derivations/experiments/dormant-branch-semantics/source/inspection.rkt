@@ -1,6 +1,7 @@
 #lang racket
 
-(require racket/hash "../../../../src/search-picture-common.rkt")
+(require racket/hash "../../../../src/search-picture-common.rkt"
+         (only-in "../../../shared/kernel.rkt" owners-support))
 
 (provide cfg->operational-picture committed-answer-nodes)
 
@@ -59,4 +60,17 @@
   (tree->picture (configuration-frontier configuration) '() query-variables))
 
 (define (committed-answer-nodes configuration query-variables)
-  (frontier-answer-nodes (configuration-frontier configuration) query-variables))
+  ;; Last belongs to this earlier source grammar. Inspect it here rather than
+  ;; making the current strict GUI accept a second terminal representation.
+  (define (walk frontier introductions)
+    (match frontier
+      [`(Emit ,owners (Answer ,private ,state) ,tail)
+       (define here (owners-support owners introductions))
+       (cons (state-node state (owners-support private here) query-variables #t)
+             (walk tail here))]
+      [`(Last ,owners (Answer ,private ,state))
+       (list (state-node state (owners-support private (owners-support owners introductions))
+                         query-variables #t))]
+      [`(Forced ,owners ,tail) (walk tail (owners-support owners introductions))]
+      [_ '()]))
+  (walk (configuration-frontier configuration) '()))

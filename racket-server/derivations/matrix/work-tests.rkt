@@ -78,7 +78,7 @@
                     (eval (0 =? (sym "B") (label "right")) ,empty-state)
                     (eval (succeed (label "continue")) ,a-state)
                     (eval (succeed (label "continue")) ,b-state)))
-    (check-equal? (Q-SN result) `(Emit ,a-state (Last ,b-state))))
+    (check-equal? (Q-SN result) `(Emit ,a-state (Solo ,b-state))))
 
   (test-case "strict right work occurs before commitment, delayed work waits for collection"
     (define state '(state 0 () () () (label "initial")))
@@ -96,7 +96,7 @@
                          (More (Delay (eval (succeed (label "right-after-delay")) ,state)))))
     (define-values (complete later-events) (check-work `(collect ,frontier)))
     (check-equal? later-events `((eval (succeed (label "right-after-delay")) ,state)))
-    (check-equal? (Q-SN complete) `(Emit ,state (Forced (Last ,state)))))
+    (check-equal? (Q-SN complete) `(Emit ,state (Forced (Solo ,state)))))
 
   (test-case "delayed choice retains its pending orientation across separate advances"
     (define state '(state 0 () () () (label "initial")))
@@ -110,7 +110,7 @@
     (check-false (s-observation? first))
     (define-values (second right-events) (check-work `(advance ,first)))
     (check-equal? right-events `((eval (succeed (label "right")) ,state)))
-    (check-equal? (Q-SN second) `(Forced (Forced (Emit ,state (Last ,state))))))
+    (check-equal? (Q-SN second) `(Forced (Forced (Emit ,state (Solo ,state))))))
 
   (test-case "failing eager continuation discards every active candidate before commitment"
     (define state '(state 1 () () () (label "initial")))

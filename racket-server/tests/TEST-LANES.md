@@ -117,9 +117,12 @@ targets, equal after erasing labels; seven compiler/display/JavaScript-parser
 round trips checked literal escaping. These checks concern source attribution,
 not a new semantic transformation.
 
-The application gates distinguish paused More from completed Done/Last,
+The application gates distinguish paused More from completed Done/Solo,
 Search candidates from committed answers, and internal force from public
 advance. All application sessions retain strict `(program Γ q)` configurations.
+Solo checks require one terminal picture node carrying its state and grouped
+introductions directly. Current source, machine, and runtime domain checks
+reject the former Last shell; Yield/Emit retain their private Answer payloads.
 The dormant source tests initialize their own `(Γ F)` fixtures and select
 their native relations directly. Their work-tree inspection lives in the
 experiment's `source/inspection.rkt`; production `search-picture.rkt` accepts
@@ -205,6 +208,25 @@ racket -y -l raco -- test racket-server/tests/test-all-headless.rkt
 ```
 
 HEADLESS raises on nonzero failures rather than silently succeeding.
+
+The Solo checkpoint (2026-09-16) passed the 3,772-test comprehensive run,
+including all 91 HEADLESS cases loaded by that run, and generated-artifact
+freshness checks. The updated exported SEARCH-RUNTIME suite was also checked
+separately: six cases passed, including the constructor-domain case enrolled
+after the comprehensive run began. All 62 frontend tests and the production
+build passed; lint retained the same three hook warnings and no errors.
+
+The Solo browser check (2026-09-16) used a fresh backend on port 5036 and
+frontend on port 5196. Terminal success appeared as one Solo node with its
+state and two source-tagged introduction groups, including an unused variable;
+selecting it populated the state inspector. A common/private-scope fixture
+paused with Emit/Answer/More at nine reductions and no public advances.
+After one public advance and five more reductions, it completed with two
+answers and the residual's private introduction on Solo beneath Forced.
+The `same` example retained the earlier counts under all four runtime choices:
+No Interleave took 44 reductions and three advances; Flip-Flop, Railroad, and
+the strict reference each took 42 reductions and three advances, all with
+four answers. The browser console reported no errors or warnings.
 
 The owner-annotation GUI checkpoint (2026-09-15) passed 3,765 backend tests,
 including all 91 HEADLESS cases, and 60 frontend tests. The production build

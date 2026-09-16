@@ -46,17 +46,19 @@
     (check-equal? (length (run-result-answer-nodes result))
                   1)
     (check-equal? (hash-ref (car (run-result-answer-nodes result)) 'renderRole)
-                  "answer-node")
+                  "terminal-answer")
+    (check-equal? (hash-ref (car (run-result-answer-nodes result)) 'name) "Solo")
+    (check-equal? (hash-ref (car (run-result-answer-nodes result)) 'children) '())
     (check-true (hash? (run-result-picture result))))
 
   (test-case "run-source->picture preserves reified answers"
     (define picture
       (run-source->picture mini-same-program))
-    ;; Projection shape includes the actual Forced/Last observer spine. The
+    ;; Projection shape includes the actual Forced/Solo observer spine. The
     ;; library's answer list remains authoritative; this checks its rendering.
     (define (picture-answers node)
       (match node
-        [(hash* ['renderRole "answer-node"] #:open) (list node)]
+        [(hash* ['renderRole (or "answer-node" "terminal-answer")] #:open) (list node)]
         [(hash* ['children children] #:open) (append-map picture-answers children)]
         [_ '()]))
     (check-equal? (map (lambda (node) (hash-ref node 'reified))
@@ -129,7 +131,7 @@
     (check-equal? (run-result-host-answers result) '(a))
     (check-equal? (configuration-status (run-result-final-config result)) 'complete)
     (check-match (run-result-final-config result)
-                 `(program () (Forced ,_ (Forced ,_ (Last ,_ ,_)))))
+                 `(program () (Forced ,_ (Forced ,_ (Solo ,_ ,_)))))
     (define failed
       (run-source "(run* (q) (== 'a 'b))" #:source-mode "micro" #:answer-limit 1))
     (check-equal? (run-result-host-answers failed) '())

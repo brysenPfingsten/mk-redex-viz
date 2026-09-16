@@ -202,12 +202,18 @@
     [`(Emit ,_ ,answer ,rest)
      (cons (ground-witness-answer-label answer) (ground-witness-events rest))]
     [`(Last ,_ ,answer) (list (ground-witness-answer-label answer))]
+    [`(Solo ,_ ,state) (list (ground-witness-state-label state))]
     [_ '()]))
 
 (define (ground-witness-answer-label answer)
   (match answer
-    [`(Answer ,_ (state ,_ ,_ ((,_ =? ,_ (label ,label))) ,_)) label]
+    [`(Answer ,_ ,state) (ground-witness-state-label state)]
     [_ (error 'ground-witness-answer-label "unexpected answer: ~s" answer)]))
+
+(define (ground-witness-state-label state)
+  (match state
+    [`(state ,_ ,_ ((,_ =? ,_ (label ,label))) ,_) label]
+    [_ (error 'ground-witness-state-label "unexpected state: ~s" state)]))
 
 (define pending-left-choice
   (term
@@ -555,10 +561,9 @@
       (checked-trace strict:retained-red `(collect ,strict-initial)
                      (lambda (cfg)
                        (and (redex-match? strict:ScopeS q cfg) (wf-s? cfg)))))
-    (define (answer label)
-      `(Answer (Owners)
-               (state () () (((sym ,label) =? (sym ,label) (label ,label)))
-                      (label "s"))))
+    (define (answer-state label)
+      `(state () () (((sym ,label) =? (sym ,label) (label ,label))) (label "s")))
+    (define (answer label) `(Answer (Owners) ,(answer-state label)))
     (define factored-final
       `(Forced (Owners)
                (Forced (Owners)
@@ -573,8 +578,17 @@
                                (Emit (Owners) ,(answer "C")
                                      (Emit (Owners) ,(answer "A")
                                            (Last (Owners) ,(answer "B"))))))))
+    ;; The strict account owns the terminal state directly. Compare native
+    ;; structures separately; the shared observation above reads their events.
+    (define strict-final
+      `(Forced (Owners)
+               (Forced (Owners)
+                       (Emit (Owners) ,(answer "A")
+                             (Forced (Owners)
+                                     (Emit (Owners) ,(answer "B")
+                                           (Solo (Owners) ,(answer-state "C"))))))))
     (check-equal? (last factored-configs) factored-final)
-    (check-equal? (last strict-configs) factored-final)
+    (check-equal? (last strict-configs) strict-final)
     (check-equal? (last distributed-configs) distributed-final)
     (check-equal? (length factored-steps) 26)
     (check-equal? (length distributed-steps) 28)
@@ -611,7 +625,7 @@
     (for ([frontier (in-list (list strict-round-0 strict-round-1 strict-round-2))])
       (check-true (strict:retained-frontier? frontier))
       (check-false (final-program? frontier)))
-    (check-equal? strict-round-3 factored-final))
+    (check-equal? strict-round-3 strict-final))
 
   (test-case "distributed search reassociates and commits through a Forced spine"
     (define forced-branch

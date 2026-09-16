@@ -19,8 +19,8 @@
      (Yield owners A c) (force c)]
   [E hole (mplus owners E c) (mplus owners SV E)
      (bind owners E g) (Yield owners A E) (force E)]
-  [O (Done owners) (Last owners A) (Emit owners A O) (Forced owners O)]
-  [F (Done owners) (Last owners A) (Emit owners A F) (Forced owners F)
+  [O (Done owners) (Solo owners σ) (Emit owners A O) (Forced owners O)]
+  [F (Done owners) (Solo owners σ) (Emit owners A F) (Forced owners F)
      (More (Delay owners c))]
   [o F (render c) (commit c) (advance o) (collect o)
      (Emit owners A o) (Forced owners o)]

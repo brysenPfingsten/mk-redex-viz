@@ -38,12 +38,12 @@ coordinate:
 | Goal | `g`: atomic goals, fresh, conjunction, disjunction, suspend; calls in the relation extension | Describes work to evaluate against a state. A disjunction in `g` is not a computed answer or a scheduler residual. |
 | Program | `(program Γ q)` in the relation extension | Keeps relation definitions `Γ` around the running computation or its Frontier. |
 | Active Search | `c`: eval/mplus/bind/force computations; mature `SV`: Empty/One/Yield/Delay | Retains strict work and mature eager chunks that merge/bind may still process. A mature candidate is not automatically committed output. |
-| Settled frontier | `F`: Done/Last/Emit/Forced and unary More(Delay); `O` is the completed subset | Contains committed answers and at most one explicit unfinished tip. It is a normal form even when that tip is pending. |
+| Settled frontier | `F`: Done/Solo/Emit/Forced and unary More(Delay); `O` is the completed subset | Contains committed answers and at most one explicit unfinished tip. It is a normal form even when that tip is pending. |
 
 Observation computations `o` include `commit c`, `advance o`, and `collect o`.
 The public query starts at `commit(eval(goal,state))`. The context `commit E`
 matures its Search operand strictly before any commitment rule applies.
-Commit converts Empty/One/active Yield to Done/Last/Emit, but converts Delay
+Commit converts Empty/One/active Yield to Done/Solo/Emit, but converts Delay
 to unary `More(Delay)` without forcing. There is no evaluation context under
 that unfinished-work wrapper or under Delay.
 
@@ -59,9 +59,11 @@ these constructor names while mapping allocation information and resumption
 representations. An active Yield is neither program disjunction nor settled
 output. The matrix retains strict operand evaluation and eager Search tails.
 
-The S `commit-one` rule marks the owner-transfer boundary:
-`One(Owners,state)` becomes `Last(empty-Owners,Answer(Owners,state))`.
-The full-consumption `render-one` rule uses the same placement. Commit of
+The S `commit-one` rule marks the commitment boundary:
+`One(Owners,state)` becomes `Solo(Owners,state)`. The terminal answer owns its
+introductions directly; no separate empty terminal shell is admitted by the
+current grammar. E/N use `Solo(state)`. The full-consumption `render-one` rule
+uses the same placement. Commit of
 an eager tail preserves common and answer-private ownership; public advance
 retains a crossed Delay's Owners on Forced and commits the unprefixed body.
 Active merge/bind and internal force retain their own role and strict order.
@@ -169,7 +171,7 @@ and statically generated Redex rule set in each representation:
 
 | Feature coordinate | Goal and configuration syntax added | Strict rule count |
 | --- | --- | --- |
-| Core | Atomic goals, lexical fresh, conjunction; Empty/One, Done/Last, eval/bind and observation operations | 13 |
+| Core | Atomic goals, lexical fresh, conjunction; Empty/One, Done/Solo, eval/bind and observation operations | 13 |
 | Delay | suspend; Delay/force/Forced, unfinished More(Delay), explicit crossing | 22 |
 | Disjunction | disjunction; active Yield/mplus/Emit | 22 |
 | Search | Both features plus delayed merge | 32 |

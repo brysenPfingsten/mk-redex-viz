@@ -106,10 +106,12 @@
   (test-case "data outcomes are produced directly and settled answers cannot enter bind"
     (check-true (Failure? (atomic/data no state)))
     (check-true (Success? (atomic/data yes state)))
-    (check-exn exn:fail?
-               (lambda ()
-                 (defunc:bind/d `(Emit (Owners) (Answer (Owners) ,state) (Done (Owners)))
-                                 (GRight yes) '(Owners) '() (KDone)))))
+    (for ([frontier (in-list
+                    (list `(Solo (Owners) ,state)
+                          `(Emit (Owners) (Answer (Owners) ,state) (Done (Owners)))))])
+      (check-exn exn:fail?
+                 (lambda ()
+                   (defunc:bind/d frontier (GRight yes) '(Owners) '() (KDone))))))
 
   (test-case "generated trampoline has an explicit transition budget"
     (check-true (check-generated!))

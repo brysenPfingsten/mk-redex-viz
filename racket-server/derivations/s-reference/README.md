@@ -16,6 +16,12 @@ is `KMergeYield`/`yield`; the corresponding source cases are `mplus-yield`,
 `bind-yield`, `render-yield`, and `commit-yield`. These names identify the same
 operations and stopping boundaries in both presentations.
 
+`One(O,σ)` is an uncommitted Search candidate. Commitment produces
+`Solo(O,σ)`, whose terminal answer and introductions are carried directly on
+the Frontier node. `Answer(O,σ)` remains the head payload of `Yield` and
+`Emit`, where its private introductions must be distinguished from the
+common introductions on the enclosing cell.
+
 Common grammars, kernels, stage construction and control transformation live in
 [shared/](../shared/README.md); fixtures and reusable checks live in
 [test-support/](../test-support/README.md). Runtime and derivation modules
@@ -180,10 +186,11 @@ active cases use associativity of owner concatenation. Internal force uses
 `lift_O(lift_L(c)) = lift_(O ++ L)(c)`. The rule argument and finite allocation
 checks support this lemma; they are not a mechanized universal proof.
 
-Restrict this argument to active computations. Moving ownership naively
-through commitment changes S's exact placement: `commit(One(O,σ))` places O
-on its terminal Answer rather than on Last. Public commitment rules therefore
-remain explicit.
+This argument concerns active computations. Commitment remains an explicit
+phase even where it preserves the ownership field: `commit(One(O,σ))`
+produces `Solo(O,σ)`, while committing `Yield` retains its separate common and
+answer-private introductions on `Emit` and its `Answer` payload. A candidate
+with pending bind obligations is not yet a committed answer.
 
 The existing S→E/N maps account for allocation along owner paths. At the same
 caller support the basic identity is

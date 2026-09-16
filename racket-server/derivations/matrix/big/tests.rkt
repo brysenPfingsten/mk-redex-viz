@@ -188,9 +188,9 @@
     (match-define (list completed advance-labels) (evaluate/s `(advance ,frontier)))
     (check-equal? advance-labels '("advance-delay" "eval-atom" "commit-one"))
     (check-true (s-observation? completed))
-    (check-equal? (second (evaluate/s `(advance ,completed))) '("advance-forced" "advance-last"))
+    (check-equal? (second (evaluate/s `(advance ,completed))) '("advance-forced" "advance-solo"))
     (check-equal? (second (evaluate/s `(collect ,frontier)))
-                  '("collect-delay" "eval-atom" "commit-one" "collect-last"))
+                  '("collect-delay" "eval-atom" "commit-one" "collect-solo"))
     (void (check-three `(collect (advance ,query)))))
 
   (test-case "internal force retains saved owners on the active root before allocation"

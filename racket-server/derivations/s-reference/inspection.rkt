@@ -45,7 +45,7 @@
     [`(program ,relations ,body)
      `(program ,relations ,(reify-frontier descriptions body))]
     [`(Done ,_) frontier]
-    [`(Last ,_ ,_) frontier]
+    [`(Solo ,_ ,_) frontier]
     [`(Emit ,owners ,answer ,tail)
      `(Emit ,owners ,answer ,(reify-frontier descriptions tail))]
     [`(Forced ,owners ,tail)

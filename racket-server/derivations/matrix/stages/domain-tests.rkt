@@ -30,6 +30,21 @@
     (match-define (list stage retired) row)
     (check-exn exn:fail:contract? (lambda () (initial-M stage retired))))
 
+  (test-case "every native feature machine rejects the retired Last terminal shape"
+    (define state '(state () () () (label "terminal")))
+    (for ([stages (in-list (list (list SCore SDelay SDisjunction S)
+                                 (list ECore EDelay EDisjunction E)
+                                 (list NCore NDelay NDisjunction N)))]
+          [retired (in-list
+                    (list `(Last (Owners) (Answer (Owners) ,state))
+                          `(Last ,(second (q:Q-SE `(One (Owners) ,state))))
+                          `(Last ,(second (q:Q-SN `(One (Owners) ,state))))))])
+      (for ([stage (in-list stages)])
+        (check-exn exn:fail:contract? (lambda () (initial-M stage retired)))
+        (check-exn exn:fail:contract? (lambda () (d-step stage (DFinal retired))))
+        (check-exn exn:fail:contract? (lambda () (m-step stage (M retired 'halt))))
+        (check-exn exn:fail:contract? (lambda () (b-step stage (BFinal retired)))))))
+
   ;; A strict machine retains the complete mature left answer chunk while
   ;; evaluating the right operand. Administrative compression retains that
   ;; merge frame in its own residual state.

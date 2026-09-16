@@ -33,14 +33,17 @@ ancestry, and the Search/Frontier commitment boundary. Only object-language
 
 ```text
 Search   ::= Empty(O) | One(O,σ) | Yield(O,A,Search) | Delay(O,R)
-Frontier ::= Done(O) | Last(O,A) | Emit(O,A,Frontier)
+Frontier ::= Done(O) | Solo(O,σ) | Emit(O,A,Frontier)
            | Forced(O,Frontier) | More(Delay(O,R))
 ```
 
 These are the S shapes; E/N carry their own allocation information.
 `Yield` contains an active candidate and an eager Search tail. Unary `More`
-holds unfinished Frontier work. `Done` and `Last` retain distinct completion
+holds unfinished Frontier work. `Done` and `Solo` retain distinct completion
 structure. Observations compare exact Frontiers, including suspended bodies.
+`Solo(O,σ)` owns its terminal state and introductions directly. `Answer(O,σ)`
+remains a separate head payload in `Yield` and `Emit`, where its private
+introductions must be distinguished from the owners shared with the tail.
 
 ## Reading order and maintained layout
 

@@ -122,7 +122,7 @@
 (define (commit/s search)
   (match search
     [`(Empty ,owners) `(Done ,owners)]
-    [`(One ,owners ,state) `(Last (Owners) (Answer ,owners ,state))]
+    [`(One ,owners ,state) `(Solo ,owners ,state)]
     [`(Yield ,owners ,answer ,rest)
      `(Emit ,owners ,answer ,(commit/s rest))]
     [`(Delay ,_ ,_) `(More ,search)]))
@@ -132,7 +132,7 @@
 (define (advance/s frontier inherited)
   (match frontier
     [`(Done ,_) frontier]
-    [`(Last (Owners) ,_) frontier]
+    [`(Solo ,_ ,_) frontier]
     [`(Emit ,owners ,answer ,rest)
      `(Emit ,owners ,answer ,(advance/s rest (owners-support owners inherited)))]
     [`(Forced ,owners ,rest)
@@ -144,7 +144,7 @@
 (define (collect/s frontier inherited)
   (match frontier
     [`(Done ,_) frontier]
-    [`(Last (Owners) ,_) frontier]
+    [`(Solo ,_ ,_) frontier]
     [`(Emit ,owners ,answer ,rest)
      `(Emit ,owners ,answer ,(collect/s rest (owners-support owners inherited)))]
     [`(Forced ,owners ,rest)

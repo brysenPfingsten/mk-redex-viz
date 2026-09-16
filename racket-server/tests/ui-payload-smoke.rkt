@@ -124,7 +124,8 @@
 
 (define-values (singleton singleton-session) (run-trace "(run* (q) (== q 'cat))" 20 "micro"))
 (expect (model-session-done? singleton-session) "singleton must finish")
-(expect (trace-shows? singleton "Last") "completed singleton must retain Last")
+(expect (trace-shows? singleton "Solo") "completed singleton must be a direct Solo")
+(expect (not (trace-shows? singleton "Last")) "strict singleton must not use a Last wrapper")
 (expect (equal? (model-session-current-host-answers singleton-session) '(cat))
         "singleton must reify its explicit query variable")
 

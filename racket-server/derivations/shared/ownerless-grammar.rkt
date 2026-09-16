@@ -27,8 +27,8 @@
            [SV (Empty supply) (One σ) feature-value ...]
            [c SV (eval g σ) (bind c g) feature-computation ...]
            [E hole (bind E g) feature-context ...]
-           [O (Done supply) (Last σ) feature-observation ...]
-           [F (Done supply) (Last σ) feature-frontier ...]
+           [O (Done supply) (Solo σ) feature-observation ...]
+           [F (Done supply) (Solo σ) feature-frontier ...]
            [o F (render c) (commit c) (advance o) (collect o) feature-observer ...]
            [q c o]
            [C E (render E) (commit E) (advance C) (collect C)

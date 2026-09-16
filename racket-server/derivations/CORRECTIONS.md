@@ -7,7 +7,7 @@ maintained witnesses that make the answers inspectable. The
 | Mistaken assumption or question | Correction | Current witness |
 | --- | --- | --- |
 | Are S introductions just decorations on returned answers? | Introductions supply allocation support while computation runs. Unused and empty introduction groups matter; common ancestry and an answer's private ancestry have different descendants. Internal force retains the removed Delay's groups on active computation before fresh allocation. E/N keep the same allocation world in their states and need no identity prefix phase. | `unused-binder`, `shared-outer`, `sibling-reuse`, `delayed-sibling-capture`, and `sparse-inherited-ancestry` in [witnesses.rkt](test-support/witnesses.rkt); owner lifting in [source-tests.rkt](s-reference/source-tests.rkt) and [checkpoint S/E/N transitions](matrix/s-reference-tests.rkt) |
-| Can completion always be encoded as an emitted answer followed by empty work? | `Done` retains terminal failure/allocation structure; `Last` records a terminal answer. `Last(A)` and `Emit(A,Done)` are structurally distinct even when their answer lists agree. Exact Frontier structure includes failed worlds and empty introduction groups. | Terminal-form assertions in [constructor-tests.rkt](constructor-tests.rkt); `allocated-failure`, `failed-sibling`, and `nested-rail` in [witnesses.rkt](test-support/witnesses.rkt); exact boundaries in [interpreter-tests.rkt](s-reference/interpreter-tests.rkt) |
+| Can completion always be encoded as an emitted answer followed by empty work? | `Done` retains terminal failure/allocation structure; `Solo` owns a terminal answer state directly. `Solo(O,σ)` and `Emit(O,Answer(∅,σ),Done(∅))` are structurally distinct even when their answer lists agree. Exact Frontier structure includes failed worlds and empty introduction groups. | Terminal-form assertions in [constructor-tests.rkt](constructor-tests.rkt); `allocated-failure`, `failed-sibling`, and `nested-rail` in [witnesses.rkt](test-support/witnesses.rkt); exact boundaries in [interpreter-tests.rkt](s-reference/interpreter-tests.rkt) |
 | Does a successful active Search candidate already justify settled output? | Pending bind can fail or suspend. `Yield` is active Search; only commitment builds Frontier answers. Unary `More(Delay(...))` retains unfinished Frontier work. | `intermediate-success-then-failure` and `delayed-continuation-schedule` in [witnesses.rkt](test-support/witnesses.rkt); phase rejection in [machine-correspondence-tests.rkt](s-reference/machine-correspondence-tests.rkt) |
 | Can matching completed answers justify dormant-right scheduling? | Strict disjunction matures both operands left to right; eager bind processes the continuation and residual before commitment. Delaying right-hand work changes the operation order even when completed output agrees. | `strict-sibling-maturation` and `eager-bind-residual` in [witnesses.rkt](test-support/witnesses.rkt); [policy-tests.rkt](experiments/dormant-branch-semantics/tests/strict-policy-tests.rkt) compares strict work order with the earlier dormant-branch semantics |
 | Are all suspensions interchangeable thunks, including the host trampoline? | `REval`, `RMerge`, and `RBind` retain specific pending computation. Saved right Search and nested choice orientation matter. Only object-language Delay suspends that work; host tail-call dispatch is administrative. | `bind-delayed-left`, `delayed-sibling-capture`, and `nested-rail` in [witnesses.rkt](test-support/witnesses.rkt); [data.rkt](s-reference/data.rkt), [administrative rank](s-reference/administration.rkt), and [register span checks](s-reference/register-compression-tests.rkt) |
@@ -19,6 +19,16 @@ maintained witnesses that make the answers inspectable. The
 | Does a source being selectable by an application make it application plumbing? | Source semantics and machines belong in `derivations/`; `src/` compiles, selects, runs and presents them. A superseded semantic account keeps its source, derivation and account-specific tests together in `experiments/`. Neutral shared providers stay outside those accounts. | [Current inventory](README.md), [experiments](experiments/README.md), and [layout contracts](layout-tests.rkt) |
 
 ## Construction lessons
+
+Terminal success now uses `Solo(owners, state)`. The former strict reductions
+always produced `Last(Owners(), Answer(owners, state))`; permitting a nonempty
+outer `Last` owner field overstated the reachable representation. Tightening
+the grammar removes that empty container without merging candidate `One`
+with committed `Solo`, or erasing the common/private scope distinction in
+`Yield` and `Emit`. The earlier dormant-branch experiment keeps its own `Last`
+syntax. [Constructor checks](constructor-tests.rkt) reject the old shape in
+the current account; the matrix and functional-machine checks retain exact
+scope and commitment boundaries.
 
 These passages retain wording from the early refactoring notes, with examples
 updated to the current syntax.
@@ -120,7 +130,7 @@ The strict reference (Flip) is a separate view and the default API/library
 selection. All current histories retain `(program Γ q)` and explicit public
 `advance`; internal `force-delay` remains a reduction. The
 [current picture projection](../src/search-picture.rkt) reads strict syntax,
-preserving candidates, Done/Last, and Owner groups. Dormant work-tree
+preserving candidates, Done/Solo, and Owner groups. Dormant work-tree
 inspection belongs to the [experiment](experiments/dormant-branch-semantics/README.md).
 Automatic consumption lives in
 [minikanren.rkt](../src/minikanren.rkt), separate from manual session control.

@@ -43,10 +43,14 @@
                (equal? (hash-ref node 'nodeColor #f) "green")
                (andmap (lambda (key) (hash-has-key? node key))
                        '(stateId stateKey scope sub disequalities trail reified)))]
+         [(list "Solo" "terminal-answer" 0)
+          (and (equal? (hash-ref node 'semanticKind) "frontier")
+               (equal? (hash-ref node 'nodeColor #f) "green")
+               (andmap (lambda (key) (hash-has-key? node key))
+                       '(stateId stateKey scope sub disequalities trail reified owners)))]
          [(list (or "Succeed" "Fail" "Unify" "Disequality" "Rel-Call") "goal-leaf" 0) #t]
          [(list "Empty" "search-empty" 0) #t]
          [(list "Done" "completed" 0) #t]
-         [(list "Last" "completed" 1) #t]
          [(list "Fresh" "goal-fresh" 1) #t]
          [(list "Goal-Delay" "goal-delay" 1) #t]
          [(list (or "Goal-Conj" "Goal-Disj") "goal-branch" 2) #t]
@@ -127,7 +131,7 @@
     (define pictures
       (for/list ([configuration (in-list (list '(Empty (Owners)) '(Done (Owners))
                                                one `(commit ,one)
-                                               `(Last (Owners) (Answer (Owners) ,state))
+                                               `(Solo (Owners) ,state)
                                                `(Emit (Owners) (Answer (Owners) ,state) (Done (Owners)))
                                                delayed `(More ,delayed) `(force ,delayed)
                                                `(advance (More ,delayed))))])
@@ -136,6 +140,8 @@
         picture))
     (check-equal? (length (remove-duplicates pictures)) (length pictures))
     (check-equal? (hash-ref (second (nodes (third pictures))) 'name) "Candidate")
-    (check-equal? (hash-ref (second (nodes (fifth pictures))) 'name) "Answer")))
+    (check-equal? (hash-ref (fifth pictures) 'name) "Solo")
+    (check-equal? (hash-ref (fifth pictures) 'children) '())
+    (check-equal? (hash-ref (fifth pictures) 'stateId) "answer")))
 
 (module+ test (run-tests VISIBLE-CONTRACTS))

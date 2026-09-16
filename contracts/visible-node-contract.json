@@ -20,6 +20,7 @@
     "More",
     "Forced",
     "Done",
+    "Solo",
     "Last",
     "Deferred",
     "Conjunction",
@@ -41,7 +42,7 @@
   ],
   "optionalNodeProperties": {
     "semanticKind": {
-      "description": "The current strict view supplies this on every node. An eager Yield whose tail is still computing is an operation; Candidate is uncommitted Search data.",
+      "description": "The current strict view supplies this on every node. An eager Yield whose tail is still computing is an operation; Candidate is uncommitted Search data. Solo is a committed Frontier leaf with its state and owners directly on it. Last remains in the vocabulary only for the earlier dormant-branch picture.",
       "enum": ["search", "operation", "frontier", "answer", "goal"]
     },
     "owners": {
